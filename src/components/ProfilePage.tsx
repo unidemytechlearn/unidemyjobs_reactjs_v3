@@ -1,47 +1,51 @@
-import React, { useState } from 'react';
-import { User, Mail, Phone, MapPin, Briefcase, Calendar, Globe, Linkedin, Github, Camera, Save, X, Edit3, Shield, Bell, Eye, EyeOff, Upload, FileText, Award, Star, TrendingUp } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, Mail, Phone, MapPin, Briefcase, Calendar, Globe, Linkedin, Github, Camera, Save, X, Edit3, Shield, Bell, Eye, EyeOff, Upload, FileText, Award, Star, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
+import { updateProfile, resetPassword } from '../lib/supabase';
 
 interface ProfilePageProps {
   onNavigate?: (page: string) => void;
 }
 
 const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
-  const { isAuthenticated } = useAuthContext();
+  const { isAuthenticated, user, profile, refreshProfile } = useAuthContext();
   const [activeTab, setActiveTab] = useState<'overview' | 'edit' | 'security' | 'preferences'>('overview');
   const [isEditing, setIsEditing] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [uploadedResume, setUploadedResume] = useState<File | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Redirect to home if not authenticated
   if (!isAuthenticated) {
     onNavigate?.('home');
     return null;
   }
+
   const [profileData, setProfileData] = useState({
     // Personal Information
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john.doe@example.com',
-    phone: '+1 (555) 123-4567',
-    location: 'San Francisco, CA',
-    bio: 'Experienced software engineer with a passion for creating innovative solutions. Specialized in full-stack development with expertise in React, Node.js, and cloud technologies.',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    location: '',
+    bio: '',
     
     // Professional Information
-    jobTitle: 'Senior Software Engineer',
-    company: 'TechCorp Inc.',
-    experience: '5+ years',
-    skills: ['React', 'TypeScript', 'Node.js', 'Python', 'AWS', 'Docker', 'GraphQL', 'MongoDB'],
-    salary: '$120k - $160k',
-    availability: 'Open to opportunities',
+    jobTitle: '',
+    company: '',
+    experience: '',
+    skills: [] as string[],
+    salary: '',
+    availability: '',
     
     // Social Links
-    linkedin: 'https://linkedin.com/in/johndoe',
-    github: 'https://github.com/johndoe',
-    portfolio: 'https://johndoe.dev',
+    linkedin: '',
+    github: '',
+    portfolio: '',
     
     // Profile Settings
     profileVisibility: 'public',
@@ -62,11 +66,45 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
   });
 
   const [profileStats] = useState({
-    profileViews: 1247,
-    applicationsSent: 23,
-    savedJobs: 45,
-    profileCompleteness: 85,
+    profileViews: profile?.profile_views || 0,
+    applicationsSent: 23, // This would come from applications table
+    savedJobs: 45, // This would come from saved_jobs table
+    profileCompleteness: 85, // Calculate based on filled fields
   });
+
+  // Load profile data when component mounts or profile changes
+  useEffect(() => {
+    if (profile && user) {
+      setProfileData({
+        firstName: profile.first_name || '',
+        lastName: profile.last_name || '',
+        email: user.email || '',
+        phone: profile.phone || '',
+        location: profile.location || '',
+        bio: profile.bio || '',
+        jobTitle: profile.job_title || '',
+        company: profile.company || '',
+        experience: profile.experience_level || '',
+        skills: [], // Skills would need to be fetched from user_skills table
+        salary: profile.salary_range || '',
+        availability: profile.availability || '',
+        linkedin: profile.linkedin_url || '',
+        github: profile.github_url || '',
+        portfolio: profile.portfolio_url || '',
+        profileVisibility: profile.profile_visibility || 'public',
+        showSalary: profile.show_salary || false,
+        showContact: profile.show_contact !== false,
+        emailNotifications: profile.email_notifications !== false,
+        jobAlerts: profile.job_alerts !== false,
+        applicationUpdates: profile.application_updates !== false,
+        marketingEmails: profile.marketing_emails || false,
+        twoFactorEnabled: profile.two_factor_enabled || false,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+    }
+  }, [profile, user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -74,6 +112,8 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
       ...profileData,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
     });
+    // Clear message when user starts editing
+    if (message) setMessage(null);
   };
 
   const handleSkillsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,29 +127,77 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
   const handleResumeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        setMessage({ type: 'error', text: 'File size must be less than 5MB' });
+        return;
+      }
       setUploadedResume(file);
+      setMessage(null);
     }
   };
 
   const handleSave = async () => {
+    if (!user) return;
+    
     setIsSaving(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsSaving(false);
-    setIsEditing(false);
+    setMessage(null);
+    
+    try {
+      const updateData = {
+        first_name: profileData.firstName,
+        last_name: profileData.lastName,
+        phone: profileData.phone,
+        location: profileData.location,
+        bio: profileData.bio,
+        job_title: profileData.jobTitle,
+        company: profileData.company,
+        experience_level: profileData.experience,
+        salary_range: profileData.salary,
+        availability: profileData.availability,
+        linkedin_url: profileData.linkedin,
+        github_url: profileData.github,
+        portfolio_url: profileData.portfolio,
+        profile_visibility: profileData.profileVisibility,
+        show_salary: profileData.showSalary,
+        show_contact: profileData.showContact,
+        email_notifications: profileData.emailNotifications,
+        job_alerts: profileData.jobAlerts,
+        application_updates: profileData.applicationUpdates,
+        marketing_emails: profileData.marketingEmails,
+        two_factor_enabled: profileData.twoFactorEnabled,
+      };
+
+      await updateProfile(user.id, updateData);
+      await refreshProfile();
+      
+      setMessage({ type: 'success', text: 'Profile updated successfully!' });
+      setIsEditing(false);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setMessage(null);
+      }, 3000);
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message || 'Failed to update profile' });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handlePasswordChange = async () => {
-    setIsSaving(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsSaving(false);
-    setProfileData({
-      ...profileData,
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-    });
+  const handlePasswordReset = async () => {
+    if (!user?.email) return;
+    
+    setIsResettingPassword(true);
+    setMessage(null);
+    
+    try {
+      await resetPassword(user.email);
+      setMessage({ type: 'success', text: 'Password reset email sent! Check your inbox.' });
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message || 'Failed to send password reset email' });
+    } finally {
+      setIsResettingPassword(false);
+    }
   };
 
   const ProfileOverview = () => (
@@ -130,21 +218,31 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
           </div>
           
           <div className="flex-1">
-            <h1 className="text-3xl font-bold mb-2">{profileData.firstName} {profileData.lastName}</h1>
-            <p className="text-xl text-blue-100 mb-4">{profileData.jobTitle} at {profileData.company}</p>
+            <h1 className="text-3xl font-bold mb-2">
+              {profileData.firstName} {profileData.lastName}
+            </h1>
+            <p className="text-xl text-blue-100 mb-4">
+              {profileData.jobTitle ? `${profileData.jobTitle}${profileData.company ? ` at ${profileData.company}` : ''}` : 'Professional'}
+            </p>
             <div className="flex flex-wrap items-center gap-4 text-blue-100">
-              <div className="flex items-center space-x-2">
-                <MapPin className="h-4 w-4" />
-                <span>{profileData.location}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Briefcase className="h-4 w-4" />
-                <span>{profileData.experience} experience</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4" />
-                <span>{profileData.availability}</span>
-              </div>
+              {profileData.location && (
+                <div className="flex items-center space-x-2">
+                  <MapPin className="h-4 w-4" />
+                  <span>{profileData.location}</span>
+                </div>
+              )}
+              {profileData.experience && (
+                <div className="flex items-center space-x-2">
+                  <Briefcase className="h-4 w-4" />
+                  <span>{profileData.experience} experience</span>
+                </div>
+              )}
+              {profileData.availability && (
+                <div className="flex items-center space-x-2">
+                  <Calendar className="h-4 w-4" />
+                  <span>{profileData.availability}</span>
+                </div>
+              )}
             </div>
           </div>
           
@@ -183,35 +281,47 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
         <div className="lg:col-span-2 space-y-8">
           <div className="bg-white border border-gray-200 rounded-xl p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">About</h3>
-            <p className="text-gray-600 leading-relaxed">{profileData.bio}</p>
+            <p className="text-gray-600 leading-relaxed">
+              {profileData.bio || 'No bio available. Click "Edit Profile" to add your professional summary.'}
+            </p>
           </div>
 
           {/* Skills Section */}
           <div className="bg-white border border-gray-200 rounded-xl p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Skills</h3>
-            <div className="flex flex-wrap gap-2">
-              {profileData.skills.map((skill, index) => (
-                <span
-                  key={index}
-                  className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
-                >
-                  {skill}
-                </span>
-              ))}
-            </div>
+            {profileData.skills.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {profileData.skills.map((skill, index) => (
+                  <span
+                    key={index}
+                    className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
+                  >
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500">No skills added yet. Click "Edit Profile" to add your skills.</p>
+            )}
           </div>
 
           {/* Experience Section */}
           <div className="bg-white border border-gray-200 rounded-xl p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Experience</h3>
-            <div className="space-y-4">
-              <div className="border-l-4 border-blue-600 pl-4">
-                <h4 className="font-semibold text-gray-900">{profileData.jobTitle}</h4>
-                <p className="text-blue-600 font-medium">{profileData.company}</p>
-                <p className="text-gray-600 text-sm">2020 - Present</p>
-                <p className="text-gray-600 mt-2">Leading development of scalable web applications and mentoring junior developers.</p>
+            {profileData.jobTitle || profileData.company ? (
+              <div className="space-y-4">
+                <div className="border-l-4 border-blue-600 pl-4">
+                  <h4 className="font-semibold text-gray-900">{profileData.jobTitle || 'Professional'}</h4>
+                  {profileData.company && <p className="text-blue-600 font-medium">{profileData.company}</p>}
+                  <p className="text-gray-600 text-sm">{profileData.experience || 'Experience level not specified'}</p>
+                  <p className="text-gray-600 mt-2">
+                    {profileData.bio || 'No description available.'}
+                  </p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <p className="text-gray-500">No experience information added yet. Click "Edit Profile" to add your work experience.</p>
+            )}
           </div>
         </div>
 
@@ -225,14 +335,18 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
                 <Mail className="h-4 w-4 text-gray-400" />
                 <span className="text-gray-600">{profileData.email}</span>
               </div>
-              <div className="flex items-center space-x-3">
-                <Phone className="h-4 w-4 text-gray-400" />
-                <span className="text-gray-600">{profileData.phone}</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <MapPin className="h-4 w-4 text-gray-400" />
-                <span className="text-gray-600">{profileData.location}</span>
-              </div>
+              {profileData.phone && (
+                <div className="flex items-center space-x-3">
+                  <Phone className="h-4 w-4 text-gray-400" />
+                  <span className="text-gray-600">{profileData.phone}</span>
+                </div>
+              )}
+              {profileData.location && (
+                <div className="flex items-center space-x-3">
+                  <MapPin className="h-4 w-4 text-gray-400" />
+                  <span className="text-gray-600">{profileData.location}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -240,18 +354,41 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
           <div className="bg-white border border-gray-200 rounded-xl p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Social Links</h3>
             <div className="space-y-3">
-              <a href={profileData.linkedin} className="flex items-center space-x-3 text-blue-600 hover:text-blue-700">
-                <Linkedin className="h-4 w-4" />
-                <span>LinkedIn Profile</span>
-              </a>
-              <a href={profileData.github} className="flex items-center space-x-3 text-gray-600 hover:text-gray-700">
-                <Github className="h-4 w-4" />
-                <span>GitHub Profile</span>
-              </a>
-              <a href={profileData.portfolio} className="flex items-center space-x-3 text-purple-600 hover:text-purple-700">
-                <Globe className="h-4 w-4" />
-                <span>Portfolio Website</span>
-              </a>
+              {profileData.linkedin ? (
+                <a href={profileData.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-3 text-blue-600 hover:text-blue-700">
+                  <Linkedin className="h-4 w-4" />
+                  <span>LinkedIn Profile</span>
+                </a>
+              ) : (
+                <div className="flex items-center space-x-3 text-gray-400">
+                  <Linkedin className="h-4 w-4" />
+                  <span>No LinkedIn profile</span>
+                </div>
+              )}
+              
+              {profileData.github ? (
+                <a href={profileData.github} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-3 text-gray-600 hover:text-gray-700">
+                  <Github className="h-4 w-4" />
+                  <span>GitHub Profile</span>
+                </a>
+              ) : (
+                <div className="flex items-center space-x-3 text-gray-400">
+                  <Github className="h-4 w-4" />
+                  <span>No GitHub profile</span>
+                </div>
+              )}
+              
+              {profileData.portfolio ? (
+                <a href={profileData.portfolio} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-3 text-purple-600 hover:text-purple-700">
+                  <Globe className="h-4 w-4" />
+                  <span>Portfolio Website</span>
+                </a>
+              ) : (
+                <div className="flex items-center space-x-3 text-gray-400">
+                  <Globe className="h-4 w-4" />
+                  <span>No portfolio website</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -281,6 +418,24 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
 
   const EditProfile = () => (
     <div className="space-y-8">
+      {/* Message Display */}
+      {message && (
+        <div className={`p-4 rounded-xl ${
+          message.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+        }`}>
+          <div className="flex items-center space-x-2">
+            {message.type === 'success' ? (
+              <CheckCircle className="h-5 w-5 text-green-600" />
+            ) : (
+              <AlertCircle className="h-5 w-5 text-red-600" />
+            )}
+            <p className={`text-sm ${message.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
+              {message.text}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white border border-gray-200 rounded-xl p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-6">Edit Profile Information</h3>
         
@@ -320,8 +475,10 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
                 name="email"
                 value={profileData.email}
                 onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 text-gray-500"
               />
+              <p className="text-xs text-gray-500 mt-1">Email cannot be changed here</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
@@ -393,6 +550,7 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
+                <option value="">Select experience</option>
                 <option value="Entry-level">Entry-level</option>
                 <option value="1-2 years">1-2 years</option>
                 <option value="3-5 years">3-5 years</option>
@@ -408,6 +566,7 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
+                <option value="">Select availability</option>
                 <option value="Open to opportunities">Open to opportunities</option>
                 <option value="Actively looking">Actively looking</option>
                 <option value="Not looking">Not looking</option>
@@ -542,80 +701,42 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
 
   const SecuritySettings = () => (
     <div className="space-y-8">
-      {/* Password Change */}
+      {/* Message Display */}
+      {message && (
+        <div className={`p-4 rounded-xl ${
+          message.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+        }`}>
+          <div className="flex items-center space-x-2">
+            {message.type === 'success' ? (
+              <CheckCircle className="h-5 w-5 text-green-600" />
+            ) : (
+              <AlertCircle className="h-5 w-5 text-red-600" />
+            )}
+            <p className={`text-sm ${message.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
+              {message.text}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Password Reset */}
       <div className="bg-white border border-gray-200 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">Change Password</h3>
-        
-        <form className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
-            <div className="relative">
-              <input
-                type={showCurrentPassword ? 'text' : 'password'}
-                name="currentPassword"
-                value={profileData.currentPassword}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                type="button"
-                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showCurrentPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
+        <h3 className="text-lg font-semibold text-gray-900 mb-6">Password</h3>
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h5 className="font-medium text-gray-900">Reset Password</h5>
+              <p className="text-gray-600 text-sm">Send a password reset email to {user?.email}</p>
             </div>
+            <button
+              onClick={handlePasswordReset}
+              disabled={isResettingPassword}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isResettingPassword ? 'Sending...' : 'Reset Password'}
+            </button>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-            <div className="relative">
-              <input
-                type={showNewPassword ? 'text' : 'password'}
-                name="newPassword"
-                value={profileData.newPassword}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                type="button"
-                onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
-            <div className="relative">
-              <input
-                type={showConfirmPassword ? 'text' : 'password'}
-                name="confirmPassword"
-                value={profileData.confirmPassword}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={handlePasswordChange}
-            disabled={isSaving}
-            className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSaving ? 'Updating...' : 'Update Password'}
-          </button>
-        </form>
+        </div>
       </div>
 
       {/* Two-Factor Authentication */}
