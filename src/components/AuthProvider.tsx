@@ -7,6 +7,7 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  profileLoading: boolean;
   isAuthenticated: boolean;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;

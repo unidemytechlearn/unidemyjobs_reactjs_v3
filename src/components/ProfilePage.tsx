@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, MapPin, Briefcase, Calendar, Globe, Linkedin, Github, Camera, Save, X, Edit3, Shield, Bell, Eye, EyeOff, Upload, FileText, Award, Star, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Briefcase, Calendar, Globe, Linkedin, Github, Camera, Save, X, Edit3, Shield, Bell, Eye, EyeOff, Upload, FileText, Award, Star, TrendingUp, AlertCircle, CheckCircle, Loader } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
 import { updateProfile, resetPassword } from '../lib/supabase';
 
@@ -8,7 +8,7 @@ interface ProfilePageProps {
 }
 
 const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
-  const { isAuthenticated, user, profile, refreshProfile } = useAuthContext();
+  const { isAuthenticated, user, profile, refreshProfile, loading, profileLoading } = useAuthContext();
   const [activeTab, setActiveTab] = useState<'overview' | 'edit' | 'security' | 'preferences'>('overview');
   const [isEditing, setIsEditing] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -18,12 +18,6 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [uploadedResume, setUploadedResume] = useState<File | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  // Redirect to home if not authenticated
-  if (!isAuthenticated) {
-    onNavigate?.('home');
-    return null;
-  }
 
   const [profileData, setProfileData] = useState({
     // Personal Information
@@ -71,6 +65,24 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
     savedJobs: 45, // This would come from saved_jobs table
     profileCompleteness: 85, // Calculate based on filled fields
   });
+
+  // Show loading spinner while authentication is being restored
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to home if not authenticated
+  if (!isAuthenticated) {
+    onNavigate?.('home');
+    return null;
+  }
 
   // Load profile data when component mounts or profile changes
   useEffect(() => {
@@ -200,6 +212,22 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
     }
   };
 
+  // Show loading spinner while profile is being loaded
+  if (profileLoading && !profile) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <Loader className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+              <p className="text-gray-600">Loading profile...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const ProfileOverview = () => (
     <div className="space-y-8">
       {/* Profile Header */}
@@ -219,7 +247,10 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
           
           <div className="flex-1">
             <h1 className="text-3xl font-bold mb-2">
-              {profileData.firstName} {profileData.lastName}
+              {profileData.firstName || profileData.lastName ? 
+                `${profileData.firstName} ${profileData.lastName}` : 
+                'Complete Your Profile'
+              }
             </h1>
             <p className="text-xl text-blue-100 mb-4">
               {profileData.jobTitle ? `${profileData.jobTitle}${profileData.company ? ` at ${profileData.company}` : ''}` : 'Professional'}
