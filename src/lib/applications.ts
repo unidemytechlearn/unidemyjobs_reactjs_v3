@@ -159,42 +159,74 @@ export async function getUserApplications(userId: string): Promise<any[]> {
 }
 
 export async function getApplicationAnalytics(userId: string): Promise<{
-  totalApplications: number;
-  pendingApplications: number;
-  interviewsScheduled: number;
-  offersReceived: number;
+  total_applications: number;
+  pending_applications: number;
+  interviews_scheduled: number;
+  offers_received: number;
+  applications_this_month: number;
+  response_rate: number;
+  interview_rate: number;
 }> {
   try {
     const { data, error } = await supabase
       .from('applications')
-      .select('status')
+      .select('status, applied_at')
       .eq('user_id', userId);
 
     if (error) {
       console.error('Error fetching application analytics:', error);
       return {
-        totalApplications: 0,
-        pendingApplications: 0,
-        interviewsScheduled: 0,
-        offersReceived: 0
+        total_applications: 0,
+        pending_applications: 0,
+        interviews_scheduled: 0,
+        offers_received: 0,
+        applications_this_month: 0,
+        response_rate: 0,
+        interview_rate: 0
       };
     }
 
+    const totalApplications = data.length;
+    const pendingApplications = data.filter(app => ['submitted', 'under_review'].includes(app.status)).length;
+    const interviewsScheduled = data.filter(app => ['interview_scheduled', 'interview_completed'].includes(app.status)).length;
+    const offersReceived = data.filter(app => app.status === 'offer_made').length;
+    
+    // Calculate applications this month
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    const applicationsThisMonth = data.filter(app => {
+      const appliedDate = new Date(app.applied_at);
+      return appliedDate.getMonth() === currentMonth && appliedDate.getFullYear() === currentYear;
+    }).length;
+    
+    // Calculate response rate (interviews + offers / total applications)
+    const responseRate = totalApplications > 0 ? ((interviewsScheduled + offersReceived) / totalApplications) * 100 : 0;
+    
+    // Calculate interview rate (interviews / total applications)
+    const interviewRate = totalApplications > 0 ? (interviewsScheduled / totalApplications) * 100 : 0;
+
     const analytics = {
-      totalApplications: data.length,
-      pendingApplications: data.filter(app => ['submitted', 'under_review'].includes(app.status)).length,
-      interviewsScheduled: data.filter(app => ['interview_scheduled', 'interview_completed'].includes(app.status)).length,
-      offersReceived: data.filter(app => app.status === 'offer_made').length
+      total_applications: totalApplications,
+      pending_applications: pendingApplications,
+      interviews_scheduled: interviewsScheduled,
+      offers_received: offersReceived,
+      applications_this_month: applicationsThisMonth,
+      response_rate: Math.round(responseRate * 100) / 100, // Round to 2 decimal places
+      interview_rate: Math.round(interviewRate * 100) / 100 // Round to 2 decimal places
     };
 
     return analytics;
   } catch (error) {
     console.error('Error fetching application analytics:', error);
     return {
-      totalApplications: 0,
-      pendingApplications: 0,
-      interviewsScheduled: 0,
-      offersReceived: 0
+      total_applications: 0,
+      pending_applications: 0,
+      interviews_scheduled: 0,
+      offers_received: 0,
+      applications_this_month: 0,
+      response_rate: 0,
+      interview_rate: 0
     };
   }
 }
