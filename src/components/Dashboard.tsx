@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { User, Briefcase, Heart, FileText, TrendingUp, Bell, Search, Filter, MapPin, Clock, DollarSign, Building, Star, Share2, Eye, Send, CheckCircle, XCircle, AlertCircle, Calendar, Award, Target, Users, Plus, ArrowRight, Bookmark, ExternalLink, ChevronRight, BarChart3, PieChart, Activity, Zap } from 'lucide-react';
+import { User, Briefcase, Heart, FileText, TrendingUp, Bell, Search, Filter, MapPin, Clock, DollarSign, Building, Star, Share2, Eye, Send, CheckCircle, XCircle, AlertCircle, Calendar, Award, Target, Users, Plus, ArrowRight, Bookmark, ExternalLink, ChevronRight, BarChart3, PieChart, Activity, Zap, MoreHorizontal } from 'lucide-react';
 import ApplyModal from './ApplyModal';
 import ProfilePage from './ProfilePage';
+import JobApplicationDetailsModal from './JobApplicationDetailsModal';
 import { getUserApplications, getApplicationAnalytics } from '../lib/applications';
 import { useAuthContext } from './AuthProvider';
 import { getJobs, getUserSavedJobs, saveJob, unsaveJob, isJobSaved } from '../lib/supabase';
@@ -24,7 +25,9 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const [allJobs, setAllJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const [isApplicationDetailsOpen, setIsApplicationDetailsOpen] = useState(false);
 
   // Don't render anything while loading
   if (loading) {
@@ -230,6 +233,11 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     };
     setSelectedJob(normalizedJob);
     setIsApplyModalOpen(true);
+  };
+
+  const handleViewApplicationDetails = (application: any) => {
+    setSelectedApplication(application);
+    setIsApplicationDetailsOpen(true);
   };
 
   const getStatusColor = (status: string) => {
@@ -638,7 +646,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
               ) : (
                 <div className="space-y-4">
                   {applications.slice(0, 5).map((application) => (
-                    <div key={application.id} className="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition-colors">
+                    <div key={application.id} className="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition-colors cursor-pointer group">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <img
@@ -654,10 +662,20 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="flex items-center space-x-3">
                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(application.status)}`}>
                             {formatStatus(application.status)}
                           </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewApplicationDetails(application);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                            title="View details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -889,7 +907,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
               ) : (
                 <div className="space-y-4">
                   {applications.map((application) => (
-                    <div key={application.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
+                    <div key={application.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow group">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-start space-x-4">
                           <img
@@ -905,9 +923,18 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                             </p>
                           </div>
                         </div>
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(application.status)}`}>
-                          {formatStatus(application.status)}
-                        </span>
+                        <div className="flex items-center space-x-3">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(application.status)}`}>
+                            {formatStatus(application.status)}
+                          </span>
+                          <button
+                            onClick={() => handleViewApplicationDetails(application)}
+                            className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                            title="View details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                       
                       {application.job && (
@@ -982,6 +1009,18 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
             setSelectedJob(null);
           }}
           job={selectedJob}
+        />
+      )}
+
+      {/* Application Details Modal */}
+      {selectedApplication && (
+        <JobApplicationDetailsModal
+          isOpen={isApplicationDetailsOpen}
+          onClose={() => {
+            setIsApplicationDetailsOpen(false);
+            setSelectedApplication(null);
+          }}
+          application={selectedApplication}
         />
       )}
     </div>
