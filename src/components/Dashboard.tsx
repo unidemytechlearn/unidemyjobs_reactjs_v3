@@ -1,219 +1,217 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { supabase } from '../lib/supabase';
-import { 
-  User, 
-  Briefcase, 
-  Heart, 
-  Bell, 
-  Settings, 
-  FileText, 
-  Calendar,
-  TrendingUp,
-  MapPin,
-  Clock,
-  DollarSign,
-  Building,
-  Star,
-  Eye,
-  Send,
-  CheckCircle,
-  XCircle,
-  AlertCircle
-} from 'lucide-react';
+import { User, Briefcase, Heart, FileText, TrendingUp, Bell, Search, Filter, MapPin, Clock, DollarSign, Building, Star, Share2, Eye, Send, CheckCircle, XCircle, AlertCircle, Calendar, Award, Target, Users, Plus, ArrowRight, Bookmark, ExternalLink, ChevronRight, BarChart3, PieChart, Activity, Zap } from 'lucide-react';
+import ApplyModal from './ApplyModal';
+import ProfilePage from './ProfilePage';
+import { getUserApplications, getApplicationAnalytics } from '../lib/applications';
+import { useAuthContext } from './AuthProvider';
+import { getJobs, getUserSavedJobs } from '../lib/supabase';
 
-interface Job {
-  id: string;
-  title: string;
-  company_id: string;
-  location: string;
-  job_type: string;
-  experience_level: string;
-  salary_min: number;
-  salary_max: number;
-  salary_currency: string;
-  is_remote: boolean;
-  description: string;
-  requirements: string[];
-  benefits: string[];
-  skills_required: string[];
-  is_featured: boolean;
-  view_count: number;
-  application_count: number;
-  created_at: string;
-  companies?: {
-    name: string;
-    logo_url: string;
-    industry: string;
-  };
+interface DashboardProps {
+  onNavigate?: (page: string) => void;
 }
 
-interface Application {
-  id: string;
-  job_id: string;
-  status: string;
-  applied_at: string;
-  jobs: Job;
-}
+const Dashboard = ({ onNavigate }: DashboardProps) => {
+  const { isAuthenticated, loading, user, profile } = useAuthContext();
+  const [activeTab, setActiveTab] = useState<'overview' | 'browse-jobs' | 'saved-jobs' | 'applications' | 'profile'>('overview');
+  const [applications, setApplications] = useState<any[]>([]);
+  const [applicationStats, setApplicationStats] = useState<any>(null);
+  const [loadingApplications, setLoadingApplications] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All Categories');
+  const [selectedJobType, setSelectedJobType] = useState('All Types');
+  const [savedJobs, setSavedJobs] = useState<any[]>([]);
+  const [allJobs, setAllJobs] = useState<any[]>([]);
+  const [loadingJobs, setLoadingJobs] = useState(true);
+  const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
 
-interface Profile {
-  id: string;
-  first_name: string;
-  last_name: string;
-  job_title: string;
-  location: string;
-  bio: string;
-  experience_level: string;
-  availability: string;
-  profile_views: number;
-}
+  // Don't render anything while loading
+  if (loading) {
+    return null;
+  }
 
-const Dashboard: React.FC = () => {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [savedJobs, setSavedJobs] = useState<string[]>([]);
-  const [allJobs, setAllJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingApplications, setLoadingApplications] = useState(true);
-  const [loadingSavedJobs, setLoadingSavedJobs] = useState(true);
+  // Redirect to home if not authenticated
+  if (!isAuthenticated) {
+    if (onNavigate) {
+      onNavigate('home');
+    }
+    return null;
+  }
 
+  // Load user applications and analytics
   useEffect(() => {
-    if (user) {
-      fetchProfile();
-      fetchApplications();
-      fetchSavedJobs();
-      fetchJobs();
-    }
-  }, [user]);
+    const loadApplicationData = async () => {
+      if (user && (activeTab === 'applications' || activeTab === 'overview')) {
+        setLoadingApplications(true);
+        try {
+          const [userApps, analytics] = await Promise.all([
+            getUserApplications(user.id),
+            getApplicationAnalytics(user.id)
+          ]);
+          setApplications(userApps);
+          setApplicationStats(analytics);
+        } catch (error) {
+          console.error('Error loading application data:', error);
+        } finally {
+          setLoadingApplications(false);
+        }
+      }
+    };
 
-  const fetchProfile = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user?.id)
-        .single();
+    loadApplicationData();
+  }, [user, activeTab]);
 
-      if (error) throw error;
-      setProfile(data);
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-    } finally {
-      setLoading(false);
+  // Load saved jobs
+  useEffect(() => {
+    const loadSavedJobs = async () => {
+      if (user && (activeTab === 'saved-jobs' || activeTab === 'overview')) {
+        try {
+          const userSavedJobs = await getUserSavedJobs(user.id);
+          setSavedJobs(userSavedJobs);
+        } catch (error) {
+          console.error('Error loading saved jobs:', error);
+        }
+      }
+    };
+
+    loadSavedJobs();
+  }, [user, activeTab]);
+
+  // Load jobs from database
+  useEffect(() => {
+    const loadJobs = async () => {
+      try {
+        const fetchedJobs = await getJobs({ limit: 20 });
+        const jobsWithMockData = fetchedJobs.map(job => ({
+          ...job,
+          company: job.company?.name || 'Unknown Company',
+          type: job.job_type,
+          salary: formatSalary(job.salary_min, job.salary_max, job.salary_currency),
+          logo: job.company?.logo_url || 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
+          rating: job.company?.rating || 4.5,
+          employees: getEmployeeCount(job.company?.size_range),
+          description: job.description,
+          requirements: job.requirements || ['Experience required', 'Team player', 'Good communication skills'],
+          benefits: job.benefits || ['Health Insurance', 'Flexible Hours', 'Remote Work'],
+          category: getCategoryFromJobType(job.job_type),
+          postedDate: getRelativeDate(job.created_at),
+          typeColor: getJobTypeColor(job.job_type),
+        }));
+        setAllJobs(jobsWithMockData);
+      } catch (error) {
+        console.error('Error loading jobs:', error);
+      } finally {
+        setLoadingJobs(false);
+      }
+    };
+
+    loadJobs();
+  }, []);
+
+  const formatSalary = (min?: number, max?: number, currency: string = 'USD') => {
+    if (!min && !max) return 'Salary not specified';
+    if (min && max) {
+      return `$${(min / 1000).toFixed(0)}k - $${(max / 1000).toFixed(0)}k`;
     }
+    if (min) return `$${(min / 1000).toFixed(0)}k+`;
+    if (max) return `Up to $${(max / 1000).toFixed(0)}k`;
+    return 'Salary not specified';
   };
 
-  const fetchApplications = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('applications')
-        .select(`
-          *,
-          jobs (
-            *,
-            companies (
-              name,
-              logo_url,
-              industry
-            )
-          )
-        `)
-        .eq('user_id', user?.id)
-        .order('applied_at', { ascending: false });
-
-      if (error) throw error;
-      setApplications(data || []);
-    } catch (error) {
-      console.error('Error fetching applications:', error);
-    } finally {
-      setLoadingApplications(false);
-    }
+  const getEmployeeCount = (sizeRange?: string) => {
+    const sizeMap: Record<string, string> = {
+      '1-50': '1-50',
+      '50-200': '50-200',
+      '200-500': '200-500',
+      '500-1000': '500-1000',
+      '1000-5000': '1000-5000',
+      '5000+': '5000+',
+    };
+    return sizeMap[sizeRange || ''] || '100+';
   };
 
-  const fetchSavedJobs = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('saved_jobs')
-        .select('job_id')
-        .eq('user_id', user?.id);
-
-      if (error) throw error;
-      setSavedJobs(data?.map(item => item.job_id) || []);
-    } catch (error) {
-      console.error('Error fetching saved jobs:', error);
-    } finally {
-      setLoadingSavedJobs(false);
-    }
+  const getCategoryFromJobType = (jobType: string) => {
+    const categoryMap: Record<string, string> = {
+      'Full Time': 'Technology',
+      'Part Time': 'Technology',
+      'Contract': 'Design',
+      'Internship': 'Technology',
+      'Freelancing': 'Marketing',
+    };
+    return categoryMap[jobType] || 'Technology';
   };
 
-  const fetchJobs = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('jobs')
-        .select(`
-          *,
-          companies (
-            name,
-            logo_url,
-            industry
-          )
-        `)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+  const getRelativeDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return '1 day ago';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 14) return '1 week ago';
+    return `${Math.floor(diffDays / 7)} weeks ago`;
+  };
 
-      if (error) throw error;
-      setAllJobs(data || []);
-    } catch (error) {
-      console.error('Error fetching jobs:', error);
-    }
+  const getJobTypeColor = (jobType: string) => {
+    const colorMap: Record<string, string> = {
+      'Full Time': 'bg-blue-100 text-blue-700',
+      'Part Time': 'bg-green-100 text-green-700',
+      'Contract': 'bg-purple-100 text-purple-700',
+      'Internship': 'bg-orange-100 text-orange-700',
+      'Freelancing': 'bg-pink-100 text-pink-700',
+    };
+    return colorMap[jobType] || 'bg-gray-100 text-gray-700';
+  };
+
+  const stats = applicationStats ? [
+    { label: 'Profile Views', value: profile?.profile_views?.toString() || '0', icon: Eye, color: 'text-blue-600', bgColor: 'bg-blue-50', change: '+12%', changeType: 'positive' },
+    { label: 'Applications Sent', value: applicationStats.total_applications.toString(), icon: Send, color: 'text-green-600', bgColor: 'bg-green-50', change: '+8%', changeType: 'positive' },
+    { label: 'Saved Jobs', value: savedJobs.length.toString(), icon: Heart, color: 'text-red-600', bgColor: 'bg-red-50', change: '+3', changeType: 'neutral' },
+    { label: 'Response Rate', value: `${applicationStats.response_rate}%`, icon: TrendingUp, color: 'text-purple-600', bgColor: 'bg-purple-50', change: '+5%', changeType: 'positive' },
+  ] : [
+    { label: 'Profile Views', value: profile?.profile_views?.toString() || '0', icon: Eye, color: 'text-blue-600', bgColor: 'bg-blue-50', change: '+12%', changeType: 'positive' },
+    { label: 'Applications Sent', value: '0', icon: Send, color: 'text-green-600', bgColor: 'bg-green-50', change: '+0%', changeType: 'neutral' },
+    { label: 'Saved Jobs', value: savedJobs.length.toString(), icon: Heart, color: 'text-red-600', bgColor: 'bg-red-50', change: '+3', changeType: 'neutral' },
+    { label: 'Response Rate', value: '0%', icon: TrendingUp, color: 'text-purple-600', bgColor: 'bg-purple-50', change: '+0%', changeType: 'neutral' },
+  ];
+
+  const categories = ['All Categories', 'Technology', 'Design', 'Marketing', 'Management'];
+  const jobTypes = ['All Types', 'Full Time', 'Part Time', 'Contract', 'Remote'];
+
+  const filteredJobs = allJobs.filter(job => {
+    const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         job.company.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'All Categories' || job.category === selectedCategory;
+    const matchesType = selectedJobType === 'All Types' || job.type === selectedJobType;
+    
+    return matchesSearch && matchesCategory && matchesType;
+  });
+
+  const recommendedJobs = allJobs.slice(0, 3);
+
+  const toggleSaveJob = (jobId: string) => {
+    // This would typically call an API to save/unsave the job
+    console.log('Toggle save job:', jobId);
+  };
+
+  const handleApplyClick = (job: any) => {
+    setSelectedJob(job);
+    setIsApplyModalOpen(true);
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'submitted':
-        return 'bg-blue-100 text-blue-800';
-      case 'under_review':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'interview_scheduled':
-        return 'bg-purple-100 text-purple-800';
-      case 'interview_completed':
-        return 'bg-indigo-100 text-indigo-800';
-      case 'offer_made':
-        return 'bg-green-100 text-green-800';
-      case 'accepted':
-        return 'bg-emerald-100 text-emerald-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
-      case 'withdrawn':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'submitted':
-        return <Send className="h-4 w-4" />;
-      case 'under_review':
-        return <Eye className="h-4 w-4" />;
-      case 'interview_scheduled':
-        return <Calendar className="h-4 w-4" />;
-      case 'interview_completed':
-        return <CheckCircle className="h-4 w-4" />;
-      case 'offer_made':
-        return <Star className="h-4 w-4" />;
-      case 'accepted':
-        return <CheckCircle className="h-4 w-4" />;
-      case 'rejected':
-        return <XCircle className="h-4 w-4" />;
-      case 'withdrawn':
-        return <AlertCircle className="h-4 w-4" />;
-      default:
-        return <AlertCircle className="h-4 w-4" />;
-    }
+    const statusColors: Record<string, string> = {
+      'submitted': 'bg-blue-100 text-blue-700 border-blue-200',
+      'under_review': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+      'interview_scheduled': 'bg-purple-100 text-purple-700 border-purple-200',
+      'interview_completed': 'bg-indigo-100 text-indigo-700 border-indigo-200',
+      'offer_made': 'bg-green-100 text-green-700 border-green-200',
+      'accepted': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+      'rejected': 'bg-red-100 text-red-700 border-red-200',
+      'withdrawn': 'bg-gray-100 text-gray-700 border-gray-200',
+    };
+    return statusColors[status] || 'bg-gray-100 text-gray-700 border-gray-200';
   };
 
   const formatStatus = (status: string) => {
@@ -222,474 +220,726 @@ const Dashboard: React.FC = () => {
     ).join(' ');
   };
 
-  const JobCard: React.FC<{ job: Job; showFullDetails?: boolean }> = ({ job, showFullDetails = false }) => (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center space-x-3">
-          {job.companies?.logo_url ? (
-            <img 
-              src={job.companies.logo_url} 
-              alt={job.companies.name}
-              className="w-12 h-12 rounded-lg object-cover"
-            />
-          ) : (
-            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-              <Building className="h-6 w-6 text-gray-400" />
-            </div>
-          )}
-          <div>
-            <h3 className="font-semibold text-gray-900">{job.title}</h3>
-            <p className="text-gray-600">{job.companies?.name}</p>
-          </div>
-        </div>
-        {job.is_featured && (
-          <span className="bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-1 rounded-full">
-            Featured
-          </span>
-        )}
-      </div>
-
-      <div className="flex flex-wrap gap-2 mb-4">
-        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-          <MapPin className="h-3 w-3 mr-1" />
-          {job.location}
-        </span>
-        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-          <Briefcase className="h-3 w-3 mr-1" />
-          {job.job_type}
-        </span>
-        {job.experience_level && (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-            <TrendingUp className="h-3 w-3 mr-1" />
-            {job.experience_level}
-          </span>
-        )}
-        {job.is_remote && (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-            Remote
-          </span>
-        )}
-      </div>
-
-      {job.salary_min && job.salary_max && (
-        <div className="flex items-center text-gray-600 mb-3">
-          <DollarSign className="h-4 w-4 mr-1" />
-          <span className="text-sm">
-            {job.salary_currency} {job.salary_min.toLocaleString()} - {job.salary_max.toLocaleString()}
-          </span>
+  const JobCard = ({ job, showFullDetails = false, isCompact = false }: { job: any, showFullDetails?: boolean, isCompact?: boolean }) => (
+    <div className={`group bg-white border border-gray-200 rounded-2xl hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden ${isCompact ? 'p-4' : 'p-6'}`}>
+      {job.is_featured && (
+        <div className="absolute top-0 right-0 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-semibold px-3 py-1 rounded-bl-lg">
+          <Star className="h-3 w-3 inline mr-1" />
+          Featured
         </div>
       )}
 
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center space-x-3">
+          <div className="relative">
+            <img
+              src={job.logo}
+              alt={`${job.company} logo`}
+              className="w-12 h-12 rounded-xl object-cover border border-gray-100"
+            />
+            {job.rating && (
+              <div className="absolute -bottom-1 -right-1 bg-white border border-gray-200 rounded-full px-1 py-0.5 text-xs font-medium text-gray-600">
+                <Star className="h-2.5 w-2.5 inline text-yellow-500 fill-current mr-0.5" />
+                {job.rating}
+              </div>
+            )}
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900 text-lg group-hover:text-blue-600 transition-colors">
+              {job.title}
+            </h3>
+            <p className="text-gray-600 font-medium">{job.company}</p>
+            <div className="flex items-center space-x-2 mt-1 text-sm text-gray-500">
+              <span>{job.employees} employees</span>
+              <span>•</span>
+              <span>{job.postedDate}</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => toggleSaveJob(job.id)}
+            className="p-2 rounded-lg transition-colors text-gray-400 hover:text-red-500 hover:bg-red-50"
+          >
+            <Heart className="h-5 w-5" />
+          </button>
+          <button className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
+            <Share2 className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-3 mb-4">
+        <div className="flex items-center flex-wrap gap-2">
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+            <MapPin className="h-3 w-3 mr-1" />
+            {job.location}
+          </span>
+          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${job.typeColor}`}>
+            <Clock className="h-3 w-3 mr-1" />
+            {job.type}
+          </span>
+          {job.is_remote && (
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+              <Zap className="h-3 w-3 mr-1" />
+              Remote
+            </span>
+          )}
+        </div>
+        
+        <div className="flex items-center text-gray-600 text-sm">
+          <DollarSign className="h-4 w-4 mr-1" />
+          {job.salary}
+        </div>
+      </div>
+
       {showFullDetails && (
-        <div className="mb-4">
-          <p className="text-gray-600 text-sm line-clamp-3">{job.description}</p>
-          {job.skills_required && job.skills_required.length > 0 && (
-            <div className="mt-3">
+        <div className="space-y-4 mb-4">
+          <p className="text-gray-600 text-sm line-clamp-2">{job.description}</p>
+          
+          {job.requirements && (
+            <div>
+              <h4 className="font-medium text-gray-900 mb-2 text-sm">Requirements</h4>
+              <ul className="space-y-1">
+                {job.requirements.slice(0, 3).map((req: string, index: number) => (
+                  <li key={index} className="text-sm text-gray-600 flex items-center">
+                    <CheckCircle className="h-3 w-3 text-green-500 mr-2 flex-shrink-0" />
+                    {req}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          {job.benefits && (
+            <div>
+              <h4 className="font-medium text-gray-900 mb-2 text-sm">Benefits</h4>
               <div className="flex flex-wrap gap-1">
-                {job.skills_required.slice(0, 3).map((skill, index) => (
-                  <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                    {skill}
+                {job.benefits.slice(0, 4).map((benefit: string, index: number) => (
+                  <span
+                    key={index}
+                    className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs"
+                  >
+                    {benefit}
                   </span>
                 ))}
-                {job.skills_required.length > 3 && (
-                  <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                    +{job.skills_required.length - 3} more
-                  </span>
-                )}
               </div>
             </div>
           )}
         </div>
       )}
 
-      <div className="flex items-center justify-between text-sm text-gray-500">
-        <div className="flex items-center space-x-4">
+      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+        <div className="flex items-center space-x-4 text-xs text-gray-500">
           <span className="flex items-center">
-            <Eye className="h-4 w-4 mr-1" />
-            {job.view_count} views
+            <Eye className="h-3 w-3 mr-1" />
+            {job.view_count || 0}
           </span>
           <span className="flex items-center">
-            <Send className="h-4 w-4 mr-1" />
-            {job.application_count} applications
+            <Users className="h-3 w-3 mr-1" />
+            {job.application_count || 0}
           </span>
         </div>
-        <span className="flex items-center">
-          <Clock className="h-4 w-4 mr-1" />
-          {new Date(job.created_at).toLocaleDateString()}
-        </span>
+        <div className="flex space-x-2">
+          <button className="px-3 py-1.5 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm">
+            View Details
+          </button>
+          <button
+            onClick={() => handleApplyClick(job)}
+            className="px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+          >
+            Apply Now
+          </button>
+        </div>
       </div>
     </div>
   );
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    );
+  if (activeTab === 'profile') {
+    return <ProfilePage onNavigate={onNavigate} />;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back, {profile?.first_name || 'User'}!
-          </h1>
-          <p className="text-gray-600">
-            Manage your job applications and track your career progress
-          </p>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Applications</p>
-                <p className="text-2xl font-bold text-gray-900">{applications.length}</p>
-              </div>
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <Send className="h-6 w-6 text-blue-600" />
-              </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {profile?.first_name || 'there'}! 👋
+              </h1>
+              <p className="text-gray-600 mt-2">Here's your job search overview and recommendations</p>
             </div>
-          </div>
-
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Saved Jobs</p>
-                <p className="text-2xl font-bold text-gray-900">{savedJobs.length}</p>
-              </div>
-              <div className="bg-red-100 p-3 rounded-lg">
-                <Heart className="h-6 w-6 text-red-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Profile Views</p>
-                <p className="text-2xl font-bold text-gray-900">{profile?.profile_views || 0}</p>
-              </div>
-              <div className="bg-green-100 p-3 rounded-lg">
-                <Eye className="h-6 w-6 text-green-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Active Interviews</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {applications.filter(app => app.status === 'interview_scheduled').length}
-                </p>
-              </div>
-              <div className="bg-purple-100 p-3 rounded-lg">
-                <Calendar className="h-6 w-6 text-purple-600" />
-              </div>
+            <div className="flex items-center space-x-3">
+              <button className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                <Bell className="h-6 w-6" />
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  3
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab('profile')}
+                className="flex items-center space-x-2 bg-white border border-gray-200 rounded-xl px-4 py-2 hover:bg-gray-50 transition-colors"
+              >
+                <img
+                  src="https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=32&h=32&fit=crop"
+                  alt="Profile"
+                  className="w-6 h-6 rounded-full object-cover"
+                />
+                <span className="text-sm font-medium text-gray-700">Profile</span>
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="bg-white rounded-xl border border-gray-200 mb-8">
-          <div className="border-b border-gray-200">
-            <nav className="flex space-x-8 px-6">
-              {[
-                { id: 'overview', label: 'Overview', icon: TrendingUp },
-                { id: 'applications', label: 'My Applications', icon: FileText },
-                { id: 'saved-jobs', label: 'Saved Jobs', icon: Heart },
-                { id: 'profile', label: 'Profile', icon: User },
-                { id: 'settings', label: 'Settings', icon: Settings },
-              ].map((tab) => (
+        {/* Tabs */}
+        <div className="border-b border-gray-200 mb-8">
+          <nav className="flex space-x-8">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'overview'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <BarChart3 className="h-4 w-4" />
+                <span>Overview</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('browse-jobs')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'browse-jobs'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Search className="h-4 w-4" />
+                <span>Browse Jobs</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('saved-jobs')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'saved-jobs'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Heart className="h-4 w-4" />
+                <span>Saved Jobs ({savedJobs.length})</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('applications')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'applications'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <FileText className="h-4 w-4" />
+                <span>Applications</span>
+                {applications.length > 0 && (
+                  <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
+                    {applications.length}
+                  </span>
+                )}
+              </div>
+            </button>
+          </nav>
+        </div>
+
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+          <div className="space-y-8">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {stats.map((stat, index) => {
+                const Icon = stat.icon;
+                return (
+                  <div
+                    key={stat.label}
+                    className="bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className={`${stat.bgColor} p-3 rounded-xl`}>
+                        <Icon className={`h-6 w-6 ${stat.color}`} />
+                      </div>
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                        stat.changeType === 'positive' ? 'bg-green-100 text-green-700' :
+                        stat.changeType === 'negative' ? 'bg-red-100 text-red-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {stat.change}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</p>
+                      <p className="text-gray-600 text-sm">{stat.label}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Quick Actions */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">Quick Actions</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                  onClick={() => setActiveTab('browse-jobs')}
+                  className="group p-6 border border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all text-left"
                 >
-                  <tab.icon className="h-5 w-5" />
-                  <span>{tab.label}</span>
+                  <div className="flex items-center justify-between mb-3">
+                    <Search className="h-8 w-8 text-blue-600" />
+                    <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                  </div>
+                  <h4 className="font-semibold text-gray-900 mb-2">Browse Jobs</h4>
+                  <p className="text-gray-600 text-sm">Discover new opportunities that match your skills</p>
                 </button>
-              ))}
-            </nav>
-          </div>
+                
+                <button
+                  onClick={() => setActiveTab('profile')}
+                  className="group p-6 border border-gray-200 rounded-xl hover:border-green-300 hover:bg-green-50 transition-all text-left"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <User className="h-8 w-8 text-green-600" />
+                    <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-green-600 transition-colors" />
+                  </div>
+                  <h4 className="font-semibold text-gray-900 mb-2">Update Profile</h4>
+                  <p className="text-gray-600 text-sm">Keep your profile current to attract recruiters</p>
+                </button>
+                
+                <button className="group p-6 border border-gray-200 rounded-xl hover:border-purple-300 hover:bg-purple-50 transition-all text-left">
+                  <div className="flex items-center justify-between mb-3">
+                    <FileText className="h-8 w-8 text-purple-600" />
+                    <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-purple-600 transition-colors" />
+                  </div>
+                  <h4 className="font-semibold text-gray-900 mb-2">Upload Resume</h4>
+                  <p className="text-gray-600 text-sm">Update your resume to get better matches</p>
+                </button>
+              </div>
+            </div>
 
-          {/* Tab Content */}
-          <div className="p-6">
-            {activeTab === 'overview' && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Applications</h3>
-                  {loadingApplications ? (
-                    <div className="text-center py-8">
-                      <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                      <p className="text-gray-600">Loading applications...</p>
-                    </div>
-                  ) : applications.length === 0 ? (
-                    <div className="text-center py-12">
-                      <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                      <h4 className="text-lg font-medium text-gray-900 mb-2">No applications yet</h4>
-                      <p className="text-gray-600 mb-6">Start applying to jobs to see them here</p>
-                      <button
-                        onClick={() => setActiveTab('browse-jobs')}
-                        className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors font-medium"
-                      >
-                        Browse Jobs
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {applications.slice(0, 5).map((application) => (
-                        <div key={application.id} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              {application.jobs.companies?.logo_url ? (
-                                <img 
-                                  src={application.jobs.companies.logo_url} 
-                                  alt={application.jobs.companies.name}
-                                  className="w-10 h-10 rounded-lg object-cover"
-                                />
-                              ) : (
-                                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                                  <Building className="h-5 w-5 text-gray-400" />
-                                </div>
-                              )}
-                              <div>
-                                <h4 className="font-medium text-gray-900">{application.jobs.title}</h4>
-                                <p className="text-sm text-gray-600">{application.jobs.companies?.name}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-3">
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(application.status)}`}>
-                                {getStatusIcon(application.status)}
-                                <span className="ml-1">{formatStatus(application.status)}</span>
-                              </span>
-                              <span className="text-sm text-gray-500">
-                                {new Date(application.applied_at).toLocaleDateString()}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+            {/* Application Status Overview */}
+            {applicationStats && applications.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900">Application Analytics</h3>
+                  <button
+                    onClick={() => setActiveTab('applications')}
+                    className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center space-x-1"
+                  >
+                    <span>View All</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600 mb-2">{applicationStats.total_applications}</div>
+                    <div className="text-gray-600 text-sm">Total Applications</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-yellow-600 mb-2">{applicationStats.applications_this_month}</div>
+                    <div className="text-gray-600 text-sm">This Month</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600 mb-2">{applicationStats.response_rate}%</div>
+                    <div className="text-gray-600 text-sm">Response Rate</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-600 mb-2">{applicationStats.interview_rate}%</div>
+                    <div className="text-gray-600 text-sm">Interview Rate</div>
+                  </div>
                 </div>
               </div>
             )}
 
-            {activeTab === 'applications' && (
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-6">All Applications</h3>
-                {loadingApplications ? (
-                  <div className="text-center py-8">
-                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading applications...</p>
-                  </div>
-                ) : applications.length === 0 ? (
-                  <div className="text-center py-12">
-                    <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                    <h4 className="text-lg font-medium text-gray-900 mb-2">No applications yet</h4>
-                    <p className="text-gray-600 mb-6">Start applying to jobs to see them here</p>
-                    <button
-                      onClick={() => setActiveTab('browse-jobs')}
-                      className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors font-medium"
-                    >
-                      Browse Jobs
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {applications.map((application) => (
-                      <div key={application.id} className="bg-gray-50 border border-gray-200 rounded-xl p-6">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-center space-x-4">
-                            {application.jobs.companies?.logo_url ? (
-                              <img 
-                                src={application.jobs.companies.logo_url} 
-                                alt={application.jobs.companies.name}
-                                className="w-12 h-12 rounded-lg object-cover"
-                              />
-                            ) : (
-                              <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                                <Building className="h-6 w-6 text-gray-400" />
-                              </div>
-                            )}
-                            <div>
-                              <h4 className="text-lg font-semibold text-gray-900">{application.jobs.title}</h4>
-                              <p className="text-gray-600">{application.jobs.companies?.name}</p>
-                              <div className="flex items-center space-x-4 mt-2">
-                                <span className="flex items-center text-sm text-gray-500">
-                                  <MapPin className="h-4 w-4 mr-1" />
-                                  {application.jobs.location}
-                                </span>
-                                <span className="flex items-center text-sm text-gray-500">
-                                  <Briefcase className="h-4 w-4 mr-1" />
-                                  {application.jobs.job_type}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(application.status)}`}>
-                              {getStatusIcon(application.status)}
-                              <span className="ml-2">{formatStatus(application.status)}</span>
-                            </span>
-                            <p className="text-sm text-gray-500 mt-2">
+            {/* Recent Applications */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Recent Applications</h3>
+                <button
+                  onClick={() => setActiveTab('applications')}
+                  className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center space-x-1"
+                >
+                  <span>View All</span>
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+              {loadingApplications ? (
+                <div className="text-center py-8">
+                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading applications...</p>
+                </div>
+              ) : applications.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">No applications yet</h4>
+                  <p className="text-gray-600 mb-6">Start applying to jobs to track your progress here</p>
+                  <button
+                    onClick={() => setActiveTab('browse-jobs')}
+                    className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    Browse Jobs
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {applications.slice(0, 5).map((application) => (
+                    <div key={application.id} className="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <img
+                            src={application.job?.company?.logo_url || 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=48&h=48&fit=crop'}
+                            alt={application.job?.company?.name}
+                            className="w-12 h-12 rounded-lg object-cover border border-gray-100"
+                          />
+                          <div>
+                            <h4 className="font-semibold text-gray-900">{application.job?.title}</h4>
+                            <p className="text-gray-600 text-sm">{application.job?.company?.name}</p>
+                            <p className="text-gray-500 text-xs mt-1">
                               Applied {new Date(application.applied_at).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
-
-                        {application.jobs.salary_min && application.jobs.salary_max && (
-                          <div className="flex items-center text-gray-600 mb-3">
-                            <DollarSign className="h-4 w-4 mr-1" />
-                            <span className="text-sm">
-                              {application.jobs.salary_currency} {application.jobs.salary_min.toLocaleString()} - {application.jobs.salary_max.toLocaleString()}
-                            </span>
-                          </div>
-                        )}
-
-                        <div className="flex flex-wrap gap-2">
-                          {application.jobs.skills_required?.slice(0, 5).map((skill, index) => (
-                            <span key={index} className="px-2 py-1 bg-white text-gray-700 text-xs rounded border">
-                              {skill}
-                            </span>
-                          ))}
-                          {application.jobs.skills_required && application.jobs.skills_required.length > 5 && (
-                            <span className="px-2 py-1 bg-white text-gray-700 text-xs rounded border">
-                              +{application.jobs.skills_required.length - 5} more
-                            </span>
-                          )}
+                        <div className="text-right">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(application.status)}`}>
+                            {formatStatus(application.status)}
+                          </span>
                         </div>
                       </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Recommended Jobs */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Recommended for You</h3>
+                <button
+                  onClick={() => setActiveTab('browse-jobs')}
+                  className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center space-x-1"
+                >
+                  <span>View All</span>
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+              {loadingJobs ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {[...Array(3)].map((_, index) => (
+                    <div key={index} className="bg-white border border-gray-200 rounded-2xl p-6 animate-pulse">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-gray-200 rounded-xl"></div>
+                          <div>
+                            <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+                            <div className="h-3 bg-gray-200 rounded w-24"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-3 mb-4">
+                        <div className="h-3 bg-gray-200 rounded w-full"></div>
+                        <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                      </div>
+                      <div className="h-10 bg-gray-200 rounded"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {recommendedJobs.map((job) => (
+                    <JobCard key={job.id} job={job} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Browse Jobs Tab */}
+        {activeTab === 'browse-jobs' && (
+          <div className="space-y-6">
+            {/* Search and Filters */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+              <div className="flex flex-col lg:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                    <input
+                      type="text"
+                      placeholder="Search jobs, companies, or keywords..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {categories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
                     ))}
-                  </div>
-                )}
+                  </select>
+                  <select
+                    value={selectedJobType}
+                    onChange={(e) => setSelectedJobType(e.target.value)}
+                    className="px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {jobTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            )}
+            </div>
 
-            {activeTab === 'saved-jobs' && (
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-6">Saved Jobs</h3>
-                {loadingSavedJobs ? (
-                  <div className="text-center py-8">
-                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading saved jobs...</p>
-                  </div>
-                ) : savedJobs.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Heart className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                    <h4 className="text-lg font-medium text-gray-900 mb-2">No saved jobs yet</h4>
-                    <p className="text-gray-600 mb-6">Start browsing and save jobs you're interested in</p>
-                    <button
-                      onClick={() => setActiveTab('browse-jobs')}
-                      className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors font-medium"
-                    >
-                      Browse Jobs
-                    </button>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {allJobs
-                      .filter(job => savedJobs.includes(job.id))
-                      .map((job) => (
-                        <JobCard key={job.id} job={job} showFullDetails />
-                      ))}
-                  </div>
-                )}
+            {/* Results */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {filteredJobs.length} Jobs Found
+                </h3>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Sort by:</span>
+                  <select className="border border-gray-200 rounded-lg px-3 py-1 text-sm">
+                    <option>Most Recent</option>
+                    <option>Most Relevant</option>
+                    <option>Salary: High to Low</option>
+                    <option>Salary: Low to High</option>
+                  </select>
+                </div>
               </div>
-            )}
-
-            {activeTab === 'profile' && (
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-6">Profile Information</h3>
-                {profile ? (
-                  <div className="bg-gray-50 rounded-xl p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
-                        <p className="text-gray-900">{profile.first_name} {profile.last_name}</p>
+              {loadingJobs ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {[...Array(4)].map((_, index) => (
+                    <div key={index} className="bg-white border border-gray-200 rounded-2xl p-6 animate-pulse">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-gray-200 rounded-xl"></div>
+                          <div>
+                            <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+                            <div className="h-3 bg-gray-200 rounded w-24"></div>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Job Title</label>
-                        <p className="text-gray-900">{profile.job_title || 'Not specified'}</p>
+                      <div className="space-y-3 mb-4">
+                        <div className="h-3 bg-gray-200 rounded w-full"></div>
+                        <div className="h-3 bg-gray-200 rounded w-3/4"></div>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                        <p className="text-gray-900">{profile.location || 'Not specified'}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Experience Level</label>
-                        <p className="text-gray-900">{profile.experience_level || 'Not specified'}</p>
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
-                        <p className="text-gray-900">{profile.bio || 'No bio provided'}</p>
-                      </div>
+                      <div className="h-10 bg-gray-200 rounded"></div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <User className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                    <h4 className="text-lg font-medium text-gray-900 mb-2">Complete your profile</h4>
-                    <p className="text-gray-600">Add your information to get better job recommendations</p>
-                  </div>
-                )}
-              </div>
-            )}
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {filteredJobs.map((job) => (
+                    <JobCard key={job.id} job={job} showFullDetails />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
-            {activeTab === 'settings' && (
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-6">Account Settings</h3>
-                <div className="space-y-6">
-                  <div className="bg-gray-50 rounded-xl p-6">
-                    <h4 className="font-medium text-gray-900 mb-4">Notification Preferences</h4>
-                    <div className="space-y-3">
-                      <label className="flex items-center">
-                        <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" defaultChecked />
-                        <span className="ml-2 text-sm text-gray-700">Email notifications for new job matches</span>
-                      </label>
-                      <label className="flex items-center">
-                        <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" defaultChecked />
-                        <span className="ml-2 text-sm text-gray-700">Application status updates</span>
-                      </label>
-                      <label className="flex items-center">
-                        <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                        <span className="ml-2 text-sm text-gray-700">Weekly job digest</span>
-                      </label>
-                    </div>
-                  </div>
+        {/* Saved Jobs Tab */}
+        {activeTab === 'saved-jobs' && (
+          <div className="space-y-6">
+            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">
+                Your Saved Jobs ({savedJobs.length})
+              </h3>
+              {savedJobs.length === 0 ? (
+                <div className="text-center py-12">
+                  <Heart className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">No saved jobs yet</h4>
+                  <p className="text-gray-600 mb-6">Start browsing and save jobs you're interested in</p>
+                  <button
+                    onClick={() => setActiveTab('browse-jobs')}
+                    className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    Browse Jobs
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {savedJobs.map((savedJob) => (
+                    <JobCard key={savedJob.id} job={savedJob.job} showFullDetails />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
-                  <div className="bg-gray-50 rounded-xl p-6">
-                    <h4 className="font-medium text-gray-900 mb-4">Privacy Settings</h4>
-                    <div className="space-y-3">
-                      <label className="flex items-center">
-                        <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" defaultChecked />
-                        <span className="ml-2 text-sm text-gray-700">Make profile visible to recruiters</span>
-                      </label>
-                      <label className="flex items-center">
-                        <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" defaultChecked />
-                        <span className="ml-2 text-sm text-gray-700">Show salary expectations</span>
-                      </label>
-                    </div>
+        {/* Applications Tab */}
+        {activeTab === 'applications' && (
+          <div className="space-y-6">
+            {/* Application Analytics */}
+            {applicationStats && (
+              <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6">Application Analytics</h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div className="text-center p-4 bg-blue-50 rounded-xl">
+                    <div className="text-2xl font-bold text-blue-600 mb-2">{applicationStats.total_applications}</div>
+                    <div className="text-gray-600 text-sm">Total Applications</div>
+                  </div>
+                  <div className="text-center p-4 bg-green-50 rounded-xl">
+                    <div className="text-2xl font-bold text-green-600 mb-2">{applicationStats.applications_this_month}</div>
+                    <div className="text-gray-600 text-sm">This Month</div>
+                  </div>
+                  <div className="text-center p-4 bg-purple-50 rounded-xl">
+                    <div className="text-2xl font-bold text-purple-600 mb-2">{applicationStats.response_rate}%</div>
+                    <div className="text-gray-600 text-sm">Response Rate</div>
+                  </div>
+                  <div className="text-center p-4 bg-orange-50 rounded-xl">
+                    <div className="text-2xl font-bold text-orange-600 mb-2">{applicationStats.interview_rate}%</div>
+                    <div className="text-gray-600 text-sm">Interview Rate</div>
                   </div>
                 </div>
               </div>
             )}
+
+            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Your Applications</h3>
+                {applications.length > 0 && (
+                  <span className="text-sm text-gray-500">{applications.length} total applications</span>
+                )}
+              </div>
+              
+              {loadingApplications ? (
+                <div className="text-center py-8">
+                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading applications...</p>
+                </div>
+              ) : applications.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">No applications yet</h4>
+                  <p className="text-gray-600 mb-6">Start applying to jobs to track your applications here</p>
+                  <button
+                    onClick={() => setActiveTab('browse-jobs')}
+                    className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    Browse Jobs
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {applications.map((application) => (
+                    <div key={application.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-start space-x-4">
+                          <img
+                            src={application.job?.company?.logo_url || 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=48&h=48&fit=crop'}
+                            alt={application.job?.company?.name}
+                            className="w-12 h-12 rounded-lg object-cover border border-gray-100"
+                          />
+                          <div>
+                            <h4 className="font-semibold text-gray-900 text-lg">{application.job?.title}</h4>
+                            <p className="text-gray-600 font-medium">{application.job?.company?.name}</p>
+                            <p className="text-sm text-gray-500 mt-1">
+                              Applied on {new Date(application.applied_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(application.status)}`}>
+                          {formatStatus(application.status)}
+                        </span>
+                      </div>
+                      
+                      {application.job && (
+                        <div className="flex items-center space-x-6 text-sm text-gray-600 mb-4">
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 mr-1" />
+                            {application.job.location}
+                          </div>
+                          <div className="flex items-center">
+                            <Clock className="h-4 w-4 mr-1" />
+                            {application.job.job_type}
+                          </div>
+                          {application.expected_salary && (
+                            <div className="flex items-center">
+                              <DollarSign className="h-4 w-4 mr-1" />
+                              {application.expected_salary}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Application Timeline */}
+                      {application.status_history && application.status_history.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                          <h5 className="text-sm font-medium text-gray-900 mb-3">Application Timeline</h5>
+                          <div className="space-y-2">
+                            {application.status_history.slice(0, 3).map((history: any, index: number) => (
+                              <div key={history.id} className="flex items-center text-sm text-gray-600">
+                                <div className="w-2 h-2 bg-blue-600 rounded-full mr-3"></div>
+                                <span className="font-medium">{formatStatus(history.new_status)}</span>
+                                <span className="mx-2">•</span>
+                                <span>{new Date(history.created_at).toLocaleDateString()}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Upcoming Interviews */}
+                      {application.interviews && application.interviews.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                          <h5 className="text-sm font-medium text-gray-900 mb-3">Upcoming Interviews</h5>
+                          {application.interviews.map((interview: any) => (
+                            <div key={interview.id} className="flex items-center justify-between bg-blue-50 p-3 rounded-lg">
+                              <div>
+                                <p className="font-medium text-blue-900">{interview.interview_type} Interview</p>
+                                <p className="text-sm text-blue-700">
+                                  {new Date(interview.scheduled_date).toLocaleDateString()} at{' '}
+                                  {new Date(interview.scheduled_date).toLocaleTimeString()}
+                                </p>
+                              </div>
+                              <Calendar className="h-5 w-5 text-blue-600" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
+
+      {/* Apply Modal */}
+      {selectedJob && (
+        <ApplyModal
+          isOpen={isApplyModalOpen}
+          onClose={() => {
+            setIsApplyModalOpen(false);
+            setSelectedJob(null);
+          }}
+          job={selectedJob}
+        />
+      )}
     </div>
   );
 };
