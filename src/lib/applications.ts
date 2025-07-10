@@ -280,6 +280,47 @@ export async function updateApplicationStatus(
   }
 }
 
+export async function withdrawApplication(applicationId: string, userId: string): Promise<boolean> {
+  try {
+    // First verify the application belongs to the user
+    const { data: application, error: fetchError } = await supabase
+      .from('applications')
+      .select('id, user_id, status')
+      .eq('id', applicationId)
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError) {
+      throw new Error('Application not found or access denied');
+    }
+
+    // Check if application can be withdrawn
+    const withdrawableStatuses = ['submitted', 'under_review', 'interview_scheduled'];
+    if (!withdrawableStatuses.includes(application.status)) {
+      throw new Error('This application cannot be withdrawn at its current stage');
+    }
+
+    // Update application status to withdrawn
+    const { error: updateError } = await supabase
+      .from('applications')
+      .update({ 
+        status: 'withdrawn',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', applicationId)
+      .eq('user_id', userId);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error withdrawing application:', error);
+    throw error;
+  }
+}
+
 export async function getApplicationAnalytics(userId: string): Promise<{
   total_applications: number;
   pending_applications: number;

@@ -3,7 +3,7 @@ import { User, Briefcase, Heart, FileText, TrendingUp, Bell, Search, Filter, Map
 import ApplyModal from './ApplyModal';
 import ProfilePage from './ProfilePage';
 import JobApplicationDetailsModal from './JobApplicationDetailsModal';
-import { getUserApplications, getApplicationAnalytics } from '../lib/applications';
+import { getUserApplications, getApplicationAnalytics, withdrawApplication } from '../lib/applications';
 import { useAuthContext } from './AuthProvider';
 import { getJobs, getUserSavedJobs, saveJob, unsaveJob, isJobSaved } from '../lib/supabase';
 
@@ -28,6 +28,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [isApplicationDetailsOpen, setIsApplicationDetailsOpen] = useState(false);
+  const [withdrawingApplicationId, setWithdrawingApplicationId] = useState<string | null>(null);
 
   // Don't render anything while loading
   if (loading) {
@@ -238,6 +239,33 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const handleViewApplicationDetails = (application: any) => {
     setSelectedApplication(application);
     setIsApplicationDetailsOpen(true);
+  };
+
+  const handleWithdrawApplication = async (applicationId: string) => {
+    if (!user) return;
+
+    const confirmed = window.confirm(
+      'Are you sure you want to withdraw this application? This action cannot be undone.'
+    );
+    
+    if (!confirmed) return;
+
+    setWithdrawingApplicationId(applicationId);
+    try {
+      await withdrawApplication(applicationId, user.id);
+      
+      // Refresh applications list
+      const updatedApplications = await getUserApplications(user.id);
+      setApplications(updatedApplications);
+      
+      // Show success message
+      alert('Application withdrawn successfully');
+    } catch (error) {
+      console.error('Error withdrawing application:', error);
+      alert(error instanceof Error ? error.message : 'Failed to withdraw application');
+    } finally {
+      setWithdrawingApplicationId(null);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -666,6 +694,19 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(application.status)}`}>
                             {formatStatus(application.status)}
                           </span>
+                          {['submitted', 'under_review', 'interview_scheduled'].includes(application.status) && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleWithdrawApplication(application.id);
+                              }}
+                              disabled={withdrawingApplicationId === application.id}
+                              className="opacity-0 group-hover:opacity-100 px-3 py-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all text-sm font-medium disabled:opacity-50"
+                              title="Withdraw application"
+                            >
+                              {withdrawingApplicationId === application.id ? 'Withdrawing...' : 'Withdraw'}
+                            </button>
+                          )}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -927,6 +968,16 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(application.status)}`}>
                             {formatStatus(application.status)}
                           </span>
+                          {['submitted', 'under_review', 'interview_scheduled'].includes(application.status) && (
+                            <button
+                              onClick={() => handleWithdrawApplication(application.id)}
+                              disabled={withdrawingApplicationId === application.id}
+                              className="px-3 py-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all text-sm font-medium disabled:opacity-50"
+                              title="Withdraw application"
+                            >
+                              {withdrawingApplicationId === application.id ? 'Withdrawing...' : 'Withdraw'}
+                            </button>
+                          )}
                           <button
                             onClick={() => handleViewApplicationDetails(application)}
                             className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
@@ -1021,6 +1072,8 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
             setSelectedApplication(null);
           }}
           application={selectedApplication}
+          onWithdraw={handleWithdrawApplication}
+          isWithdrawing={withdrawingApplicationId === selectedApplication?.id}
         />
       )}
     </div>

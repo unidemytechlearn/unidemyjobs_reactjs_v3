@@ -6,9 +6,17 @@ interface JobApplicationDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   application: any;
+  onWithdraw?: (applicationId: string) => void;
+  isWithdrawing?: boolean;
 }
 
-const JobApplicationDetailsModal = ({ isOpen, onClose, application }: JobApplicationDetailsModalProps) => {
+const JobApplicationDetailsModal = ({ 
+  isOpen, 
+  onClose, 
+  application, 
+  onWithdraw, 
+  isWithdrawing = false 
+}: JobApplicationDetailsModalProps) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'documents' | 'notes'>('overview');
   const [timeline, setTimeline] = useState<any[]>([]);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
@@ -70,6 +78,39 @@ const JobApplicationDetailsModal = ({ isOpen, onClose, application }: JobApplica
     return status.split('_').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
+  };
+
+  const canWithdraw = (status: string) => {
+    return ['submitted', 'under_review', 'interview_scheduled'].includes(status);
+  };
+
+  const getWithdrawMessage = (status: string) => {
+    switch (status) {
+      case 'submitted':
+        return 'Your application is still being reviewed and can be withdrawn.';
+      case 'under_review':
+        return 'Your application is currently under review and can still be withdrawn.';
+      case 'interview_scheduled':
+        return 'You have an interview scheduled. Withdrawing will cancel the interview.';
+      case 'interview_completed':
+        return 'Interview completed. Application cannot be withdrawn at this stage.';
+      case 'offer_made':
+        return 'An offer has been made. Please contact the company directly.';
+      case 'accepted':
+        return 'Application has been accepted. Cannot be withdrawn.';
+      case 'rejected':
+        return 'Application has already been rejected.';
+      case 'withdrawn':
+        return 'Application has already been withdrawn.';
+      default:
+        return 'Application cannot be withdrawn at this stage.';
+    }
+  };
+
+  const handleWithdraw = () => {
+    if (onWithdraw && application?.id) {
+      onWithdraw(application.id);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -670,9 +711,26 @@ const JobApplicationDetailsModal = ({ isOpen, onClose, application }: JobApplica
           </div>
           
           <div className="flex items-center space-x-3">
-            <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium">
-              Withdraw Application
-            </button>
+            {canWithdraw(application.status) ? (
+              <button
+                onClick={handleWithdraw}
+                disabled={isWithdrawing}
+                className="px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
+                {isWithdrawing ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                    <span>Withdrawing...</span>
+                  </>
+                ) : (
+                  <span>Withdraw Application</span>
+                )}
+              </button>
+            ) : (
+              <div className="px-4 py-2 border border-gray-300 text-gray-500 rounded-lg bg-gray-50 font-medium cursor-not-allowed">
+                Cannot Withdraw
+              </div>
+            )}
             <button
               onClick={onClose}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
@@ -681,6 +739,37 @@ const JobApplicationDetailsModal = ({ isOpen, onClose, application }: JobApplica
             </button>
           </div>
         </div>
+
+        {/* Withdraw Information */}
+        {activeTab === 'overview' && (
+          <div className="px-6 pb-4">
+            <div className={`p-4 rounded-xl border ${
+              canWithdraw(application.status) 
+                ? 'bg-yellow-50 border-yellow-200' 
+                : 'bg-gray-50 border-gray-200'
+            }`}>
+              <div className="flex items-start space-x-3">
+                {canWithdraw(application.status) ? (
+                  <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                ) : (
+                  <CheckCircle className="h-5 w-5 text-gray-500 mt-0.5" />
+                )}
+                <div>
+                  <h4 className={`font-medium ${
+                    canWithdraw(application.status) ? 'text-yellow-900' : 'text-gray-700'
+                  }`}>
+                    {canWithdraw(application.status) ? 'Withdrawal Available' : 'Withdrawal Not Available'}
+                  </h4>
+                  <p className={`text-sm mt-1 ${
+                    canWithdraw(application.status) ? 'text-yellow-700' : 'text-gray-600'
+                  }`}>
+                    {getWithdrawMessage(application.status)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
