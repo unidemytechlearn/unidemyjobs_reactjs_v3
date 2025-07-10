@@ -138,14 +138,14 @@ export async function hasUserAppliedToJob(userId: string, jobId: string): Promis
       .select('id')
       .eq('user_id', userId)
       .eq('job_id', jobId)
-      .single();
+      .limit(1);
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
+    if (error) {
       console.error('Error checking application status:', error);
       return false;
     }
 
-    return !!data;
+    return data && data.length > 0;
   } catch (error) {
     console.error('Error checking application status:', error);
     return false;
