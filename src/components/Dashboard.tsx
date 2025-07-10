@@ -198,7 +198,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 1) return '1 day ago';
     if (diffDays < 7) return `${diffDays} days ago`;
     if (diffDays < 14) return '1 week ago';
@@ -212,6 +212,16 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     }
   }, [applications, user]);
 
+  const stats = applicationStats ? [
+    { label: 'Profile Views', value: '1,247', icon: Eye, color: 'text-blue-600' },
+    { label: 'Applications Sent', value: applicationStats.total_applications.toString(), icon: FileText, color: 'text-green-600' },
+    { label: 'Saved Jobs', value: savedJobs.length.toString(), icon: Heart, color: 'text-red-600' },
+    { label: 'Response Rate', value: `${applicationStats.response_rate}%`, icon: TrendingUp, color: 'text-purple-600' },
+  ] : [
+    { label: 'Profile Views', value: '1,247', icon: Eye, color: 'text-blue-600' },
+    { label: 'Applications Sent', value: '0', icon: FileText, color: 'text-green-600' },
+    { label: 'Saved Jobs', value: savedJobs.length.toString(), icon: Heart, color: 'text-red-600' },
+    { label: 'Response Rate', value: '0%', icon: TrendingUp, color: 'text-purple-600' },
   const stats = [
     { 
       label: 'Profile Views', 
@@ -247,7 +257,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                          job.company.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'All Categories' || job.category === selectedCategory;
     const matchesType = selectedJobType === 'All Types' || job.type === selectedJobType;
-    
+
     return matchesSearch && matchesCategory && matchesType;
   });
 
@@ -255,10 +265,10 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
 
   const toggleSaveJob = async (jobId: string) => {
     if (!user) return;
-    
+
     try {
       const { saveJob, unsaveJob } = await import('../lib/supabase');
-      
+
       if (savedJobs.includes(jobId)) {
         await unsaveJob(user.id, jobId);
         setSavedJobs(prev => prev.filter(id => id !== jobId));
@@ -369,7 +379,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
               ))}
             </ul>
           </div>
-          
+
           <div>
             <h4 className="font-medium text-gray-900 mb-2">Benefits</h4>
             <div className="flex flex-wrap gap-2">
@@ -477,6 +487,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
               {stats.map((stat, index) => {
                 const Icon = stat.icon;
                 return (
+                  <div key={stat.label} className="bg-white border border-gray-200 rounded-xl p-6">
                   <div key={stat.label} className="bg-white border border-gray-200 rounded-xl p-6 relative">
                     {loadingStats && (
                       <div className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-xl">
@@ -657,6 +668,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
               <h3 className="text-lg font-semibold text-gray-900 mb-6">
                 Your Saved Jobs ({savedJobs.length})
               </h3>
+              {savedJobs.length === 0 ? (
               {loadingSavedJobs ? (
                 <div className="text-center py-8">
                   <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -722,7 +734,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                   <span className="text-sm text-gray-500">{applications.length} total applications</span>
                 )}
               </div>
-              
+
               {loadingApplications ? (
                 <div className="text-center py-8">
                   <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -765,7 +777,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                           {formatStatus(application.status)}
                         </span>
                       </div>
-                      
+
                       {application.job && (
                         <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
                           <div className="flex items-center">
@@ -843,5 +855,3 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     </div>
   );
 };
-
-export default Dashboard;
