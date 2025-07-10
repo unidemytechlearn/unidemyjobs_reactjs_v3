@@ -223,7 +223,12 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   };
 
   const handleApplyClick = (job: any) => {
-    setSelectedJob(job);
+    // Normalize the job object to ensure company is always a string
+    const normalizedJob = {
+      ...job,
+      company: typeof job.company === 'object' ? job.company?.name : job.company
+    };
+    setSelectedJob(normalizedJob);
     setIsApplyModalOpen(true);
   };
 
