@@ -4,7 +4,7 @@ import ApplyModal from './ApplyModal';
 
 const allJobs = [
   {
-    id: 1,
+    id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
     title: 'Senior Frontend Developer',
     company: 'TechCorp',
     location: 'San Francisco, CA',
@@ -20,7 +20,7 @@ const allJobs = [
     description: 'We are looking for a Senior Frontend Developer to join our dynamic team...',
   },
   {
-    id: 2,
+    id: 'b2c3d4e5-f6g7-8901-2345-678901bcdefg',
     title: 'Product Manager',
     company: 'InnovateLab',
     location: 'New York, NY',
@@ -36,7 +36,7 @@ const allJobs = [
     description: 'Join our product team to drive innovation and growth...',
   },
   {
-    id: 3,
+    id: 'c3d4e5f6-g7h8-9012-3456-789012cdefgh',
     title: 'UX Designer',
     company: 'DesignStudio',
     location: 'Remote',
@@ -52,7 +52,7 @@ const allJobs = [
     description: 'Create beautiful and intuitive user experiences...',
   },
   {
-    id: 4,
+    id: 'd4e5f6g7-h8i9-0123-4567-890123defghi',
     title: 'Data Science Intern',
     company: 'DataFlow',
     location: 'Austin, TX',
@@ -68,7 +68,7 @@ const allJobs = [
     description: 'Learn data science in a fast-paced environment...',
   },
   {
-    id: 5,
+    id: 'e5f6g7h8-i9j0-1234-5678-901234efghij',
     title: 'DevOps Engineer',
     company: 'CloudTech',
     location: 'Seattle, WA',
@@ -84,7 +84,7 @@ const allJobs = [
     description: 'Help us scale our cloud infrastructure...',
   },
   {
-    id: 6,
+    id: 'f6g7h8i9-j0k1-2345-6789-012345fghijk',
     title: 'Marketing Freelancer',
     company: 'GrowthHack',
     location: 'Los Angeles, CA',
@@ -100,7 +100,7 @@ const allJobs = [
     description: 'Drive growth through innovative marketing strategies...',
   },
   {
-    id: 7,
+    id: 'g7h8i9j0-k1l2-3456-7890-123456ghijkl',
     title: 'Software Engineer',
     company: 'StartupXYZ',
     location: 'Boston, MA',
@@ -116,7 +116,7 @@ const allJobs = [
     description: 'Build the next generation of software solutions...',
   },
   {
-    id: 8,
+    id: 'h8i9j0k1-l2m3-4567-8901-234567hijklm',
     title: 'Graphic Designer',
     company: 'CreativeAgency',
     location: 'Remote',

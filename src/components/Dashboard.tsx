@@ -19,6 +19,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedJobType, setSelectedJobType] = useState('All Types');
   const [savedJobs, setSavedJobs] = useState<number[]>([1, 3, 5]);
+  const [savedJobs, setSavedJobs] = useState<string[]>(['a1b2c3d4-e5f6-7890-1234-567890abcdef', 'c3d4e5f6-g7h8-9012-3456-789012cdefgh', 'e5f6g7h8-i9j0-1234-5678-901234efghij']);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
 
@@ -70,7 +71,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   // Mock data for jobs
   const allJobs = [
     {
-      id: 1,
+      id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
       title: 'Senior Frontend Developer',
       company: 'TechCorp',
       location: 'San Francisco, CA',
@@ -86,7 +87,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
       postedDate: '2 days ago',
     },
     {
-      id: 2,
+      id: 'b2c3d4e5-f6g7-8901-2345-678901bcdefg',
       title: 'Product Manager',
       company: 'InnovateLab',
       location: 'New York, NY',
@@ -102,7 +103,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
       postedDate: '1 day ago',
     },
     {
-      id: 3,
+      id: 'c3d4e5f6-g7h8-9012-3456-789012cdefgh',
       title: 'UX Designer',
       company: 'DesignStudio',
       location: 'Remote',
@@ -118,7 +119,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
       postedDate: '3 days ago',
     },
     {
-      id: 4,
+      id: 'd4e5f6g7-h8i9-0123-4567-890123defghi',
       title: 'Marketing Manager',
       company: 'GrowthHack',
       location: 'Los Angeles, CA',
@@ -134,7 +135,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
       postedDate: '5 days ago',
     },
     {
-      id: 5,
+      id: 'e5f6g7h8-i9j0-1234-5678-901234efghij',
       title: 'DevOps Engineer',
       company: 'CloudTech',
       location: 'Seattle, WA',
@@ -150,7 +151,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
       postedDate: '4 days ago',
     },
     {
-      id: 6,
+      id: 'f6g7h8i9-j0k1-2345-6789-012345fghijk',
       title: 'Data Scientist',
       company: 'DataFlow',
       location: 'Austin, TX',
@@ -193,7 +194,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
 
   const recommendedJobs = allJobs.slice(0, 3);
 
-  const toggleSaveJob = (jobId: number) => {
+  const toggleSaveJob = (jobId: string) => {
     setSavedJobs(prev => 
       prev.includes(jobId) 
         ? prev.filter(id => id !== jobId)

@@ -8,7 +8,7 @@ interface FeaturedJobsProps {
 
 const jobs = [
   {
-    id: 1,
+    id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
     title: 'Senior Frontend Developer',
     company: 'TechCorp',
     location: 'San Francisco, CA',
@@ -19,7 +19,7 @@ const jobs = [
     typeColor: 'bg-blue-100 text-blue-700',
   },
   {
-    id: 2,
+    id: 'b2c3d4e5-f6g7-8901-2345-678901bcdefg',
     title: 'Product Manager',
     company: 'InnovateLab',
     location: 'New York, NY',
@@ -30,7 +30,7 @@ const jobs = [
     typeColor: 'bg-blue-100 text-blue-700',
   },
   {
-    id: 3,
+    id: 'c3d4e5f6-g7h8-9012-3456-789012cdefgh',
     title: 'UX Designer',
     company: 'DesignStudio',
     location: 'Remote',
@@ -41,7 +41,7 @@ const jobs = [
     typeColor: 'bg-purple-100 text-purple-700',
   },
   {
-    id: 4,
+    id: 'd4e5f6g7-h8i9-0123-4567-890123defghi',
     title: 'Data Science Intern',
     company: 'DataFlow',
     location: 'Austin, TX',
@@ -52,7 +52,7 @@ const jobs = [
     typeColor: 'bg-orange-100 text-orange-700',
   },
   {
-    id: 5,
+    id: 'e5f6g7h8-i9j0-1234-5678-901234efghij',
     title: 'DevOps Engineer',
     company: 'CloudTech',
     location: 'Seattle, WA',
@@ -63,7 +63,7 @@ const jobs = [
     typeColor: 'bg-green-100 text-green-700',
   },
   {
-    id: 6,
+    id: 'f6g7h8i9-j0k1-2345-6789-012345fghijk',
     title: 'Marketing Freelancer',
     company: 'GrowthHack',
     location: 'Los Angeles, CA',

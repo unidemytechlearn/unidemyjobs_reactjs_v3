@@ -7,7 +7,7 @@ interface ApplyModalProps {
   isOpen: boolean;
   onClose: () => void;
   job: {
-    id: number;
+    id: string;
     title: string;
     company: string;
     location: string;
@@ -52,7 +52,7 @@ const ApplyModal = ({ isOpen, onClose, job }: ApplyModalProps) => {
       if (isOpen && user && job) {
         setCheckingApplication(true);
         try {
-          const hasApplied = await hasUserAppliedToJob(user.id, job.id.toString());
+          const hasApplied = await hasUserAppliedToJob(user.id, job.id);
           setHasAlreadyApplied(hasApplied);
         } catch (error) {
           console.error('Error checking application status:', error);
@@ -67,6 +67,7 @@ const ApplyModal = ({ isOpen, onClose, job }: ApplyModalProps) => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    const { type } = e.target as HTMLInputElement;
     setFormData({
       ...formData,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
@@ -91,7 +92,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
     // Prepare application data
     const applicationData = {
-      job_id: job.id.toString(),
+      job_id: job.id,
       user_id: user.id,
       first_name: formData.firstName,
       last_name: formData.lastName,
