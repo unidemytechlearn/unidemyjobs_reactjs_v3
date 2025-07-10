@@ -234,10 +234,7 @@ export async function getApplicationStatusTimeline(applicationId: string): Promi
     // Try the new timeline table first
     const { data: timelineData, error: timelineError } = await supabase
       .from('application_status_timeline')
-      .select(`
-        *,
-        metadata:application_status_metadata(*)
-      `)
+      .select('*')
       .eq('application_id', applicationId)
       .order('created_at', { ascending: false });
 

@@ -64,6 +64,9 @@ const JobApplicationDetailsModal = ({ isOpen, onClose, application }: JobApplica
   };
 
   const formatStatus = (status: string) => {
+    if (!status || typeof status !== 'string') {
+      return 'Unknown Status';
+    }
     return status.split('_').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
