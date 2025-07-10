@@ -281,11 +281,6 @@ export async function updateApplicationStatus(
     console.error('Error updating application status:', error);
     return false;
   }
-    return data || [];
-  } catch (error) {
-    console.error('Error fetching user applications:', error);
-    return [];
-  }
 }
 
 export async function getApplicationAnalytics(userId: string): Promise<{
