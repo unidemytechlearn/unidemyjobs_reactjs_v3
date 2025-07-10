@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Briefcase, Heart, FileText, TrendingUp, Bell, Search, Filter, MapPin, Clock, DollarSign, Building, Star, Share2, Eye, Send, CheckCircle, XCircle, AlertCircle, Calendar, Award, Target, Users, Plus, ArrowRight, Bookmark, ExternalLink, ChevronRight, BarChart3, PieChart, Activity, Zap, MoreHorizontal } from 'lucide-react';
+import { User, Briefcase, Heart, FileText, TrendingUp, Bell, Search, Filter, MapPin, Clock, DollarSign, Building, Star, Share2, Eye, Send, CheckCircle, XCircle, AlertCircle, Calendar, Award, Target, Users, Plus, ArrowRight, Bookmark, ExternalLink, ChevronRight, BarChart3, PieChart, Activity, Zap, MoreHorizontal, X } from 'lucide-react';
 import ApplyModal from './ApplyModal';
 import ProfilePage from './ProfilePage';
 import JobApplicationDetailsModal from './JobApplicationDetailsModal';
@@ -29,6 +29,22 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [isApplicationDetailsOpen, setIsApplicationDetailsOpen] = useState(false);
   const [withdrawingApplicationId, setWithdrawingApplicationId] = useState<string | null>(null);
+  const [withdrawalConfirm, setWithdrawalConfirm] = useState<{
+    isOpen: boolean;
+    applicationId: string | null;
+    jobTitle: string;
+    companyName: string;
+  }>({
+    isOpen: false,
+    applicationId: null,
+    jobTitle: '',
+    companyName: ''
+  });
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [withdrawalMessage, setWithdrawalMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
 
   // Don't render anything while loading
   if (loading) {
@@ -242,29 +258,72 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   };
 
   const handleWithdrawApplication = async (applicationId: string) => {
-    if (!user) return;
-
-    const confirmed = window.confirm(
-      'Are you sure you want to withdraw this application? This action cannot be undone.'
-    );
+    setIsWithdrawing(true);
+    setWithdrawalMessage(null);
     
-    if (!confirmed) return;
-
-    setWithdrawingApplicationId(applicationId);
     try {
-      await withdrawApplication(applicationId, user.id);
+      await withdrawApplication(applicationId, user!.id);
       
       // Refresh applications list
-      const updatedApplications = await getUserApplications(user.id);
+      const updatedApplications = await getUserApplications(user!.id);
       setApplications(updatedApplications);
       
+      // Close confirmation modal
+      setWithdrawalConfirm({
+        isOpen: false,
+        applicationId: null,
+        jobTitle: '',
+        companyName: ''
+      });
+      
       // Show success message
-      alert('Application withdrawn successfully');
+      setWithdrawalMessage({
+        type: 'success',
+        text: 'Application withdrawn successfully'
+      });
+      
+      // Clear message after 5 seconds
+      setTimeout(() => {
+        setWithdrawalMessage(null);
+      }, 5000);
+      
     } catch (error) {
       console.error('Error withdrawing application:', error);
-      alert(error instanceof Error ? error.message : 'Failed to withdraw application');
+      setWithdrawalMessage({
+        type: 'error',
+        text: 'Failed to withdraw application. Please try again.'
+      });
+      
+      // Clear error message after 5 seconds
+      setTimeout(() => {
+        setWithdrawalMessage(null);
+      }, 5000);
     } finally {
-      setWithdrawingApplicationId(null);
+      setIsWithdrawing(false);
+    }
+  };
+
+  const handleWithdrawClick = (application: any) => {
+    setWithdrawalConfirm({
+      isOpen: true,
+      applicationId: application.id,
+      jobTitle: application.job?.title || 'Unknown Position',
+      companyName: application.job?.company?.name || 'Unknown Company'
+    });
+  };
+
+  const handleWithdrawCancel = () => {
+    setWithdrawalConfirm({
+      isOpen: false,
+      applicationId: null,
+      jobTitle: '',
+      companyName: ''
+    });
+  };
+
+  const handleWithdrawConfirm = () => {
+    if (withdrawalConfirm.applicationId) {
+      handleWithdrawApplication(withdrawalConfirm.applicationId);
     }
   };
 
@@ -895,6 +954,38 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
         {/* Applications Tab */}
         {activeTab === 'applications' && (
           <div className="space-y-6">
+            {/* Withdrawal Message */}
+            {withdrawalMessage && (
+              <div className={`p-4 rounded-xl border ${
+                withdrawalMessage.type === 'success' 
+                  ? 'bg-green-50 border-green-200' 
+                  : 'bg-red-50 border-red-200'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    {withdrawalMessage.type === 'success' ? (
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <AlertCircle className="h-5 w-5 text-red-600" />
+                    )}
+                    <p className={`text-sm ${
+                      withdrawalMessage.type === 'success' ? 'text-green-800' : 'text-red-800'
+                    }`}>
+                      {withdrawalMessage.text}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setWithdrawalMessage(null)}
+                    className={`text-gray-400 hover:text-gray-600 ${
+                      withdrawalMessage.type === 'success' ? 'hover:text-green-600' : 'hover:text-red-600'
+                    }`}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Application Analytics */}
             {applicationStats && (
               <div className="bg-white border border-gray-200 rounded-2xl p-6">
@@ -1042,6 +1133,18 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                           ))}
                         </div>
                       )}
+
+                      {/* Withdrawal Action */}
+                      {['submitted', 'under_review', 'interview_scheduled'].includes(application.status) && (
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                          <button
+                            onClick={() => handleWithdrawClick(application)}
+                            className="text-red-600 hover:text-red-700 text-sm font-medium hover:underline"
+                          >
+                            Withdraw Application
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1075,6 +1178,61 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
           onWithdraw={handleWithdrawApplication}
           isWithdrawing={withdrawingApplicationId === selectedApplication?.id}
         />
+      )}
+
+      {/* Withdrawal Confirmation Modal */}
+      {withdrawalConfirm.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertCircle className="h-6 w-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Withdraw Application</h3>
+                <p className="text-gray-600">This action cannot be undone</p>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-gray-700 mb-2">
+                Are you sure you want to withdraw your application for:
+              </p>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                <p className="font-semibold text-gray-900">{withdrawalConfirm.jobTitle}</p>
+                <p className="text-gray-600">{withdrawalConfirm.companyName}</p>
+              </div>
+              <p className="text-sm text-gray-600 mt-3">
+                Once withdrawn, you will not be able to reactivate this application. 
+                You would need to apply again if the position is still available.
+              </p>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={handleWithdrawCancel}
+                disabled={isWithdrawing}
+                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleWithdrawConfirm}
+                disabled={isWithdrawing}
+                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              >
+                {isWithdrawing ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Withdrawing...</span>
+                  </>
+                ) : (
+                  <span>Withdraw Application</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
