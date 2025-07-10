@@ -138,14 +138,14 @@ export async function hasUserAppliedToJob(userId: string, jobId: string): Promis
       .select('id')
       .eq('user_id', userId)
       .eq('job_id', jobId)
-      .single();
+      .limit(1);
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
+    if (error) {
       console.error('Error checking application status:', error);
       return false;
     }
 
-    return !!data;
+    return data && data.length > 0;
   } catch (error) {
     console.error('Error checking application status:', error);
     return false;
@@ -178,10 +178,108 @@ export async function getUserApplications(userId: string): Promise<any[]> {
       return [];
     }
 
-    return data || [];
+    // For each application, fetch its status history
+    const applicationsWithHistory = await Promise.all(
+      (data || []).map(async (application) => {
+        try {
+          const { data: historyData, error: historyError } = await supabase
+            .from('application_status_history')
+            .select('*')
+            .eq('application_id', application.id)
+            .order('created_at', { ascending: false });
+
+          if (historyError) throw historyError;
+
+          // Also fetch from the new timeline table if it exists
+          let timelineData = [];
+          try {
+            const { data: timeline, error: timelineError } = await supabase
+              .from('application_status_timeline')
+              .select('*')
+              .eq('application_id', application.id)
+              .order('created_at', { ascending: false });
+
+            if (!timelineError && timeline) {
+              timelineData = timeline;
+            }
+          } catch (e) {
+            // Timeline table might not exist yet, ignore error
+          }
+
+          return {
+            ...application,
+            status_history: historyData || [],
+            status_timeline: timelineData || []
+          };
+        } catch (err) {
+          console.error(`Error fetching history for application ${application.id}:`, err);
+          return {
+            ...application,
+            status_history: [],
+            status_timeline: []
+          };
+        }
+      })
+    );
+
+    return applicationsWithHistory;
   } catch (error) {
     console.error('Error fetching user applications:', error);
     return [];
+  }
+}
+
+export async function getApplicationStatusTimeline(applicationId: string): Promise<any[]> {
+  try {
+    // Try the new timeline table first
+    const { data: timelineData, error: timelineError } = await supabase
+      .from('application_status_timeline')
+      .select(`
+        *,
+        metadata:application_status_metadata(*)
+      `)
+      .eq('application_id', applicationId)
+      .order('created_at', { ascending: false });
+
+    if (!timelineError && timelineData && timelineData.length > 0) {
+      return timelineData;
+    }
+
+    // Fall back to the status history table
+    const { data: historyData, error: historyError } = await supabase
+      .from('application_status_history')
+      .select('*')
+      .eq('application_id', applicationId)
+      .order('created_at', { ascending: false });
+
+    if (historyError) {
+      console.error('Error fetching application status timeline:', historyError);
+      return [];
+    }
+
+    return historyData || [];
+  } catch (error) {
+    console.error('Error fetching application status timeline:', error);
+    return [];
+  }
+}
+
+export async function updateApplicationStatus(
+  applicationId: string, 
+  newStatus: string, 
+  notes?: string
+): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('applications')
+      .update({ status: newStatus })
+      .eq('id', applicationId);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error updating application status:', error);
+    return false;
   }
 }
 
