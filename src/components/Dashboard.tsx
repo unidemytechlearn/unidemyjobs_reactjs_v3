@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { User, Briefcase, Heart, FileText, TrendingUp, Bell, Search, Filter, MapPin, Clock, DollarSign, Building, Star, Share2, Eye, Calendar, Award, Target, Users, CheckCircle } from 'lucide-react';
+import { User, Briefcase, Heart, FileText, TrendingUp, Bell, Search, Filter, MapPin, Clock, DollarSign, Building, Star, Share2, Eye, Calendar, Award, Target, Users, CheckCircle, CheckSquare, XCircle, X, Circle, ArrowRight } from 'lucide-react';
 import ApplyModal from './ApplyModal';
 import ProfilePage from './ProfilePage';
 import { getUserApplications, getApplicationAnalytics } from '../lib/applications';
 import { useAuthContext } from './AuthProvider';
 import { getJobs, getUserSavedJobs, saveJob, unsaveJob } from '../lib/supabase';
+import ApplicationStatusTimeline from './ApplicationStatusTimeline';
 
 interface DashboardProps {
   onNavigate?: (page: string) => void;
@@ -25,6 +26,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<any>(null);
 
   const { user } = useAuthContext();
 
@@ -233,6 +235,33 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     ).join(' ');
   };
 
+  const getStatusIcon = (status: string) => {
+    const statusIcons: Record<string, React.ReactNode> = {
+      'submitted': <FileText className="h-4 w-4 text-blue-600" />,
+      'under_review': <Search className="h-4 w-4 text-yellow-600" />,
+      'interview_scheduled': <Calendar className="h-4 w-4 text-purple-600" />,
+      'interview_completed': <CheckSquare className="h-4 w-4 text-indigo-600" />,
+      'offer_made': <Award className="h-4 w-4 text-green-600" />,
+      'accepted': <CheckCircle className="h-4 w-4 text-green-600" />,
+      'rejected': <XCircle className="h-4 w-4 text-red-600" />,
+      'withdrawn': <X className="h-4 w-4 text-gray-600" />
+    };
+    return statusIcons[status] || <Circle className="h-4 w-4 text-gray-600" />;
+  };
+
+  const getStatusDescription = (status: string) => {
+    const descriptions: Record<string, string> = {
+      'submitted': 'Your application has been received by the employer',
+      'under_review': 'Your application is being reviewed by the hiring team',
+      'interview_scheduled': 'You have been selected for an interview',
+      'interview_completed': 'Your interview has been completed and is being evaluated',
+      'offer_made': 'Congratulations! You have received a job offer',
+      'accepted': 'You have accepted the job offer',
+      'rejected': 'Your application was not selected for this position',
+      'withdrawn': 'You have withdrawn your application'
+    };
+    return descriptions[status] || 'Status unknown';
+  };
   const JobCard = ({ job, showFullDetails = false }: { job: any, showFullDetails?: boolean }) => (
     <div className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300">
       <div className="flex items-start justify-between mb-4">
@@ -616,6 +645,21 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
         {/* Applications Tab */}
         {activeTab === 'applications' && (
           <div className="space-y-6">
+            {selectedApplication ? (
+              <ApplicationDetails 
+                application={selectedApplication}
+                onBack={() => setSelectedApplication(null)}
+                onStatusUpdate={() => {
+                  // Refresh applications when status is updated
+                  if (user) {
+                    getUserApplications(user.id).then(setApplications);
+                    getApplicationAnalytics(user.id).then(setApplicationStats);
+                  }
+                  setSelectedApplication(null);
+                }}
+              />
+            ) : (
+              <>
             {/* Application Analytics */}
             {applicationStats && (
               <div className="bg-white border border-gray-200 rounded-xl p-6">
@@ -669,8 +713,12 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
               ) : (
                 <div className="space-y-4">
                   {applications.map((application) => (
-                    <div key={application.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between mb-4">
+                    <div 
+                      key={application.id} 
+                      className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => setSelectedApplication(application)}
+                    >
+                      <div className="flex items-start justify-between mb-3">
                         <div className="flex items-start space-x-4">
                           {application.job?.company?.logo_url && (
                             <img
@@ -690,6 +738,14 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(application.status)}`}>
                           {formatStatus(application.status)}
                         </span>
+                      </div>
+                      
+                      {/* Status Description */}
+                      <div className="mb-4 px-4 py-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          {getStatusIcon(application.status)}
+                          <p className="text-sm text-gray-700">{getStatusDescription(application.status)}</p>
+                        </div>
                       </div>
                       
                       {application.job && (
@@ -712,18 +768,18 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                       )}
 
                       {/* Application Timeline */}
-                      {application.status_history && application.status_history.length > 0 && (
+                      {application.status_history && application.status_history.length > 0 ? (
                         <div className="mt-4 pt-4 border-t border-gray-100">
-                          <h5 className="text-sm font-medium text-gray-900 mb-2">Application Timeline</h5>
-                          <div className="space-y-2">
-                            {application.status_history.slice(0, 3).map((history: any, index: number) => (
-                              <div key={history.id} className="flex items-center text-sm text-gray-600">
-                                <div className="w-2 h-2 bg-blue-600 rounded-full mr-3"></div>
-                                <span>{formatStatus(history.new_status)}</span>
-                                <span className="mx-2">•</span>
-                                <span>{new Date(history.created_at).toLocaleDateString()}</span>
-                              </div>
-                            ))}
+                          <h5 className="text-sm font-medium text-gray-900 mb-3">Application Timeline</h5>
+                          <ApplicationStatusTimeline 
+                            applicationId={application.id}
+                            currentStatus={application.status}
+                          />
+                        </div>
+                      ) : (
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                          <div className="flex items-center justify-center py-4">
+                            <p className="text-sm text-gray-500">No status updates yet</p>
                           </div>
                         </div>
                       )}
@@ -746,6 +802,35 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                           ))}
                         </div>
                       )}
+                      
+                      {/* Next Steps */}
+                      <div className="mt-4 pt-4 border-t border-gray-100">
+                        <h5 className="text-sm font-medium text-gray-900 mb-2">Next Steps</h5>
+                        {application.status === 'submitted' && (
+                          <p className="text-sm text-gray-600">Your application is being reviewed. We'll notify you when there's an update.</p>
+                        )}
+                        {application.status === 'under_review' && (
+                          <p className="text-sm text-gray-600">The hiring team is reviewing your application. You may be contacted for an interview soon.</p>
+                        )}
+                        {application.status === 'interview_scheduled' && (
+                          <p className="text-sm text-gray-600">Prepare for your upcoming interview. Check your email for details.</p>
+                        )}
+                        {application.status === 'interview_completed' && (
+                          <p className="text-sm text-gray-600">Your interview is being evaluated. We'll be in touch with next steps.</p>
+                        )}
+                        {application.status === 'offer_made' && (
+                          <p className="text-sm text-gray-600">Review your job offer and respond within the specified timeframe.</p>
+                        )}
+                        {application.status === 'accepted' && (
+                          <p className="text-sm text-gray-600">Congratulations! Check your email for onboarding information.</p>
+                        )}
+                        {application.status === 'rejected' && (
+                          <p className="text-sm text-gray-600">We encourage you to apply for other positions that match your skills.</p>
+                        )}
+                        {application.status === 'withdrawn' && (
+                          <p className="text-sm text-gray-600">Your application has been withdrawn. You can apply again in the future.</p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
