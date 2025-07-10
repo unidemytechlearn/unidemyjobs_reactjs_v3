@@ -4,7 +4,7 @@ import ApplyModal from './ApplyModal';
 import ProfilePage from './ProfilePage';
 import { getUserApplications, getApplicationAnalytics } from '../lib/applications';
 import { useAuthContext } from './AuthProvider';
-import { getJobs, getUserSavedJobs } from '../lib/supabase';
+import { getJobs, getUserSavedJobs, saveJob, unsaveJob, isJobSaved } from '../lib/supabase';
 
 interface DashboardProps {
   onNavigate?: (page: string) => void;
@@ -20,6 +20,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedJobType, setSelectedJobType] = useState('All Types');
   const [savedJobs, setSavedJobs] = useState<any[]>([]);
+  const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
   const [allJobs, setAllJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [selectedJob, setSelectedJob] = useState<any>(null);
@@ -68,6 +69,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
         try {
           const userSavedJobs = await getUserSavedJobs(user.id);
           setSavedJobs(userSavedJobs);
+          setSavedJobIds(new Set(userSavedJobs.map(savedJob => savedJob.job_id)));
         } catch (error) {
           console.error('Error loading saved jobs:', error);
         }
@@ -190,9 +192,34 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
 
   const recommendedJobs = allJobs.slice(0, 3);
 
-  const toggleSaveJob = (jobId: string) => {
-    // This would typically call an API to save/unsave the job
-    console.log('Toggle save job:', jobId);
+  const toggleSaveJob = async (jobId: string) => {
+    if (!user) return;
+
+    try {
+      const isCurrentlySaved = savedJobIds.has(jobId);
+      
+      if (isCurrentlySaved) {
+        // Unsave the job
+        await unsaveJob(user.id, jobId);
+        setSavedJobIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(jobId);
+          return newSet;
+        });
+        setSavedJobs(prev => prev.filter(savedJob => savedJob.job_id !== jobId));
+      } else {
+        // Save the job
+        await saveJob(user.id, jobId);
+        setSavedJobIds(prev => new Set(prev).add(jobId));
+        // Refresh saved jobs list
+        const userSavedJobs = await getUserSavedJobs(user.id);
+        setSavedJobs(userSavedJobs);
+        setSavedJobIds(new Set(userSavedJobs.map(savedJob => savedJob.job_id)));
+      }
+    } catch (error) {
+      console.error('Error toggling save job:', error);
+      alert('Failed to save/unsave job. Please try again.');
+    }
   };
 
   const handleApplyClick = (job: any) => {
@@ -263,9 +290,13 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
         <div className="flex items-center space-x-2">
           <button
             onClick={() => toggleSaveJob(job.id)}
-            className="p-2 rounded-lg transition-colors text-gray-400 hover:text-red-500 hover:bg-red-50"
+            className={`p-2 rounded-lg transition-colors ${
+              savedJobIds.has(job.id)
+                ? 'text-red-500 bg-red-50 hover:bg-red-100'
+                : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
+            }`}
           >
-            <Heart className="h-5 w-5" />
+            <Heart className={`h-5 w-5 ${savedJobIds.has(job.id) ? 'fill-current' : ''}`} />
           </button>
           <button className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
             <Share2 className="h-5 w-5" />
