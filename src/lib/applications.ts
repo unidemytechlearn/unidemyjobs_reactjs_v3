@@ -459,28 +459,3 @@ export async function getApplicationById(applicationId: string): Promise<any | n
     return null;
   }
 }
-
-    const analytics = {
-      total_applications: totalApplications,
-      pending_applications: pendingApplications,
-      interviews_scheduled: interviewsScheduled,
-      offers_received: offersReceived,
-      applications_this_month: applicationsThisMonth,
-      response_rate: Math.round(responseRate * 100) / 100, // Round to 2 decimal places
-      interview_rate: Math.round(interviewRate * 100) / 100 // Round to 2 decimal places
-    };
-
-    return analytics;
-  } catch (error) {
-    console.error('Error fetching application analytics:', error);
-    return {
-      total_applications: 0,
-      pending_applications: 0,
-      interviews_scheduled: 0,
-      offers_received: 0,
-      applications_this_month: 0,
-      response_rate: 0,
-      interview_rate: 0
-    };
-  }
-}
