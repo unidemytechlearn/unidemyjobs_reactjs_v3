@@ -3,7 +3,6 @@ import { User, Briefcase, Heart, FileText, TrendingUp, Bell, Search, Filter, Map
 import ApplyModal from './ApplyModal';
 import ProfilePage from './ProfilePage';
 import { getUserApplications, getApplicationAnalytics, withdrawApplication } from '../lib/applications';
-import { getUserApplications, getApplicationAnalytics, withdrawApplication } from '../lib/applications';
 import { useAuthContext } from './AuthProvider';
 import { getJobs, getUserSavedJobs, saveJob, unsaveJob, isJobSaved } from '../lib/supabase';
 import JobApplicationDetailsModal from './JobApplicationDetailsModal';
