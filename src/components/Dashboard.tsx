@@ -1,6 +1,3 @@
-Here's the fixed version with all missing closing brackets added:
-
-```jsx
 import React, { useState, useEffect } from 'react';
 import { User, Briefcase, Heart, FileText, TrendingUp, Bell, Search, Filter, MapPin, Clock, DollarSign, Building, Star, Share2, Eye, Send, CheckCircle, XCircle, AlertCircle, Calendar, Award, Target, Users, Plus, ArrowRight, Bookmark, ExternalLink, ChevronRight, BarChart3, PieChart, Activity, Zap } from 'lucide-react';
 import ApplyModal from './ApplyModal';
