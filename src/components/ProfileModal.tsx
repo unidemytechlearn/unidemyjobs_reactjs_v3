@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Mail, Phone, MapPin, Briefcase, Save, Upload, FileText, Eye, EyeOff, Shield, Bell, Camera, Linkedin, Github, Globe, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, User, Mail, Phone, MapPin, Briefcase, Save, Upload, FileText, Eye, EyeOff, Shield, Bell, Camera, Linkedin, Github, Globe, CheckCircle, AlertCircle, Download } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
 import { updateProfile, Profile, resetPassword } from '../lib/supabase';
+import ResumeUploadSection from './ResumeUploadSection';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -14,7 +15,7 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [uploadedResume, setUploadedResume] = useState<File | null>(null);
+  const [resumeUploadMessage, setResumeUploadMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   
   const [formData, setFormData] = useState<Partial<Profile>>({
     first_name: '',
@@ -76,16 +77,23 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
     });
   };
 
-  const handleResumeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        setMessage({ type: 'error', text: 'File size must be less than 5MB' });
-        return;
-      }
-      setUploadedResume(file);
-      setMessage(null);
-    }
+  const handleResumeUploadSuccess = (url: string, fileName: string) => {
+    setResumeUploadMessage({ type: 'success', text: 'Resume uploaded successfully!' });
+    // Refresh profile to get updated resume info
+    refreshProfile();
+    setTimeout(() => setResumeUploadMessage(null), 3000);
+  };
+
+  const handleResumeUploadError = (error: string) => {
+    setResumeUploadMessage({ type: 'error', text: error });
+    setTimeout(() => setResumeUploadMessage(null), 5000);
+  };
+
+  const handleResumeDeleteSuccess = () => {
+    setResumeUploadMessage({ type: 'success', text: 'Resume deleted successfully!' });
+    // Refresh profile to get updated resume info
+    refreshProfile();
+    setTimeout(() => setResumeUploadMessage(null), 3000);
   };
 
   const handleSave = async () => {
@@ -203,6 +211,24 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
           {/* Profile Tab */}
           {activeTab === 'profile' && (
             <div className="space-y-6">
+              {/* Resume Upload Message */}
+              {resumeUploadMessage && (
+                <div className={`p-4 rounded-xl ${
+                  resumeUploadMessage.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                }`}>
+                  <div className="flex items-center space-x-2">
+                    {resumeUploadMessage.type === 'success' ? (
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <AlertCircle className="h-5 w-5 text-red-600" />
+                    )}
+                    <p className={`text-sm ${resumeUploadMessage.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
+                      {resumeUploadMessage.text}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Profile Picture */}
               <div className="flex items-center space-x-6">
                 <div className="relative">
@@ -424,32 +450,15 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
               </div>
 
               {/* Resume Upload */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Update Resume</label>
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-400 transition-colors">
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx"
-                    onChange={handleResumeUpload}
-                    className="hidden"
-                    id="resume-upload"
-                  />
-                  <label htmlFor="resume-upload" className="cursor-pointer">
-                    <Upload className="h-8 w-8 text-gray-400 mx-auto mb-3" />
-                    {uploadedResume ? (
-                      <div className="text-green-600">
-                        <FileText className="h-5 w-5 inline mr-2" />
-                        <span className="font-medium">{uploadedResume.name}</span>
-                      </div>
-                    ) : (
-                      <div>
-                        <p className="font-medium text-gray-700 mb-1">Upload new resume</p>
-                        <p className="text-sm text-gray-500">PDF, DOC, DOCX (max 5MB)</p>
-                      </div>
-                    )}
-                  </label>
-                </div>
-              </div>
+              <ResumeUploadSection
+                currentResumeUrl={profile?.resume_url}
+                currentResumeFileName={profile?.resume_file_name}
+                currentResumeFileSize={profile?.resume_file_size}
+                currentResumeUploadedAt={profile?.resume_uploaded_at}
+                onUploadSuccess={handleResumeUploadSuccess}
+                onUploadError={handleResumeUploadError}
+                onDeleteSuccess={handleResumeDeleteSuccess}
+              />
             </div>
           )}
 
