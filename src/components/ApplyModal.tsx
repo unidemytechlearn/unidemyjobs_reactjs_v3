@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, CheckCircle, AlertCircle, MapPin, Clock, DollarSign, Building, User, Mail, Phone, FileText, Upload, Briefcase } from 'lucide-react';
-import { supabase } from "../lib/supabase";
+import { submitApplication, uploadApplicationFile, hasUserAppliedToJob } from '../lib/applications';
 import { useAuthContext } from '../components/AuthProvider';
 
 interface ApplyModalProps {
@@ -19,28 +19,57 @@ interface ApplyModalProps {
 }
 
 const ApplyModal = ({ isOpen, onClose, job }: ApplyModalProps) => {
-    const { user } = useAuthContext(); // ✅ valid hook usage
+  const { user } = useAuthContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [hasAlreadyApplied, setHasAlreadyApplied] = useState(false);
+  const [checkingApplication, setCheckingApplication] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
+    yearsExperience: '',
     coverLetter: '',
-    experience: '',
-    availability: '',
+    availabilityDate: '',
+    noticePeriod: '',
     expectedSalary: '',
+    currentSalary: '',
     portfolio: '',
     linkedin: '',
+    github: '',
+    website: '',
+    skills: '',
+    referralSource: '',
+    isRemotePreferred: false,
+    willingToRelocate: false,
   });
   const [uploadedResume, setUploadedResume] = useState<File | null>(null);
+
+  // Check if user has already applied when modal opens
+  React.useEffect(() => {
+    const checkExistingApplication = async () => {
+      if (isOpen && user && job) {
+        setCheckingApplication(true);
+        try {
+          const hasApplied = await hasUserAppliedToJob(user.id, job.id.toString());
+          setHasAlreadyApplied(hasApplied);
+        } catch (error) {
+          console.error('Error checking application status:', error);
+        } finally {
+          setCheckingApplication(false);
+        }
+      }
+    };
+
+    checkExistingApplication();
+  }, [isOpen, user, job]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
-      [name]: value,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
     });
   };
 
@@ -52,7 +81,7 @@ const ApplyModal = ({ isOpen, onClose, job }: ApplyModalProps) => {
   };
 
 const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  e.preventDefault();
   setIsSubmitting(true);
 
   try {
@@ -60,55 +89,48 @@ const handleSubmit = async (e: React.FormEvent) => {
       throw new Error("You must be logged in to apply for a job.");
     }
 
-    let resumeUrl = null;
+    // Prepare application data
+    const applicationData = {
+      job_id: job.id.toString(),
+      user_id: user.id,
+      first_name: formData.firstName,
+      last_name: formData.lastName,
+      email: formData.email,
+      phone: formData.phone,
+      years_experience: formData.yearsExperience,
+      expected_salary: formData.expectedSalary,
+      current_salary: formData.currentSalary,
+      availability_date: formData.availabilityDate ? new Date(formData.availabilityDate).toISOString() : undefined,
+      notice_period: formData.noticePeriod,
+      cover_letter: formData.coverLetter,
+      portfolio_url: formData.portfolio,
+      linkedin_url: formData.linkedin,
+      github_url: formData.github,
+      website_url: formData.website,
+      skills: formData.skills ? formData.skills.split(',').map(s => s.trim()).filter(s => s) : [],
+      referral_source: formData.referralSource,
+      is_remote_preferred: formData.isRemotePreferred,
+      willing_to_relocate: formData.willingToRelocate,
+      application_source: 'website',
+    };
 
-    // 1. Upload Resume to Supabase Storage
+    // Submit application
+    const application = await submitApplication(applicationData);
+
+    // Upload resume if provided
     if (uploadedResume) {
-      const fileExt = uploadedResume.name.split(".").pop();
-      const filePath = `${user.id}/${Date.now()}.${fileExt}`;
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("resumes")
-        .upload(filePath, uploadedResume, {
-          cacheControl: "3600",
-          upsert: true,
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { publicUrl } = supabase.storage
-        .from("resumes")
-        .getPublicUrl(uploadData.path);
-      resumeUrl = publicUrl;
+      await uploadApplicationFile(
+        uploadedResume,
+        user.id,
+        application.id,
+        'resume'
+      );
     }
-
-    // 2. Insert application record into Supabase
-    const { error: insertError } = await supabase.from("applications").insert([
-      {
-        job_id: job.id,
-        user_id: user.id,
-        resume_url: resumeUrl,
-        expected_salary: formData.expectedSalary,
-        availability_date: formData.availability ? new Date(formData.availability) : null,
-        cover_letter: formData.coverLetter,
-        portfolio_url: formData.portfolio,
-        linkedin_url: formData.linkedin,
-        additional_info: {
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          email: formData.email,
-          phone: formData.phone,
-          experience: formData.experience,
-        },
-      },
-    ]);
-
-    if (insertError) throw insertError;
 
     setIsSubmitted(true);
   } catch (error) {
     console.error("Application submission failed:", error);
-    alert("Something went wrong while submitting your application.");
+    alert(error instanceof Error ? error.message : "Something went wrong while submitting your application.");
   } finally {
     setIsSubmitting(false);
   }
@@ -116,23 +138,68 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   const resetModal = () => {
     setIsSubmitted(false);
+    setHasAlreadyApplied(false);
     setFormData({
       firstName: '',
       lastName: '',
       email: '',
       phone: '',
+      yearsExperience: '',
       coverLetter: '',
-      experience: '',
-      availability: '',
+      availabilityDate: '',
+      noticePeriod: '',
       expectedSalary: '',
+      currentSalary: '',
       portfolio: '',
       linkedin: '',
+      github: '',
+      website: '',
+      skills: '',
+      referralSource: '',
+      isRemotePreferred: false,
+      willingToRelocate: false,
     });
     setUploadedResume(null);
     onClose();
   };
 
   if (!isOpen) return null;
+
+  // Show loading state while checking application status
+  if (checkingApplication) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl max-w-md w-full p-8 text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Checking application status...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show already applied message
+  if (hasAlreadyApplied) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl max-w-md w-full p-8 text-center">
+          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="h-8 w-8 text-yellow-600" />
+          </div>
+          <h3 className="text-2xl font-bold text-gray-900 mb-4">Already Applied</h3>
+          <p className="text-gray-600 mb-6">
+            You have already submitted an application for <strong>{job.title}</strong> at <strong>{job.company}</strong>.
+            You can check your application status in your dashboard.
+          </p>
+          <button
+            onClick={resetModal}
+            className="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition-colors font-semibold"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isSubmitted) {
     return (
@@ -295,18 +362,18 @@ const handleSubmit = async (e: React.FormEvent) => {
                     Years of Experience *
                   </label>
                   <select
-                    name="experience"
-                    value={formData.experience}
+                    name="yearsExperience"
+                    value={formData.yearsExperience}
                     onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   >
                     <option value="">Select experience</option>
-                    <option value="0-1">0-1 years</option>
-                    <option value="2-3">2-3 years</option>
-                    <option value="4-6">4-6 years</option>
-                    <option value="7-10">7-10 years</option>
-                    <option value="10+">10+ years</option>
+                    <option value="Entry-level">Entry-level</option>
+                    <option value="1-2 years">1-2 years</option>
+                    <option value="3-5 years">3-5 years</option>
+                    <option value="5+ years">5+ years</option>
+                    <option value="10+ years">10+ years</option>
                   </select>
                 </div>
                 
@@ -327,27 +394,60 @@ const handleSubmit = async (e: React.FormEvent) => {
                   </div>
                 </div>
               </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Current Salary (Optional)
+                </label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <input
+                    type="text"
+                    name="currentSalary"
+                    value={formData.currentSalary}
+                    onChange={handleInputChange}
+                    placeholder="e.g., $100k"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Availability
+                    Availability Date
+                  </label>
+                  <input
+                    type="date"
+                    name="availabilityDate"
+                    value={formData.availabilityDate}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Notice Period
                   </label>
                   <select
-                    name="availability"
-                    value={formData.availability}
+                    name="noticePeriod"
+                    value={formData.noticePeriod}
                     onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Select availability</option>
-                    <option value="immediate">Immediate</option>
-                    <option value="2-weeks">2 weeks notice</option>
-                    <option value="1-month">1 month</option>
-                    <option value="2-months">2 months</option>
-                    <option value="3-months">3+ months</option>
+                    <option value="">Select notice period</option>
+                    <option value="Immediate">Immediate</option>
+                    <option value="2 weeks">2 weeks</option>
+                    <option value="1 month">1 month</option>
+                    <option value="2 months">2 months</option>
+                    <option value="3 months">3 months</option>
+                    <option value="More than 3 months">More than 3 months</option>
                   </select>
                 </div>
-                
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     LinkedIn Profile
@@ -360,6 +460,103 @@ const handleSubmit = async (e: React.FormEvent) => {
                     placeholder="https://linkedin.com/in/yourprofile"
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    GitHub Profile
+                  </label>
+                  <input
+                    type="url"
+                    name="github"
+                    value={formData.github}
+                    onChange={handleInputChange}
+                    placeholder="https://github.com/yourprofile"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Personal Website
+                  </label>
+                  <input
+                    type="url"
+                    name="website"
+                    value={formData.website}
+                    onChange={handleInputChange}
+                    placeholder="https://yourwebsite.com"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    How did you hear about us?
+                  </label>
+                  <select
+                    name="referralSource"
+                    value={formData.referralSource}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select source</option>
+                    <option value="Job board">Job board</option>
+                    <option value="Company website">Company website</option>
+                    <option value="Social media">Social media</option>
+                    <option value="Referral">Employee referral</option>
+                    <option value="Recruiter">Recruiter</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Skills (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  name="skills"
+                  value={formData.skills}
+                  onChange={handleInputChange}
+                  placeholder="React, TypeScript, Node.js, Python..."
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Preferences */}
+              <div className="space-y-4">
+                <h4 className="font-medium text-gray-900">Work Preferences</h4>
+                
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="isRemotePreferred"
+                    name="isRemotePreferred"
+                    checked={formData.isRemotePreferred}
+                    onChange={handleInputChange}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="isRemotePreferred" className="text-sm text-gray-700">
+                    I prefer remote work
+                  </label>
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="willingToRelocate"
+                    name="willingToRelocate"
+                    checked={formData.willingToRelocate}
+                    onChange={handleInputChange}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="willingToRelocate" className="text-sm text-gray-700">
+                    I'm willing to relocate for this position
+                  </label>
                 </div>
               </div>
 
@@ -449,7 +646,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           <button
             type="submit"
             onClick={handleSubmit}
-            disabled={isSubmitting || !formData.firstName || !formData.lastName || !formData.email || !formData.phone || !uploadedResume}
+            disabled={isSubmitting || !formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.yearsExperience}
             className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
           >
             {isSubmitting ? (
