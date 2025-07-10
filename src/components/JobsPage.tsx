@@ -1,137 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Search, MapPin, Filter, SlidersHorizontal, Grid, List, ChevronDown, Bookmark, Clock, DollarSign, Building } from 'lucide-react';
 import ApplyModal from './ApplyModal';
-
-const allJobs = [
-  {
-    id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
-    title: 'Senior Frontend Developer',
-    company: 'TechCorp',
-    location: 'San Francisco, CA',
-    type: 'Full Time',
-    salary: '$120k - $160k',
-    logo: 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
-    featured: true,
-    typeColor: 'bg-blue-100 text-blue-700',
-    category: 'Technology',
-    experience: 'Senior',
-    remote: false,
-    postedDate: '2 days ago',
-    description: 'We are looking for a Senior Frontend Developer to join our dynamic team...',
-  },
-  {
-    id: 'b2c3d4e5-f6g7-8901-2345-678901bcdefg',
-    title: 'Product Manager',
-    company: 'InnovateLab',
-    location: 'New York, NY',
-    type: 'Full Time',
-    salary: '$130k - $180k',
-    logo: 'https://images.pexels.com/photos/1181533/pexels-photo-1181533.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
-    featured: true,
-    typeColor: 'bg-blue-100 text-blue-700',
-    category: 'Management',
-    experience: 'Mid-level',
-    remote: false,
-    postedDate: '1 day ago',
-    description: 'Join our product team to drive innovation and growth...',
-  },
-  {
-    id: 'c3d4e5f6-g7h8-9012-3456-789012cdefgh',
-    title: 'UX Designer',
-    company: 'DesignStudio',
-    location: 'Remote',
-    type: 'Contract',
-    salary: '$90k - $120k',
-    logo: 'https://images.pexels.com/photos/1181406/pexels-photo-1181406.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
-    featured: false,
-    typeColor: 'bg-purple-100 text-purple-700',
-    category: 'Design',
-    experience: 'Mid-level',
-    remote: true,
-    postedDate: '3 days ago',
-    description: 'Create beautiful and intuitive user experiences...',
-  },
-  {
-    id: 'd4e5f6g7-h8i9-0123-4567-890123defghi',
-    title: 'Data Science Intern',
-    company: 'DataFlow',
-    location: 'Austin, TX',
-    type: 'Internship',
-    salary: '$25/hour',
-    logo: 'https://images.pexels.com/photos/1181298/pexels-photo-1181298.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
-    featured: false,
-    typeColor: 'bg-orange-100 text-orange-700',
-    category: 'Technology',
-    experience: 'Entry-level',
-    remote: false,
-    postedDate: '1 week ago',
-    description: 'Learn data science in a fast-paced environment...',
-  },
-  {
-    id: 'e5f6g7h8-i9j0-1234-5678-901234efghij',
-    title: 'DevOps Engineer',
-    company: 'CloudTech',
-    location: 'Seattle, WA',
-    type: 'Part Time',
-    salary: '$60k - $80k',
-    logo: 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
-    featured: true,
-    typeColor: 'bg-green-100 text-green-700',
-    category: 'Technology',
-    experience: 'Mid-level',
-    remote: false,
-    postedDate: '4 days ago',
-    description: 'Help us scale our cloud infrastructure...',
-  },
-  {
-    id: 'f6g7h8i9-j0k1-2345-6789-012345fghijk',
-    title: 'Marketing Freelancer',
-    company: 'GrowthHack',
-    location: 'Los Angeles, CA',
-    type: 'Freelancing',
-    salary: '$50 - $85/hour',
-    logo: 'https://images.pexels.com/photos/1181677/pexels-photo-1181677.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
-    featured: false,
-    typeColor: 'bg-pink-100 text-pink-700',
-    category: 'Marketing',
-    experience: 'Mid-level',
-    remote: true,
-    postedDate: '5 days ago',
-    description: 'Drive growth through innovative marketing strategies...',
-  },
-  {
-    id: 'g7h8i9j0-k1l2-3456-7890-123456ghijkl',
-    title: 'Software Engineer',
-    company: 'StartupXYZ',
-    location: 'Boston, MA',
-    type: 'Full Time',
-    salary: '$95k - $130k',
-    logo: 'https://images.pexels.com/photos/267371/pexels-photo-267371.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
-    featured: false,
-    typeColor: 'bg-blue-100 text-blue-700',
-    category: 'Technology',
-    experience: 'Mid-level',
-    remote: false,
-    postedDate: '6 days ago',
-    description: 'Build the next generation of software solutions...',
-  },
-  {
-    id: 'h8i9j0k1-l2m3-4567-8901-234567hijklm',
-    title: 'Graphic Designer',
-    company: 'CreativeAgency',
-    location: 'Remote',
-    type: 'Contract',
-    salary: '$40 - $65/hour',
-    logo: 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
-    featured: false,
-    typeColor: 'bg-purple-100 text-purple-700',
-    category: 'Design',
-    experience: 'Entry-level',
-    remote: true,
-    postedDate: '1 week ago',
-    description: 'Create stunning visual designs for our clients...',
-  },
-];
+import { getJobs } from '../lib/supabase';
 
 const jobTypes = [
   { id: 'full-time', label: 'Full Time', color: 'bg-blue-100 text-blue-700 border-blue-200' },
@@ -146,6 +16,8 @@ const experienceLevels = ['All Levels', 'Entry-level', 'Mid-level', 'Senior', 'E
 const locations = ['All Locations', 'Remote', 'San Francisco, CA', 'New York, NY', 'Austin, TX', 'Seattle, WA', 'Los Angeles, CA', 'Boston, MA'];
 
 const JobsPage = () => {
+  const [allJobs, setAllJobs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedJobTypes, setSelectedJobTypes] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
@@ -156,6 +28,80 @@ const JobsPage = () => {
   const [sortBy, setSortBy] = useState('newest');
   const [selectedJob, setSelectedJob] = useState<typeof allJobs[0] | null>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+
+  // Load jobs from database
+  useEffect(() => {
+    const loadJobs = async () => {
+      try {
+        const fetchedJobs = await getJobs();
+        const jobsWithMockData = fetchedJobs.map(job => ({
+          ...job,
+          company: job.company?.name || 'Unknown Company',
+          type: job.job_type,
+          salary: formatSalary(job.salary_min, job.salary_max, job.salary_currency),
+          logo: job.company?.logo_url || 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
+          featured: job.is_featured,
+          typeColor: getJobTypeColor(job.job_type),
+          category: getCategoryFromJobType(job.job_type),
+          experience: job.experience_level || 'Mid-level',
+          remote: job.is_remote,
+          postedDate: getRelativeDate(job.created_at),
+          description: job.description,
+        }));
+        setAllJobs(jobsWithMockData);
+      } catch (error) {
+        console.error('Error loading jobs:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadJobs();
+  }, []);
+
+  const formatSalary = (min?: number, max?: number, currency: string = 'USD') => {
+    if (!min && !max) return 'Salary not specified';
+    if (min && max) {
+      return `$${(min / 1000).toFixed(0)}k - $${(max / 1000).toFixed(0)}k`;
+    }
+    if (min) return `$${(min / 1000).toFixed(0)}k+`;
+    if (max) return `Up to $${(max / 1000).toFixed(0)}k`;
+    return 'Salary not specified';
+  };
+
+  const getJobTypeColor = (jobType: string) => {
+    const colorMap: Record<string, string> = {
+      'Full Time': 'bg-blue-100 text-blue-700',
+      'Part Time': 'bg-green-100 text-green-700',
+      'Contract': 'bg-purple-100 text-purple-700',
+      'Internship': 'bg-orange-100 text-orange-700',
+      'Freelancing': 'bg-pink-100 text-pink-700',
+    };
+    return colorMap[jobType] || 'bg-gray-100 text-gray-700';
+  };
+
+  const getCategoryFromJobType = (jobType: string) => {
+    const categoryMap: Record<string, string> = {
+      'Full Time': 'Technology',
+      'Part Time': 'Technology',
+      'Contract': 'Design',
+      'Internship': 'Technology',
+      'Freelancing': 'Marketing',
+    };
+    return categoryMap[jobType] || 'Technology';
+  };
+
+  const getRelativeDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return '1 day ago';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 14) return '1 week ago';
+    return `${Math.floor(diffDays / 7)} weeks ago`;
+  };
 
   const toggleJobType = (typeId: string) => {
     setSelectedJobTypes(prev => 
@@ -290,9 +236,13 @@ const JobsPage = () => {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">All Jobs</h1>
-              <p className="text-gray-600 mt-2">
-                Showing {filteredJobs.length} of {allJobs.length} jobs
-              </p>
+              {loading ? (
+                <p className="text-gray-600 mt-2">Loading jobs...</p>
+              ) : (
+                <p className="text-gray-600 mt-2">
+                  Showing {filteredJobs.length} of {allJobs.length} jobs
+                </p>
+              )}
             </div>
 
             {/* Search and Sort */}
@@ -442,7 +392,28 @@ const JobsPage = () => {
 
           {/* Jobs List */}
           <div className="flex-1">
-            {filteredJobs.length === 0 ? (
+            {loading ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {[...Array(6)].map((_, index) => (
+                  <div key={index} className="bg-white border border-gray-200 rounded-2xl p-6 animate-pulse">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
+                        <div>
+                          <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+                          <div className="h-3 bg-gray-200 rounded w-24"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-3 mb-4">
+                      <div className="h-3 bg-gray-200 rounded w-full"></div>
+                      <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                    </div>
+                    <div className="h-10 bg-gray-200 rounded"></div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredJobs.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-gray-400 mb-4">
                   <Building className="h-16 w-16 mx-auto" />
