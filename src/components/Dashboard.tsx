@@ -233,14 +233,14 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
         <div className="flex items-center space-x-3">
           <div className="relative">
             <img
-              src={job.logo}
-              alt={`${job.company} logo`}
+              src={job.logo || (typeof job.company === 'object' ? job.company?.logo_url : null) || 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop'}
+              alt={`${typeof job.company === 'object' ? job.company?.name : job.company} logo`}
               className="w-12 h-12 rounded-xl object-cover border border-gray-100"
             />
-            {job.rating && (
+            {(job.rating || (typeof job.company === 'object' && job.company?.rating)) && (
               <div className="absolute -bottom-1 -right-1 bg-white border border-gray-200 rounded-full px-1 py-0.5 text-xs font-medium text-gray-600">
                 <Star className="h-2.5 w-2.5 inline text-yellow-500 fill-current mr-0.5" />
-                {job.rating}
+                {job.rating || job.company?.rating}
               </div>
             )}
           </div>
@@ -248,11 +248,11 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
             <h3 className="font-semibold text-gray-900 text-lg group-hover:text-blue-600 transition-colors">
               {job.title}
             </h3>
-            <p className="text-gray-600 font-medium">{job.company}</p>
+            <p className="text-gray-600 font-medium">{typeof job.company === 'object' ? job.company?.name : job.company}</p>
             <div className="flex items-center space-x-2 mt-1 text-sm text-gray-500">
-              <span>{job.employees} employees</span>
+              <span>{job.employees || getEmployeeCount(typeof job.company === 'object' ? job.company?.size_range : undefined)} employees</span>
               <span>•</span>
-              <span>{job.postedDate}</span>
+              <span>{job.postedDate || getRelativeDate(job.created_at)}</span>
             </div>
           </div>
         </div>
@@ -275,9 +275,9 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
             <MapPin className="h-3 w-3 mr-1" />
             {job.location}
           </span>
-          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${job.typeColor}`}>
+          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${job.typeColor || getJobTypeColor(job.job_type || job.type)}`}>
             <Clock className="h-3 w-3 mr-1" />
-            {job.type}
+            {job.type || job.job_type}
           </span>
           {job.is_remote && (
             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
@@ -289,7 +289,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
         
         <div className="flex items-center text-gray-600 text-sm">
           <DollarSign className="h-4 w-4 mr-1" />
-          {job.salary}
+          {job.salary || formatSalary(job.salary_min, job.salary_max, job.salary_currency)}
         </div>
       </div>
 
