@@ -212,16 +212,6 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     }
   }, [applications, user]);
 
-  const stats = applicationStats ? [
-    { label: 'Profile Views', value: '1,247', icon: Eye, color: 'text-blue-600' },
-    { label: 'Applications Sent', value: applicationStats.total_applications.toString(), icon: FileText, color: 'text-green-600' },
-    { label: 'Saved Jobs', value: savedJobs.length.toString(), icon: Heart, color: 'text-red-600' },
-    { label: 'Response Rate', value: `${applicationStats.response_rate}%`, icon: TrendingUp, color: 'text-purple-600' },
-  ] : [
-    { label: 'Profile Views', value: '1,247', icon: Eye, color: 'text-blue-600' },
-    { label: 'Applications Sent', value: '0', icon: FileText, color: 'text-green-600' },
-    { label: 'Saved Jobs', value: savedJobs.length.toString(), icon: Heart, color: 'text-red-600' },
-    { label: 'Response Rate', value: '0%', icon: TrendingUp, color: 'text-purple-600' },
   const stats = [
     { 
       label: 'Profile Views', 
