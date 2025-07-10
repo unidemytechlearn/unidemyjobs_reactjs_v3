@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, Briefcase, Heart, FileText, TrendingUp, Bell, Search, Filter, MapPin, Clock, DollarSign, Building, Star, Share2, Eye, Calendar, Award, Target, Users, CheckCircle } from 'lucide-react';
 import ApplyModal from './ApplyModal';
 import ProfilePage from './ProfilePage';
+import { getUserApplications, getApplicationAnalytics } from '../lib/applications';
 import { useAuthContext } from './AuthProvider';
 
 interface DashboardProps {
@@ -11,12 +12,17 @@ interface DashboardProps {
 const Dashboard = ({ onNavigate }: DashboardProps) => {
   const { isAuthenticated, loading } = useAuthContext();
   const [activeTab, setActiveTab] = useState<'overview' | 'browse-jobs' | 'saved-jobs' | 'applications' | 'profile'>('overview');
+  const [applications, setApplications] = useState<any[]>([]);
+  const [applicationStats, setApplicationStats] = useState<any>(null);
+  const [loadingApplications, setLoadingApplications] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedJobType, setSelectedJobType] = useState('All Types');
   const [savedJobs, setSavedJobs] = useState<number[]>([1, 3, 5]);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+
+  const { user } = useAuthContext();
 
   // Don't render anything while loading
   if (loading) {
@@ -30,6 +36,37 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     }
     return null;
   }
+
+  // Load user applications and analytics
+  React.useEffect(() => {
+    const loadApplicationData = async () => {
+      if (user && activeTab === 'applications') {
+        setLoadingApplications(true);
+        try {
+          const [userApps, analytics] = await Promise.all([
+            getUserApplications(user.id),
+            getApplicationAnalytics(user.id)
+          ]);
+          setApplications(userApps);
+          setApplicationStats(analytics);
+        } catch (error) {
+          console.error('Error loading application data:', error);
+        } finally {
+          setLoadingApplications(false);
+        }
+      }
+    };
+
+    loadApplicationData();
+  }, [user, activeTab]);
+
+  // Update stats when applications change
+  React.useEffect(() => {
+    if (user && applications.length > 0) {
+      getApplicationAnalytics(user.id).then(setApplicationStats);
+    }
+  }, [applications, user]);
+
   // Mock data for jobs
   const allJobs = [
     {
@@ -130,41 +167,16 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     },
   ];
 
-  const applications = [
-    {
-      id: 1,
-      jobTitle: 'Senior Frontend Developer',
-      company: 'TechCorp',
-      appliedDate: '2024-01-15',
-      status: 'Interview Scheduled',
-      statusColor: 'bg-blue-100 text-blue-700',
-      nextStep: 'Technical interview on Jan 20',
-    },
-    {
-      id: 2,
-      jobTitle: 'Product Manager',
-      company: 'InnovateLab',
-      appliedDate: '2024-01-12',
-      status: 'Under Review',
-      statusColor: 'bg-yellow-100 text-yellow-700',
-      nextStep: 'Waiting for response',
-    },
-    {
-      id: 3,
-      jobTitle: 'UX Designer',
-      company: 'DesignStudio',
-      appliedDate: '2024-01-10',
-      status: 'Rejected',
-      statusColor: 'bg-red-100 text-red-700',
-      nextStep: 'Application not selected',
-    },
-  ];
-
-  const stats = [
+  const stats = applicationStats ? [
     { label: 'Profile Views', value: '1,247', icon: Eye, color: 'text-blue-600' },
-    { label: 'Applications Sent', value: '23', icon: FileText, color: 'text-green-600' },
+    { label: 'Applications Sent', value: applicationStats.total_applications.toString(), icon: FileText, color: 'text-green-600' },
     { label: 'Saved Jobs', value: savedJobs.length.toString(), icon: Heart, color: 'text-red-600' },
-    { label: 'Interview Invites', value: '5', icon: Calendar, color: 'text-purple-600' },
+    { label: 'Response Rate', value: `${applicationStats.response_rate}%`, icon: TrendingUp, color: 'text-purple-600' },
+  ] : [
+    { label: 'Profile Views', value: '1,247', icon: Eye, color: 'text-blue-600' },
+    { label: 'Applications Sent', value: '0', icon: FileText, color: 'text-green-600' },
+    { label: 'Saved Jobs', value: savedJobs.length.toString(), icon: Heart, color: 'text-red-600' },
+    { label: 'Response Rate', value: '0%', icon: TrendingUp, color: 'text-purple-600' },
   ];
 
   const categories = ['All Categories', 'Technology', 'Design', 'Marketing', 'Management'];
@@ -192,6 +204,26 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const handleApplyClick = (job: any) => {
     setSelectedJob(job);
     setIsApplyModalOpen(true);
+  };
+
+  const getStatusColor = (status: string) => {
+    const statusColors: Record<string, string> = {
+      'submitted': 'bg-blue-100 text-blue-700',
+      'under_review': 'bg-yellow-100 text-yellow-700',
+      'interview_scheduled': 'bg-purple-100 text-purple-700',
+      'interview_completed': 'bg-indigo-100 text-indigo-700',
+      'offer_made': 'bg-green-100 text-green-700',
+      'accepted': 'bg-green-100 text-green-700',
+      'rejected': 'bg-red-100 text-red-700',
+      'withdrawn': 'bg-gray-100 text-gray-700',
+    };
+    return statusColors[status] || 'bg-gray-100 text-gray-700';
+  };
+
+  const formatStatus = (status: string) => {
+    return status.split('_').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
   };
 
   const JobCard = ({ job, showFullDetails = false }: { job: any, showFullDetails?: boolean }) => (
@@ -531,27 +563,140 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
         {/* Applications Tab */}
         {activeTab === 'applications' && (
           <div className="space-y-6">
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-6">Your Applications</h3>
-              <div className="space-y-4">
-                {applications.map((application) => (
-                  <div key={application.id} className="border border-gray-200 rounded-xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h4 className="font-semibold text-gray-900">{application.jobTitle}</h4>
-                        <p className="text-gray-600">{application.company}</p>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${application.statusColor}`}>
-                        {application.status}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm text-gray-600">
-                      <span>Applied on {new Date(application.appliedDate).toLocaleDateString()}</span>
-                      <span>{application.nextStep}</span>
-                    </div>
+            {/* Application Analytics */}
+            {applicationStats && (
+              <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6">Application Analytics</h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600 mb-2">{applicationStats.total_applications}</div>
+                    <div className="text-gray-600 text-sm">Total Applications</div>
                   </div>
-                ))}
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600 mb-2">{applicationStats.applications_this_month}</div>
+                    <div className="text-gray-600 text-sm">This Month</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-600 mb-2">{applicationStats.response_rate}%</div>
+                    <div className="text-gray-600 text-sm">Response Rate</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-orange-600 mb-2">{applicationStats.interview_rate}%</div>
+                    <div className="text-gray-600 text-sm">Interview Rate</div>
+                  </div>
+                </div>
               </div>
+            )}
+
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Your Applications</h3>
+                {applications.length > 0 && (
+                  <span className="text-sm text-gray-500">{applications.length} total applications</span>
+                )}
+              </div>
+              
+              {loadingApplications ? (
+                <div className="text-center py-8">
+                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading applications...</p>
+                </div>
+              ) : applications.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">No applications yet</h4>
+                  <p className="text-gray-600 mb-6">Start applying to jobs to track your applications here</p>
+                  <button
+                    onClick={() => setActiveTab('browse-jobs')}
+                    className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    Browse Jobs
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {applications.map((application) => (
+                    <div key={application.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-start space-x-4">
+                          {application.job?.company?.logo_url && (
+                            <img
+                              src={application.job.company.logo_url}
+                              alt={`${application.job.company.name} logo`}
+                              className="w-12 h-12 rounded-lg object-cover"
+                            />
+                          )}
+                          <div>
+                            <h4 className="font-semibold text-gray-900">{application.job?.title}</h4>
+                            <p className="text-gray-600">{application.job?.company?.name}</p>
+                            <p className="text-sm text-gray-500 mt-1">
+                              Applied on {new Date(application.applied_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(application.status)}`}>
+                          {formatStatus(application.status)}
+                        </span>
+                      </div>
+                      
+                      {application.job && (
+                        <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 mr-1" />
+                            {application.job.location}
+                          </div>
+                          <div className="flex items-center">
+                            <Clock className="h-4 w-4 mr-1" />
+                            {application.job.job_type}
+                          </div>
+                          {application.expected_salary && (
+                            <div className="flex items-center">
+                              <DollarSign className="h-4 w-4 mr-1" />
+                              {application.expected_salary}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Application Timeline */}
+                      {application.status_history && application.status_history.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                          <h5 className="text-sm font-medium text-gray-900 mb-2">Application Timeline</h5>
+                          <div className="space-y-2">
+                            {application.status_history.slice(0, 3).map((history: any, index: number) => (
+                              <div key={history.id} className="flex items-center text-sm text-gray-600">
+                                <div className="w-2 h-2 bg-blue-600 rounded-full mr-3"></div>
+                                <span>{formatStatus(history.new_status)}</span>
+                                <span className="mx-2">•</span>
+                                <span>{new Date(history.created_at).toLocaleDateString()}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Upcoming Interviews */}
+                      {application.interviews && application.interviews.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                          <h5 className="text-sm font-medium text-gray-900 mb-2">Upcoming Interviews</h5>
+                          {application.interviews.map((interview: any) => (
+                            <div key={interview.id} className="flex items-center justify-between bg-blue-50 p-3 rounded-lg">
+                              <div>
+                                <p className="font-medium text-blue-900">{interview.interview_type} Interview</p>
+                                <p className="text-sm text-blue-700">
+                                  {new Date(interview.scheduled_date).toLocaleDateString()} at{' '}
+                                  {new Date(interview.scheduled_date).toLocaleTimeString()}
+                                </p>
+                              </div>
+                              <Calendar className="h-5 w-5 text-blue-600" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
