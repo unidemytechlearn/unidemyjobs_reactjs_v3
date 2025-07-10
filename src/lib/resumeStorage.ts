@@ -148,6 +148,17 @@ export async function uploadResume(file: File, userId: string): Promise<ResumeUp
 
 export async function deleteExistingResume(userId: string): Promise<void> {
   try {
+    // Get current resume info from profile
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('resume_url, resume_file_name')
+      .eq('id', userId)
+      .single();
+
+    if (profileError || !profile?.resume_url) {
+      return; // No existing resume to delete
+    }
+
     // List files in user's folder
     const { data: files, error: listError } = await supabase.storage
       .from('resumes')
@@ -155,7 +166,7 @@ export async function deleteExistingResume(userId: string): Promise<void> {
 
     if (listError) {
       console.error('Error listing files:', listError);
-      // Continue with profile update even if file listing fails
+      return;
     }
 
     // Delete all files in user's folder
@@ -167,12 +178,11 @@ export async function deleteExistingResume(userId: string): Promise<void> {
 
       if (deleteError) {
         console.error('Error deleting files:', deleteError);
-        // Continue with profile update even if file deletion fails
       }
     }
 
     // Clear resume info from profile
-    const { error: updateError } = await supabase
+    await supabase
       .from('profiles')
       .update({
         resume_url: null,
@@ -182,13 +192,8 @@ export async function deleteExistingResume(userId: string): Promise<void> {
       })
       .eq('id', userId);
 
-    if (updateError) {
-      throw new Error(`Failed to update profile: ${updateError.message}`);
-    }
-
   } catch (error) {
     console.error('Error deleting existing resume:', error);
-    throw error;
   }
 }
 
