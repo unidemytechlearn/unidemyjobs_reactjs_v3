@@ -1,29 +1,30 @@
 import { supabase } from './supabase';
 
 export interface ApplicationData {
-  jobId: string;
-  userId: string;
-  firstName: string;
-  lastName: string;
+  job_id: string;
+  user_id: string;
+  first_name: string;
+  last_name: string;
   email: string;
   phone?: string;
-  coverLetter?: string;
-  resumeUrl?: string;
-  portfolioUrl?: string;
-  linkedinUrl?: string;
-  githubUrl?: string;
-  websiteUrl?: string;
-  expectedSalary?: string;
-  currentSalary?: string;
-  availabilityDate?: string;
-  yearsExperience?: string;
-  noticePeriod?: string;
+  cover_letter?: string;
+  resume_url?: string;
+  portfolio_url?: string;
+  linkedin_url?: string;
+  github_url?: string;
+  website_url?: string;
+  expected_salary?: string;
+  current_salary?: string;
+  availability_date?: string;
+  years_experience?: string;
+  notice_period?: string;
   skills?: string[];
-  referralSource?: string;
-  isRemotePreferred?: boolean;
-  willingToRelocate?: boolean;
-  additionalInfo?: any;
-  screeningAnswers?: any;
+  referral_source?: string;
+  is_remote_preferred?: boolean;
+  willing_to_relocate?: boolean;
+  additional_info?: any;
+  screening_answers?: any;
+  application_source?: string;
 }
 
 export interface ApplicationFile {
@@ -34,34 +35,35 @@ export interface ApplicationFile {
   attachmentType: 'resume' | 'cover_letter' | 'portfolio' | 'certificate' | 'other';
 }
 
-export async function submitApplication(applicationData: ApplicationData): Promise<{ success: boolean; error?: string; applicationId?: string }> {
+export async function submitApplication(applicationData: ApplicationData) {
   try {
     const { data, error } = await supabase
       .from('applications')
       .insert({
-        job_id: applicationData.jobId,
-        user_id: applicationData.userId,
-        first_name: applicationData.firstName,
-        last_name: applicationData.lastName,
+        job_id: applicationData.job_id,
+        user_id: applicationData.user_id,
+        first_name: applicationData.first_name,
+        last_name: applicationData.last_name,
         email: applicationData.email,
         phone: applicationData.phone,
-        cover_letter: applicationData.coverLetter,
-        resume_url: applicationData.resumeUrl,
-        portfolio_url: applicationData.portfolioUrl,
-        linkedin_url: applicationData.linkedinUrl,
-        github_url: applicationData.githubUrl,
-        website_url: applicationData.websiteUrl,
-        expected_salary: applicationData.expectedSalary,
-        current_salary: applicationData.currentSalary,
-        availability_date: applicationData.availabilityDate,
-        years_experience: applicationData.yearsExperience,
-        notice_period: applicationData.noticePeriod,
+        cover_letter: applicationData.cover_letter,
+        resume_url: applicationData.resume_url,
+        portfolio_url: applicationData.portfolio_url,
+        linkedin_url: applicationData.linkedin_url,
+        github_url: applicationData.github_url,
+        website_url: applicationData.website_url,
+        expected_salary: applicationData.expected_salary,
+        current_salary: applicationData.current_salary,
+        availability_date: applicationData.availability_date,
+        years_experience: applicationData.years_experience,
+        notice_period: applicationData.notice_period,
         skills: applicationData.skills,
-        referral_source: applicationData.referralSource,
-        is_remote_preferred: applicationData.isRemotePreferred,
-        willing_to_relocate: applicationData.willingToRelocate,
-        additional_info: applicationData.additionalInfo,
-        screening_answers: applicationData.screeningAnswers,
+        referral_source: applicationData.referral_source,
+        is_remote_preferred: applicationData.is_remote_preferred,
+        willing_to_relocate: applicationData.willing_to_relocate,
+        additional_info: applicationData.additional_info,
+        screening_answers: applicationData.screening_answers,
+        application_source: applicationData.application_source || 'website',
         status: 'submitted'
       })
       .select()
@@ -69,38 +71,63 @@ export async function submitApplication(applicationData: ApplicationData): Promi
 
     if (error) {
       console.error('Error submitting application:', error);
-      return { success: false, error: error.message };
+      throw new Error(error.message);
     }
 
-    return { success: true, applicationId: data.id };
+    return data;
   } catch (error) {
     console.error('Error submitting application:', error);
-    return { success: false, error: 'An unexpected error occurred' };
+    throw error;
   }
 }
 
-export async function uploadApplicationFile(applicationId: string, file: ApplicationFile): Promise<{ success: boolean; error?: string }> {
+export async function uploadApplicationFile(
+  file: File,
+  userId: string,
+  applicationId: string,
+  attachmentType: 'resume' | 'cover_letter' | 'portfolio' | 'certificate' | 'other'
+) {
   try {
-    const { error } = await supabase
+    // Upload file to storage
+    const fileExt = file.name.split('.').pop();
+    const filePath = `${userId}/${applicationId}/${Date.now()}.${fileExt}`;
+
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('application-attachments')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('application-attachments')
+      .getPublicUrl(uploadData.path);
+
+    // Save file record to database
+    const { error: dbError } = await supabase
       .from('application_attachments')
       .insert({
         application_id: applicationId,
-        file_name: file.fileName,
-        file_type: file.fileType,
-        file_size: file.fileSize,
-        file_url: file.fileUrl,
-        attachment_type: file.attachmentType
+        file_name: file.name,
+        file_type: file.type,
+        file_size: file.size,
+        file_url: publicUrl,
+        attachment_type: attachmentType
       });
 
-    if (error) {
-      console.error('Error uploading application file:', error);
-      return { success: false, error: error.message };
+    if (dbError) {
+      throw dbError;
     }
 
-    return { success: true };
+    return publicUrl;
   } catch (error) {
     console.error('Error uploading application file:', error);
-    return { success: false, error: 'An unexpected error occurred' };
+    throw error;
   }
 }
 
@@ -131,13 +158,13 @@ export async function getUserApplications(userId: string): Promise<any[]> {
       .from('applications')
       .select(`
         *,
-        jobs (
+        job:jobs (
           id,
           title,
           company_id,
           location,
           job_type,
-          companies (
+          company:companies (
             name,
             logo_url
           )
