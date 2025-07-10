@@ -25,6 +25,13 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [loadingSavedJobs, setLoadingSavedJobs] = useState(false);
+  const [realStats, setRealStats] = useState({
+    applicationsSent: 0,
+    savedJobsCount: 0,
+    profileViews: 0,
+    responseRate: 0
+  });
+  const [loadingStats, setLoadingStats] = useState(true);
 
   const { user } = useAuthContext();
 
@@ -63,6 +70,45 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
 
     loadApplicationData();
   }, [user, activeTab]);
+
+  // Load real statistics
+  React.useEffect(() => {
+    const loadRealStats = async () => {
+      if (user) {
+        setLoadingStats(true);
+        try {
+          const [applicationsModule, savedJobsModule, analyticsModule] = await Promise.all([
+            import('../lib/applications'),
+            import('../lib/supabase'),
+            import('../lib/applications')
+          ]);
+          
+          const [userApplications, userSavedJobs, analytics] = await Promise.all([
+            applicationsModule.getUserApplications(user.id),
+            savedJobsModule.getUserSavedJobs(user.id),
+            analyticsModule.getApplicationAnalytics(user.id)
+          ]);
+          
+          setRealStats({
+            applicationsSent: userApplications.length,
+            savedJobsCount: userSavedJobs.length,
+            profileViews: profile?.profile_views || 0,
+            responseRate: analytics.response_rate
+          });
+          
+          // Also update saved jobs state for the UI
+          setSavedJobs(userSavedJobs.map(savedJob => savedJob.job_id));
+          
+        } catch (error) {
+          console.error('Error loading real stats:', error);
+        } finally {
+          setLoadingStats(false);
+        }
+      }
+    };
+
+    loadRealStats();
+  }, [user, profile]);
 
   // Load saved jobs
   React.useEffect(() => {
@@ -166,16 +212,31 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     }
   }, [applications, user]);
 
-  const stats = applicationStats ? [
-    { label: 'Profile Views', value: '1,247', icon: Eye, color: 'text-blue-600' },
-    { label: 'Applications Sent', value: applicationStats.total_applications.toString(), icon: FileText, color: 'text-green-600' },
-    { label: 'Saved Jobs', value: savedJobs.length.toString(), icon: Heart, color: 'text-red-600' },
-    { label: 'Response Rate', value: `${applicationStats.response_rate}%`, icon: TrendingUp, color: 'text-purple-600' },
-  ] : [
-    { label: 'Profile Views', value: '1,247', icon: Eye, color: 'text-blue-600' },
-    { label: 'Applications Sent', value: '0', icon: FileText, color: 'text-green-600' },
-    { label: 'Saved Jobs', value: savedJobs.length.toString(), icon: Heart, color: 'text-red-600' },
-    { label: 'Response Rate', value: '0%', icon: TrendingUp, color: 'text-purple-600' },
+  const stats = [
+    { 
+      label: 'Profile Views', 
+      value: loadingStats ? '...' : realStats.profileViews.toString(), 
+      icon: Eye, 
+      color: 'text-blue-600' 
+    },
+    { 
+      label: 'Applications Sent', 
+      value: loadingStats ? '...' : realStats.applicationsSent.toString(), 
+      icon: FileText, 
+      color: 'text-green-600' 
+    },
+    { 
+      label: 'Saved Jobs', 
+      value: loadingStats ? '...' : realStats.savedJobsCount.toString(), 
+      icon: Heart, 
+      color: 'text-red-600' 
+    },
+    { 
+      label: 'Response Rate', 
+      value: loadingStats ? '...' : `${realStats.responseRate}%`, 
+      icon: TrendingUp, 
+      color: 'text-purple-600' 
+    },
   ];
 
   const categories = ['All Categories', 'Technology', 'Design', 'Marketing', 'Management'];
@@ -416,7 +477,12 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
               {stats.map((stat, index) => {
                 const Icon = stat.icon;
                 return (
-                  <div key={stat.label} className="bg-white border border-gray-200 rounded-xl p-6">
+                  <div key={stat.label} className="bg-white border border-gray-200 rounded-xl p-6 relative">
+                    {loadingStats && (
+                      <div className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-xl">
+                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-gray-600 text-sm">{stat.label}</p>
@@ -591,7 +657,12 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
               <h3 className="text-lg font-semibold text-gray-900 mb-6">
                 Your Saved Jobs ({savedJobs.length})
               </h3>
-              {savedJobs.length === 0 ? (
+              {loadingSavedJobs ? (
+                <div className="text-center py-8">
+                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading saved jobs...</p>
+                </div>
+              ) : savedJobs.length === 0 ? (
                 <div className="text-center py-12">
                   <Heart className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                   <h4 className="text-lg font-medium text-gray-900 mb-2">No saved jobs yet</h4>
