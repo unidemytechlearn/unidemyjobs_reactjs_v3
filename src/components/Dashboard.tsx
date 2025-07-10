@@ -248,9 +248,13 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
             <h3 className="font-semibold text-gray-900 text-lg group-hover:text-blue-600 transition-colors">
               {job.title}
             </h3>
-            <p className="text-gray-600 font-medium">{typeof job.company === 'object' ? job.company?.name : job.company}</p>
+            <p className="text-gray-600 font-medium">
+              {typeof job.company === 'object' ? job.company?.name : job.company}
+            </p>
             <div className="flex items-center space-x-2 mt-1 text-sm text-gray-500">
-              <span>{job.employees || getEmployeeCount(typeof job.company === 'object' ? job.company?.size_range : undefined)} employees</span>
+              <span>
+                {job.employees || getEmployeeCount(typeof job.company === 'object' ? job.company?.size_range : null)} employees
+              </span>
               <span>•</span>
               <span>{job.postedDate || getRelativeDate(job.created_at)}</span>
             </div>
