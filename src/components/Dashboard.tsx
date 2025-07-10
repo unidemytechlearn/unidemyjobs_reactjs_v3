@@ -815,8 +815,29 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {savedJobs.map((savedJob) => (
-                    <JobCard key={savedJob.id} job={savedJob.job} showFullDetails />
+                  {savedJobs.map((savedJob) => {
+                    // Ensure we have the job data and format it properly
+                    const jobData = savedJob.job || savedJob;
+                    const formattedJob = {
+                      ...jobData,
+                      // Ensure all required properties are present
+                      company: jobData.company?.name || jobData.company || 'Unknown Company',
+                      type: jobData.job_type || jobData.type,
+                      salary: jobData.salary || formatSalary(jobData.salary_min, jobData.salary_max, jobData.salary_currency),
+                      logo: jobData.company?.logo_url || jobData.logo || 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
+                      rating: jobData.company?.rating || jobData.rating || 4.5,
+                      employees: getEmployeeCount(jobData.company?.size_range || jobData.size_range),
+                      description: jobData.description,
+                      requirements: jobData.requirements || ['Experience required', 'Team player', 'Good communication skills'],
+                      benefits: jobData.benefits || ['Health Insurance', 'Flexible Hours', 'Remote Work'],
+                      category: getCategoryFromJobType(jobData.job_type || jobData.type),
+                      postedDate: getRelativeDate(jobData.created_at),
+                      typeColor: getJobTypeColor(jobData.job_type || jobData.type),
+                    };
+                    
+                    return (
+                      <JobCard key={savedJob.id} job={formattedJob} showFullDetails />
+                    );
                   ))}
                 </div>
               )}
