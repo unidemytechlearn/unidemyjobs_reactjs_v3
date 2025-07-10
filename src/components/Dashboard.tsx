@@ -5,7 +5,6 @@ import ProfilePage from './ProfilePage';
 import { getUserApplications, getApplicationAnalytics } from '../lib/applications';
 import { useAuthContext } from './AuthProvider';
 import { getJobs } from '../lib/supabase';
-import { getJobs, getUserSavedJobs, saveJob, unsaveJob } from '../lib/supabase';
 
 interface DashboardProps {
   onNavigate?: (page: string) => void;
@@ -21,8 +20,6 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedJobType, setSelectedJobType] = useState('All Types');
   const [savedJobs, setSavedJobs] = useState<string[]>(['a1b2c3d4-e5f6-7890-1234-567890abcdef', 'c3d4e5f6-g7h8-9012-3456-789012cdefgh', 'e5f6g7h8-i9j0-1234-5678-901234efghij']);
-  const [savedJobs, setSavedJobs] = useState<string[]>([]);
-  const [loadingSavedJobs, setLoadingSavedJobs] = useState(false);
   const [allJobs, setAllJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [selectedJob, setSelectedJob] = useState<any>(null);
@@ -42,26 +39,6 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     }
     return null;
   }
-
-  // Load user saved jobs
-  React.useEffect(() => {
-    const loadSavedJobs = async () => {
-      if (user) {
-        setLoadingSavedJobs(true);
-        try {
-          const userSavedJobs = await getUserSavedJobs(user.id);
-          const savedJobIds = userSavedJobs.map(savedJob => savedJob.job_id);
-          setSavedJobs(savedJobIds);
-        } catch (error) {
-          console.error('Error loading saved jobs:', error);
-        } finally {
-          setLoadingSavedJobs(false);
-        }
-      }
-    };
-
-    loadSavedJobs();
-  }, [user]);
 
   // Load user applications and analytics
   React.useEffect(() => {
@@ -154,7 +131,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
+    
     if (diffDays === 1) return '1 day ago';
     if (diffDays < 7) return `${diffDays} days ago`;
     if (diffDays < 14) return '1 week ago';
@@ -188,7 +165,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                          job.company.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'All Categories' || job.category === selectedCategory;
     const matchesType = selectedJobType === 'All Types' || job.type === selectedJobType;
-
+    
     return matchesSearch && matchesCategory && matchesType;
   });
 
@@ -200,20 +177,6 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
         ? prev.filter(id => id !== jobId)
         : [...prev, jobId]
     );
-  const toggleSaveJob = async (jobId: string) => {
-    if (!user) return;
-    
-    try {
-      if (savedJobs.includes(jobId)) {
-        await unsaveJob(user.id, jobId);
-        setSavedJobs(prev => prev.filter(id => id !== jobId));
-      } else {
-        await saveJob(user.id, jobId);
-        setSavedJobs(prev => [...prev, jobId]);
-      }
-    } catch (error) {
-      console.error('Error toggling saved job:', error);
-    }
   };
 
   const handleApplyClick = (job: any) => {
@@ -313,7 +276,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
               ))}
             </ul>
           </div>
-
+          
           <div>
             <h4 className="font-medium text-gray-900 mb-2">Benefits</h4>
             <div className="flex flex-wrap gap-2">
@@ -656,7 +619,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                   <span className="text-sm text-gray-500">{applications.length} total applications</span>
                 )}
               </div>
-
+              
               {loadingApplications ? (
                 <div className="text-center py-8">
                   <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -699,7 +662,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                           {formatStatus(application.status)}
                         </span>
                       </div>
-
+                      
                       {application.job && (
                         <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
                           <div className="flex items-center">
@@ -777,3 +740,5 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     </div>
   );
 };
+
+export default Dashboard;
