@@ -28,11 +28,8 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
-  const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [isApplicationDetailsOpen, setIsApplicationDetailsOpen] = useState(false);
   const [isWithdrawConfirmOpen, setIsWithdrawConfirmOpen] = useState(false);
-  const [withdrawingApplicationId, setWithdrawingApplicationId] = useState<string | null>(null);
-  const [isApplicationDetailsOpen, setIsApplicationDetailsOpen] = useState(false);
   const [withdrawingApplicationId, setWithdrawingApplicationId] = useState<string | null>(null);
 
   // Don't render anything while loading
