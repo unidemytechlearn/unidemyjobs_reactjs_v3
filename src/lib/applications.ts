@@ -1,456 +1,432 @@
-import { supabase } from './supabase';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Search, MapPin, Filter, SlidersHorizontal, Grid, List, ChevronDown, Bookmark, Clock, DollarSign, Building } from 'lucide-react';
+import ApplyModal from './ApplyModal';
+import { getJobs } from '../lib/supabase';
 
-// Application types
-export interface ApplicationData {
-  job_id: string;
-  user_id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  years_experience: string;
-  expected_salary?: string;
-  current_salary?: string;
-  availability_date?: string;
-  notice_period?: string;
-  cover_letter?: string;
-  portfolio_url?: string;
-  linkedin_url?: string;
-  github_url?: string;
-  website_url?: string;
-  skills?: string[];
-  referral_source?: string;
-  is_remote_preferred?: boolean;
-  willing_to_relocate?: boolean;
-  screening_answers?: Record<string, any>;
-  resume_url?: string;
-  additional_info?: Record<string, any>;
-}
+const jobTypes = [
+  { id: 'full-time', label: 'Full Time', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  { id: 'part-time', label: 'Part Time', color: 'bg-green-100 text-green-700 border-green-200' },
+  { id: 'contract', label: 'Contract', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+  { id: 'internship', label: 'Internship', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  { id: 'freelancing', label: 'Freelancing', color: 'bg-pink-100 text-pink-700 border-pink-200' },
+];
 
-export interface ApplicationAttachment {
-  id: string;
-  application_id: string;
-  file_name: string;
-  file_type: string;
-  file_size: number;
-  file_url: string;
-  attachment_type: 'resume' | 'cover_letter' | 'portfolio' | 'certificate' | 'other';
-  uploaded_at: string;
-}
+const categories = ['All Categories', 'Technology', 'Design', 'Marketing', 'Management', 'Sales', 'Finance'];
+const experienceLevels = ['All Levels', 'Entry-level', 'Mid-level', 'Senior', 'Executive'];
+const locations = ['All Locations', 'Remote', 'San Francisco, CA', 'New York, NY', 'Austin, TX', 'Seattle, WA', 'Los Angeles, CA', 'Boston, MA'];
 
-export interface ApplicationStatusHistory {
-  id: string;
-  application_id: string;
-  old_status: string | null;
-  new_status: string;
-  changed_by: string | null;
-  change_reason: string | null;
-  notes: string | null;
-  created_at: string;
-}
+const JobsPage = () => {
+  const [allJobs, setAllJobs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedJobTypes, setSelectedJobTypes] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('All Categories');
+  const [selectedExperience, setSelectedExperience] = useState('All Levels');
+  const [selectedLocation, setSelectedLocation] = useState('All Locations');
+  const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [sortBy, setSortBy] = useState('newest');
+  const [selectedJob, setSelectedJob] = useState<typeof allJobs[0] | null>(null);
+  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
 
-export interface InterviewSchedule {
-  id: string;
-  application_id: string;
-  interview_type: 'phone' | 'video' | 'in_person' | 'technical' | 'panel' | 'final';
-  scheduled_date: string;
-  duration_minutes: number;
-  location?: string;
-  meeting_link?: string;
-  interviewer_ids: string[];
-  notes?: string;
-  status: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled';
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-}
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        const fetchedJobs = await getJobs();
+        const jobsWithMockData = fetchedJobs.map(job => ({
+          ...job,
+          company: job.company?.name || 'Unknown Company',
+          type: job.job_type,
+          salary: formatSalary(job.salary_min, job.salary_max, job.salary_currency),
+          logo: job.company?.logo_url || 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
+          featured: job.is_featured,
+          typeColor: getJobTypeColor(job.job_type),
+          category: getCategoryFromJobType(job.job_type),
+          experience: job.experience_level || 'Mid-level',
+          remote: job.is_remote,
+          postedDate: getRelativeDate(job.created_at),
+          description: job.description,
+        }));
+        setAllJobs(jobsWithMockData);
+      } catch (error) {
+        console.error('Error fetching jobs:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-// Application submission
-export const submitApplication = async (applicationData: ApplicationData): Promise<any> => {
-  try {
-    const { data, error } = await supabase
-      .from('applications')
-      .insert([applicationData])
-      .select(`
-        *,
-        job:jobs(
-          *,
-          company:companies(*)
-        )
-      `)
-      .single();
+    fetchJobs();
+  }, []);
 
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    console.error('Error submitting application:', error);
-    throw error;
-  }
-};
-
-// File upload for resumes and attachments
-export const uploadApplicationFile = async (
-  file: File,
-  userId: string,
-  applicationId: string,
-  fileType: 'resume' | 'cover_letter' | 'portfolio' | 'certificate' | 'other'
-): Promise<string> => {
-  try {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}.${fileExt}`;
-    const filePath = `${userId}/${applicationId}/${fileName}`;
-
-    // Upload to appropriate bucket based on file type
-    const bucket = fileType === 'resume' ? 'resumes' : 'application-attachments';
-    
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from(bucket)
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: true,
-      });
-
-    if (uploadError) throw uploadError;
-
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(uploadData.path);
-
-    // Save attachment record
-    const { error: attachmentError } = await supabase
-      .from('application_attachments')
-      .insert({
-        application_id: applicationId,
-        file_name: file.name,
-        file_type: file.type,
-        file_size: file.size,
-        file_url: publicUrl,
-        attachment_type: fileType,
-      });
-
-    if (attachmentError) throw attachmentError;
-
-    return publicUrl;
-  } catch (error) {
-    console.error('Error uploading file:', error);
-    throw error;
-  }
-};
-
-// Get user applications with full details
-export const getUserApplications = async (userId: string): Promise<any[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('applications')
-      .select(`
-        *,
-        job:jobs(
-          *,
-          company:companies(*)
-        ),
-        attachments:application_attachments(*),
-        status_history:application_status_history(
-          *,
-          changed_by_profile:profiles!application_status_history_changed_by_fkey(first_name, last_name)
-        ),
-        interviews:interview_schedules(*)
-      `)
-      .eq('user_id', userId)
-      .order('applied_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
-    console.error('Error fetching user applications:', error);
-    throw error;
-  }
-};
-
-// Get single application with full details
-export const getApplication = async (applicationId: string): Promise<any | null> => {
-  try {
-    const { data, error } = await supabase
-      .from('applications')
-      .select(`
-        *,
-        job:jobs(
-          *,
-          company:companies(*)
-        ),
-        attachments:application_attachments(*),
-        status_history:application_status_history(
-          *,
-          changed_by_profile:profiles!application_status_history_changed_by_fkey(first_name, last_name)
-        ),
-        interviews:interview_schedules(*),
-        notes:application_notes(*)
-      `)
-      .eq('id', applicationId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
-  } catch (error) {
-    console.error('Error fetching application:', error);
-    throw error;
-  }
-};
-
-// Update application status
-export const updateApplicationStatus = async (
-  applicationId: string,
-  newStatus: string,
-  reason?: string,
-  notes?: string
-): Promise<void> => {
-  try {
-    const { error } = await supabase
-      .from('applications')
-      .update({ status: newStatus })
-      .eq('id', applicationId);
-
-    if (error) throw error;
-
-    // Add status history entry with reason and notes
-    if (reason || notes) {
-      await supabase
-        .from('application_status_history')
-        .insert({
-          application_id: applicationId,
-          new_status: newStatus,
-          change_reason: reason,
-          notes: notes,
-          changed_by: (await supabase.auth.getUser()).data.user?.id,
-        });
+  const formatSalary = (min?: number, max?: number, currency: string = 'USD') => {
+    if (!min && !max) return 'Salary not specified';
+    if (min && max) {
+      return `$${(min / 1000).toFixed(0)}k - $${(max / 1000).toFixed(0)}k`;
     }
-  } catch (error) {
-    console.error('Error updating application status:', error);
-    throw error;
-  }
-};
+    if (min) return `$${(min / 1000).toFixed(0)}k+`;
+    if (max) return `Up to $${(max / 1000).toFixed(0)}k`;
+    return 'Salary not specified';
+  };
 
-// Withdraw application
-export const withdrawApplication = async (applicationId: string, reason?: string): Promise<void> => {
-  try {
-    await updateApplicationStatus(applicationId, 'withdrawn', reason);
-  } catch (error) {
-    console.error('Error withdrawing application:', error);
-    throw error;
-  }
-};
-
-// Check if user has already applied to a job
-export const hasUserAppliedToJob = async (userId: string, jobId: string): Promise<boolean> => {
-  try {
-    const { data, error } = await supabase
-      .from('applications')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('job_id', jobId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error;
-    return !!data;
-  } catch (error) {
-    console.error('Error checking application status:', error);
-    return false;
-  }
-};
-
-// Get applications for a specific job (for employers)
-export const getJobApplications = async (jobId: string): Promise<any[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('applications')
-      .select(`
-        *,
-        applicant:profiles!applications_user_id_fkey(*),
-        attachments:application_attachments(*),
-        status_history:application_status_history(*),
-        interviews:interview_schedules(*)
-      `)
-      .eq('job_id', jobId)
-      .order('applied_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
-    console.error('Error fetching job applications:', error);
-    throw error;
-  }
-};
-
-// Get application statistics for a job
-export const getJobApplicationStats = async (jobId: string): Promise<any> => {
-  try {
-    const { data, error } = await supabase
-      .from('applications')
-      .select('status')
-      .eq('job_id', jobId);
-
-    if (error) throw error;
-
-    const stats = {
-      total: data.length,
-      submitted: 0,
-      under_review: 0,
-      interview_scheduled: 0,
-      interview_completed: 0,
-      offer_made: 0,
-      accepted: 0,
-      rejected: 0,
-      withdrawn: 0,
+  const getJobTypeColor = (jobType: string) => {
+    const colorMap: Record<string, string> = {
+      'Full Time': 'bg-blue-100 text-blue-700',
+      'Part Time': 'bg-green-100 text-green-700',
+      'Contract': 'bg-purple-100 text-purple-700',
+      'Internship': 'bg-orange-100 text-orange-700',
+      'Freelancing': 'bg-pink-100 text-pink-700',
     };
+    return colorMap[jobType] || 'bg-gray-100 text-gray-700';
+  };
 
-    data.forEach((app) => {
-      if (stats.hasOwnProperty(app.status.replace('-', '_'))) {
-        stats[app.status.replace('-', '_') as keyof typeof stats]++;
-      }
-    });
-
-    return stats;
-  } catch (error) {
-    console.error('Error fetching application stats:', error);
-    throw error;
-  }
-};
-
-// Schedule interview
-export const scheduleInterview = async (interviewData: Partial<InterviewSchedule>): Promise<any> => {
-  try {
-    const { data, error } = await supabase
-      .from('interview_schedules')
-      .insert([{
-        ...interviewData,
-        created_by: (await supabase.auth.getUser()).data.user?.id,
-      }])
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Update application status to interview_scheduled if not already
-    await supabase
-      .from('applications')
-      .update({ status: 'interview_scheduled' })
-      .eq('id', interviewData.application_id);
-
-    return data;
-  } catch (error) {
-    console.error('Error scheduling interview:', error);
-    throw error;
-  }
-};
-
-// Get upcoming interviews for a user
-export const getUserInterviews = async (userId: string): Promise<any[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('interview_schedules')
-      .select(`
-        *,
-        application:applications(
-          *,
-          job:jobs(
-            *,
-            company:companies(*)
-          )
-        )
-      `)
-      .eq('application.user_id', userId)
-      .gte('scheduled_date', new Date().toISOString())
-      .order('scheduled_date', { ascending: true });
-
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
-    console.error('Error fetching user interviews:', error);
-    throw error;
-  }
-};
-
-// Add application note
-export const addApplicationNote = async (
-  applicationId: string,
-  note: string,
-  noteType: 'general' | 'interview' | 'screening' | 'feedback' | 'internal',
-  isVisibleToCandidate: boolean = false
-): Promise<void> => {
-  try {
-    const { error } = await supabase
-      .from('application_notes')
-      .insert({
-        application_id: applicationId,
-        note,
-        note_type: noteType,
-        is_visible_to_candidate: isVisibleToCandidate,
-        created_by: (await supabase.auth.getUser()).data.user?.id,
-      });
-
-    if (error) throw error;
-  } catch (error) {
-    console.error('Error adding application note:', error);
-    throw error;
-  }
-};
-
-// Get application analytics for dashboard
-export const getApplicationAnalytics = async (userId: string): Promise<any> => {
-  try {
-    const { data, error } = await supabase
-      .from('applications')
-      .select('status, applied_at')
-      .eq('user_id', userId);
-
-    if (error) throw error;
-
-    const analytics = {
-      total_applications: data.length,
-      applications_this_month: 0,
-      response_rate: 0,
-      interview_rate: 0,
-      status_breakdown: {
-        submitted: 0,
-        under_review: 0,
-        interview_scheduled: 0,
-        interview_completed: 0,
-        offer_made: 0,
-        accepted: 0,
-        rejected: 0,
-        withdrawn: 0,
-      },
-      recent_activity: data.slice(0, 5),
+  const getCategoryFromJobType = (jobType: string) => {
+    const categoryMap: Record<string, string> = {
+      'Full Time': 'Technology',
+      'Part Time': 'Technology',
+      'Contract': 'Design',
+      'Internship': 'Technology',
+      'Freelancing': 'Marketing',
     };
+    return categoryMap[jobType] || 'Technology';
+  };
 
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
+  const getRelativeDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return '1 day ago';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 14) return '1 week ago';
+    return `${Math.floor(diffDays / 7)} weeks ago`;
+  };
 
-    data.forEach((app) => {
-      const appliedDate = new Date(app.applied_at);
+  const toggleJobType = (typeId: string) => {
+    setSelectedJobTypes(prev => 
+      prev.includes(typeId) 
+        ? prev.filter(id => id !== typeId)
+        : [...prev, typeId]
+    );
+  };
+
+  const handleApplyClick = (job: typeof allJobs[0]) => {
+    setSelectedJob(job);
+    setIsApplyModalOpen(true);
+  };
+
+  const filteredJobs = useMemo(() => {
+    let filtered = allJobs.filter(job => {
+      const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           job.company.toLowerCase().includes(searchTerm.toLowerCase());
       
-      // Count applications this month
-      if (appliedDate.getMonth() === currentMonth && appliedDate.getFullYear() === currentYear) {
-        analytics.applications_this_month++;
-      }
+      const matchesJobType = selectedJobTypes.length === 0 || 
+                            selectedJobTypes.some(type => 
+                              job.type.toLowerCase().replace(' ', '-') === type
+                            );
+      
+      const matchesCategory = selectedCategory === 'All Categories' || job.category === selectedCategory;
+      const matchesExperience = selectedExperience === 'All Levels' || job.experience === selectedExperience;
+      const matchesLocation = selectedLocation === 'All Locations' || 
+                             job.location === selectedLocation || 
+                             (selectedLocation === 'Remote' && job.remote);
 
-      // Count status breakdown
-      const status = app.status.replace('-', '_');
-      if (analytics.status_breakdown.hasOwnProperty(status)) {
-        analytics.status_breakdown[status as keyof typeof analytics.status_breakdown]++;
-      }
+      return matchesSearch && matchesJobType && matchesCategory && matchesExperience && matchesLocation;
     });
 
-    // Calculate rates
-    const responded = data.filter(app => !['submitted'].includes(app.status)).length;
-    const interviewed = data.filter(app => ['interview_scheduled', 'interview_completed', 'offer_made', 'accepted'].includes(app.status)).length;
+    // Sort jobs
+    if (sortBy === 'newest') {
+      filtered.sort((a, b) => new Date(a.postedDate).getTime() - new Date(b.postedDate).getTime());
+    } else if (sortBy === 'salary') {
+      filtered.sort((a, b) => {
+        const getSalaryValue = (salary: string) => {
+          const match = salary.match(/\$(\d+)k?/);
+          return match ? parseInt(match[1]) * (salary.includes('k') ? 1000 : 1) : 0;
+        };
+        return getSalaryValue(b.salary) - getSalaryValue(a.salary);
+      });
+    }
 
-    analytics.response_rate = data.length > 0 ? Math.round((responded / data.length) * 100) : 0;
-    analytics.interview_rate = data.length > 0 ? Math.round((interviewed / data.length) * 100) : 0;
+    return filtered;
+  }, [searchTerm, selectedJobTypes, selectedCategory, selectedExperience, selectedLocation, sortBy]);
 
-    return analytics;
-  } catch (error) {
-    console.error('Error fetching application analytics:', error);
-    throw error;
-  }
+  const JobCard = ({ job, isListView = false }: { job: typeof allJobs[0], isListView?: boolean }) => (
+    <div className={`group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden ${isListView ? 'flex items-center space-x-6' : ''}`}>
+      {job.featured && (
+        <div className="absolute top-0 right-0 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-semibold px-3 py-1 rounded-bl-lg">
+          Featured
+        </div>
+      )}
+
+      <div className={`${isListView ? 'flex-shrink-0' : ''}`}>
+        <img
+          src={job.logo}
+          alt={`${job.company} logo`}
+          className="w-12 h-12 rounded-lg object-cover"
+        />
+      </div>
+
+      <div className={`${isListView ? 'flex-1' : 'mt-4'}`}>
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors text-lg">
+              {job.title}
+            </h3>
+            <p className="text-gray-600">{job.company}</p>
+          </div>
+          {!isListView && (
+            <button className="text-gray-400 hover:text-red-500 transition-colors">
+              <Bookmark className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+
+        <div className={`space-y-3 mb-6 ${isListView ? 'flex items-center space-y-0 space-x-6' : ''}`}>
+          <div className="flex items-center text-gray-600 text-sm">
+            <MapPin className="h-4 w-4 mr-2" />
+            {job.location}
+          </div>
+          <div className="flex items-center">
+            <Clock className="h-4 w-4 mr-2 text-gray-600" />
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${job.typeColor}`}>
+              {job.type}
+            </span>
+          </div>
+          <div className="flex items-center text-gray-600 text-sm">
+            <DollarSign className="h-4 w-4 mr-2" />
+            {job.salary}
+          </div>
+          {isListView && (
+            <div className="flex items-center text-gray-500 text-sm">
+              <Clock className="h-4 w-4 mr-1" />
+              {job.postedDate}
+            </div>
+          )}
+        </div>
+
+        {!isListView && (
+          <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+            {job.description}
+          </p>
+        )}
+
+        <div className={`${isListView ? 'flex items-center space-x-4' : ''}`}>
+          <button 
+            onClick={() => handleApplyClick(job)}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            Apply Now
+          </button>
+          {isListView && (
+            <button className="text-gray-400 hover:text-red-500 transition-colors">
+              <Bookmark className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50 pt-16">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">All Jobs</h1>
+              <p className="text-gray-600 mt-2">
+                Showing {filteredJobs.length} of {allJobs.length} jobs
+              </p>
+            </div>
+
+            {/* Search and Sort */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1 min-w-80">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                <input
+                  type="text"
+                  placeholder="Search jobs, companies, or keywords..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="salary">Highest Salary</option>
+                  <option value="relevance">Most Relevant</option>
+                </select>
+
+                <div className="flex border border-gray-200 rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`p-3 ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    <Grid className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`p-3 ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    <List className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Filters Sidebar */}
+          <div className="lg:w-80">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 sticky top-24">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="lg:hidden text-gray-500"
+                >
+                  <SlidersHorizontal className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className={`space-y-6 ${showFilters ? 'block' : 'hidden lg:block'}`}>
+                {/* Job Types */}
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-3">Job Type</h4>
+                  <div className="space-y-2">
+                    {jobTypes.map((type) => (
+                      <button
+                        key={type.id}
+                        onClick={() => toggleJobType(type.id)}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
+                          selectedJobTypes.includes(type.id)
+                            ? type.color
+                            : 'text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        {type.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Category */}
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-3">Category</h4>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {categories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Experience Level */}
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-3">Experience Level</h4>
+                  <select
+                    value={selectedExperience}
+                    onChange={(e) => setSelectedExperience(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {experienceLevels.map((level) => (
+                      <option key={level} value={level}>
+                        {level}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Location */}
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-3">Location</h4>
+                  <select
+                    value={selectedLocation}
+                    onChange={(e) => setSelectedLocation(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {locations.map((location) => (
+                      <option key={location} value={location}>
+                        {location}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Clear Filters */}
+                <button
+                  onClick={() => {
+                    setSelectedJobTypes([]);
+                    setSelectedCategory('All Categories');
+                    setSelectedExperience('All Levels');
+                    setSelectedLocation('All Locations');
+                    setSearchTerm('');
+                  }}
+                  className="w-full text-blue-600 hover:text-blue-700 text-sm font-medium"
+                >
+                  Clear All Filters
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Jobs List */}
+          <div className="flex-1">
+            {filteredJobs.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-gray-400 mb-4">
+                  <Building className="h-16 w-16 mx-auto" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
+                <p className="text-gray-600">Try adjusting your filters or search terms</p>
+              </div>
+            ) : (
+              <div className={viewMode === 'grid' ? 'grid grid-cols-1 lg:grid-cols-2 gap-6' : 'space-y-4'}>
+                {filteredJobs.map((job) => (
+                  <JobCard key={job.id} job={job} isListView={viewMode === 'list'} />
+                ))}
+              </div>
+            )}
+
+            {/* Load More */}
+            {filteredJobs.length > 0 && (
+              <div className="text-center mt-12">
+                <button className="bg-gray-900 text-white px-8 py-4 rounded-xl hover:bg-gray-800 transition-colors font-semibold">
+                  Load More Jobs
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {selectedJob && (
+        <ApplyModal
+          isOpen={isApplyModalOpen}
+          onClose={() => {
+            setIsApplyModalOpen(false);
+            setSelectedJob(null);
+          }}
+          job={selectedJob}
+        />
+      )}
+    </div>
+  );
 };
+
+export default JobsPage;

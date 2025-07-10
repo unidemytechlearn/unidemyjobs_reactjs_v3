@@ -4,6 +4,7 @@ import ApplyModal from './ApplyModal';
 import ProfilePage from './ProfilePage';
 import { getUserApplications, getApplicationAnalytics } from '../lib/applications';
 import { useAuthContext } from './AuthProvider';
+import { getJobs } from '../lib/supabase';
 
 interface DashboardProps {
   onNavigate?: (page: string) => void;
@@ -19,6 +20,8 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedJobType, setSelectedJobType] = useState('All Types');
   const [savedJobs, setSavedJobs] = useState<string[]>(['a1b2c3d4-e5f6-7890-1234-567890abcdef', 'c3d4e5f6-g7h8-9012-3456-789012cdefgh', 'e5f6g7h8-i9j0-1234-5678-901234efghij']);
+  const [allJobs, setAllJobs] = useState<any[]>([]);
+  const [loadingJobs, setLoadingJobs] = useState(true);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
 
@@ -60,112 +63,87 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     loadApplicationData();
   }, [user, activeTab]);
 
+  // Load jobs from database
+  React.useEffect(() => {
+    const loadJobs = async () => {
+      try {
+        const fetchedJobs = await getJobs();
+        const jobsWithMockData = fetchedJobs.map(job => ({
+          ...job,
+          company: job.company?.name || 'Unknown Company',
+          type: job.job_type,
+          salary: formatSalary(job.salary_min, job.salary_max, job.salary_currency),
+          logo: job.company?.logo_url || 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
+          rating: job.company?.rating || 4.5,
+          employees: getEmployeeCount(job.company?.size_range),
+          description: job.description,
+          requirements: job.requirements || ['Experience required', 'Team player', 'Good communication skills'],
+          benefits: job.benefits || ['Health Insurance', 'Flexible Hours', 'Remote Work'],
+          category: getCategoryFromJobType(job.job_type),
+          postedDate: getRelativeDate(job.created_at),
+        }));
+        setAllJobs(jobsWithMockData);
+      } catch (error) {
+        console.error('Error loading jobs:', error);
+      } finally {
+        setLoadingJobs(false);
+      }
+    };
+
+    loadJobs();
+  }, []);
+
+  const formatSalary = (min?: number, max?: number, currency: string = 'USD') => {
+    if (!min && !max) return 'Salary not specified';
+    if (min && max) {
+      return `$${(min / 1000).toFixed(0)}k - $${(max / 1000).toFixed(0)}k`;
+    }
+    if (min) return `$${(min / 1000).toFixed(0)}k+`;
+    if (max) return `Up to $${(max / 1000).toFixed(0)}k`;
+    return 'Salary not specified';
+  };
+
+  const getEmployeeCount = (sizeRange?: string) => {
+    const sizeMap: Record<string, string> = {
+      '1-50': '1-50',
+      '50-200': '50-200',
+      '200-500': '200-500',
+      '500-1000': '500-1000',
+      '1000-5000': '1000-5000',
+      '5000+': '5000+',
+    };
+    return sizeMap[sizeRange || ''] || '100+';
+  };
+
+  const getCategoryFromJobType = (jobType: string) => {
+    const categoryMap: Record<string, string> = {
+      'Full Time': 'Technology',
+      'Part Time': 'Technology',
+      'Contract': 'Design',
+      'Internship': 'Technology',
+      'Freelancing': 'Marketing',
+    };
+    return categoryMap[jobType] || 'Technology';
+  };
+
+  const getRelativeDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return '1 day ago';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 14) return '1 week ago';
+    return `${Math.floor(diffDays / 7)} weeks ago`;
+  };
+
   // Update stats when applications change
   React.useEffect(() => {
     if (user && applications.length > 0) {
       getApplicationAnalytics(user.id).then(setApplicationStats);
     }
   }, [applications, user]);
-
-  // Mock data for jobs
-  const allJobs = [
-    {
-      id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
-      title: 'Senior Frontend Developer',
-      company: 'TechCorp',
-      location: 'San Francisco, CA',
-      type: 'Full Time',
-      salary: '$120k - $160k',
-      logo: 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
-      rating: 4.8,
-      employees: '1000+',
-      description: 'We are looking for a Senior Frontend Developer to join our dynamic team and help build the next generation of web applications.',
-      requirements: ['5+ years React experience', 'TypeScript proficiency', 'Team leadership skills'],
-      benefits: ['Health Insurance', 'Remote Work', '401k Matching', 'Stock Options'],
-      category: 'Technology',
-      postedDate: '2 days ago',
-    },
-    {
-      id: 'b2c3d4e5-f6g7-8901-2345-678901bcdefg',
-      title: 'Product Manager',
-      company: 'InnovateLab',
-      location: 'New York, NY',
-      type: 'Full Time',
-      salary: '$130k - $180k',
-      logo: 'https://images.pexels.com/photos/1181533/pexels-photo-1181533.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
-      rating: 4.6,
-      employees: '500+',
-      description: 'Join our product team to drive innovation and growth in our cutting-edge mobile applications.',
-      requirements: ['3+ years PM experience', 'Agile methodology', 'Data-driven mindset'],
-      benefits: ['Health Insurance', 'Flexible Hours', 'Learning Budget', 'Team Events'],
-      category: 'Management',
-      postedDate: '1 day ago',
-    },
-    {
-      id: 'c3d4e5f6-g7h8-9012-3456-789012cdefgh',
-      title: 'UX Designer',
-      company: 'DesignStudio',
-      location: 'Remote',
-      type: 'Contract',
-      salary: '$90k - $120k',
-      logo: 'https://images.pexels.com/photos/1181406/pexels-photo-1181406.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
-      rating: 4.9,
-      employees: '200+',
-      description: 'Create beautiful and intuitive user experiences for our award-winning design projects.',
-      requirements: ['Portfolio required', 'Figma expertise', 'User research skills'],
-      benefits: ['Remote Work', 'Creative Freedom', 'Professional Development'],
-      category: 'Design',
-      postedDate: '3 days ago',
-    },
-    {
-      id: 'd4e5f6g7-h8i9-0123-4567-890123defghi',
-      title: 'Marketing Manager',
-      company: 'GrowthHack',
-      location: 'Los Angeles, CA',
-      type: 'Full Time',
-      salary: '$85k - $110k',
-      logo: 'https://images.pexels.com/photos/1181677/pexels-photo-1181677.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
-      rating: 4.4,
-      employees: '100+',
-      description: 'Drive growth through innovative marketing strategies and data-driven campaigns.',
-      requirements: ['Digital marketing experience', 'Analytics skills', 'Creative thinking'],
-      benefits: ['Health Insurance', 'Flexible Hours', 'Results Bonuses'],
-      category: 'Marketing',
-      postedDate: '5 days ago',
-    },
-    {
-      id: 'e5f6g7h8-i9j0-1234-5678-901234efghij',
-      title: 'DevOps Engineer',
-      company: 'CloudTech',
-      location: 'Seattle, WA',
-      type: 'Full Time',
-      salary: '$110k - $140k',
-      logo: 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
-      rating: 4.7,
-      employees: '800+',
-      description: 'Help us scale our cloud infrastructure and improve deployment processes.',
-      requirements: ['AWS/Azure experience', 'Docker/Kubernetes', 'CI/CD pipelines'],
-      benefits: ['Health Insurance', 'Stock Options', '401k Matching'],
-      category: 'Technology',
-      postedDate: '4 days ago',
-    },
-    {
-      id: 'f6g7h8i9-j0k1-2345-6789-012345fghijk',
-      title: 'Data Scientist',
-      company: 'DataFlow',
-      location: 'Austin, TX',
-      type: 'Full Time',
-      salary: '$100k - $130k',
-      logo: 'https://images.pexels.com/photos/1181298/pexels-photo-1181298.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
-      rating: 4.5,
-      employees: '300+',
-      description: 'Analyze complex datasets and build machine learning models to drive business insights.',
-      requirements: ['Python/R proficiency', 'ML experience', 'Statistics background'],
-      benefits: ['Health Insurance', 'Learning Stipend', 'Remote Work'],
-      category: 'Technology',
-      postedDate: '1 week ago',
-    },
-  ];
 
   const stats = applicationStats ? [
     { label: 'Profile Views', value: '1,247', icon: Eye, color: 'text-blue-600' },
@@ -458,11 +436,34 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                   View All
                 </button>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {recommendedJobs.map((job) => (
-                  <JobCard key={job.id} job={job} />
-                ))}
-              </div>
+              {loadingJobs ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {[...Array(3)].map((_, index) => (
+                    <div key={index} className="bg-white border border-gray-200 rounded-xl p-6 animate-pulse">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
+                          <div>
+                            <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+                            <div className="h-3 bg-gray-200 rounded w-24"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-3 mb-4">
+                        <div className="h-3 bg-gray-200 rounded w-full"></div>
+                        <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                      </div>
+                      <div className="h-10 bg-gray-200 rounded"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {recommendedJobs.map((job) => (
+                    <JobCard key={job.id} job={job} />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -519,11 +520,34 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                   {filteredJobs.length} Jobs Found
                 </h3>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {filteredJobs.map((job) => (
-                  <JobCard key={job.id} job={job} showFullDetails />
-                ))}
-              </div>
+              {loadingJobs ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {[...Array(4)].map((_, index) => (
+                    <div key={index} className="bg-white border border-gray-200 rounded-xl p-6 animate-pulse">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
+                          <div>
+                            <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+                            <div className="h-3 bg-gray-200 rounded w-24"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-3 mb-4">
+                        <div className="h-3 bg-gray-200 rounded w-full"></div>
+                        <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                      </div>
+                      <div className="h-10 bg-gray-200 rounded"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {filteredJobs.map((job) => (
+                    <JobCard key={job.id} job={job} showFullDetails />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
