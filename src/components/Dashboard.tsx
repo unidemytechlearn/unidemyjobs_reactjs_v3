@@ -249,7 +249,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
 
   const JobCard = ({ job, showFullDetails = false, isCompact = false }: { job: any, showFullDetails?: boolean, isCompact?: boolean }) => (
     <div className={`group bg-white border border-gray-200 rounded-2xl hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden ${isCompact ? 'p-4' : 'p-6'}`}>
-      {job.is_featured && (
+      {(job.is_featured || job.featured) && (
         <div className="absolute top-0 right-0 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-semibold px-3 py-1 rounded-bl-lg">
           <Star className="h-3 w-3 inline mr-1" />
           Featured
@@ -260,14 +260,18 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
         <div className="flex items-center space-x-3">
           <div className="relative">
             <img
-              src={job.logo || (typeof job.company === 'object' ? job.company?.logo_url : null) || 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop'}
+              src={
+                job.logo || 
+                (typeof job.company === 'object' ? job.company?.logo_url : null) || 
+                'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop'
+              }
               alt={`${typeof job.company === 'object' ? job.company?.name : job.company} logo`}
               className="w-12 h-12 rounded-xl object-cover border border-gray-100"
             />
-            {(job.rating || (typeof job.company === 'object' && job.company?.rating)) && (
+            {(job.rating || (typeof job.company === 'object' && job.company?.rating) || 4.5) && (
               <div className="absolute -bottom-1 -right-1 bg-white border border-gray-200 rounded-full px-1 py-0.5 text-xs font-medium text-gray-600">
                 <Star className="h-2.5 w-2.5 inline text-yellow-500 fill-current mr-0.5" />
-                {job.rating || job.company?.rating}
+                {job.rating || job.company?.rating || 4.5}
               </div>
             )}
           </div>
@@ -280,10 +284,10 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
             </p>
             <div className="flex items-center space-x-2 mt-1 text-sm text-gray-500">
               <span>
-                {job.employees || getEmployeeCount(typeof job.company === 'object' ? job.company?.size_range : null)} employees
+                {job.employees || getEmployeeCount(typeof job.company === 'object' ? job.company?.size_range : null) || '100+'} employees
               </span>
               <span>•</span>
-              <span>{job.postedDate || getRelativeDate(job.created_at)}</span>
+              <span>{job.postedDate || getRelativeDate(job.created_at || new Date().toISOString())}</span>
             </div>
           </div>
         </div>
@@ -308,11 +312,11 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
         <div className="flex items-center flex-wrap gap-2">
           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
             <MapPin className="h-3 w-3 mr-1" />
-            {job.location}
+            {job.location || 'Location not specified'}
           </span>
-          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${job.typeColor || getJobTypeColor(job.job_type || job.type)}`}>
+          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${job.typeColor || getJobTypeColor(job.job_type || job.type || 'Full Time')}`}>
             <Clock className="h-3 w-3 mr-1" />
-            {job.type || job.job_type}
+            {job.type || job.job_type || 'Full Time'}
           </span>
           {job.is_remote && (
             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
@@ -324,13 +328,13 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
         
         <div className="flex items-center text-gray-600 text-sm">
           <DollarSign className="h-4 w-4 mr-1" />
-          {job.salary || formatSalary(job.salary_min, job.salary_max, job.salary_currency)}
+          {job.salary || formatSalary(job.salary_min, job.salary_max, job.salary_currency) || 'Salary not specified'}
         </div>
       </div>
 
       {showFullDetails && (
         <div className="space-y-4 mb-4">
-          <p className="text-gray-600 text-sm line-clamp-2">{job.description}</p>
+          <p className="text-gray-600 text-sm line-clamp-2">{job.description || 'No description available'}</p>
           
           {job.requirements && (
             <div>
@@ -368,11 +372,11 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
         <div className="flex items-center space-x-4 text-xs text-gray-500">
           <span className="flex items-center">
             <Eye className="h-3 w-3 mr-1" />
-            {job.view_count || 0}
+            {job.view_count || 0} views
           </span>
           <span className="flex items-center">
             <Users className="h-3 w-3 mr-1" />
-            {job.application_count || 0}
+            {job.application_count || 0} applicants
           </span>
         </div>
         <div className="flex space-x-2">
@@ -381,9 +385,9 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
           </button>
           <button
             onClick={() => handleApplyClick(job)}
-            className="px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+            className="px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm flex items-center space-x-1"
           >
-            Apply Now
+            <span>Apply Now</span>
           </button>
         </div>
       </div>
