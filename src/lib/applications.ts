@@ -393,3 +393,94 @@ export async function getApplicationAnalytics(userId: string): Promise<{
     };
   }
 }
+
+export async function getApplicationById(applicationId: string): Promise<any | null> {
+  try {
+    const { data, error } = await supabase
+      .from('applications')
+      .select(`
+        *,
+        job:jobs (
+          id,
+          title,
+          description,
+          company_id,
+          location,
+          job_type,
+          experience_level,
+          salary_min,
+          salary_max,
+          salary_currency,
+          is_remote,
+          requirements,
+          benefits,
+          skills_required,
+          application_deadline,
+          is_featured,
+          is_active,
+          view_count,
+          application_count,
+          created_by,
+          created_at,
+          updated_at,
+          company:companies (
+            id,
+            name,
+            description,
+            industry,
+            size_range,
+            location,
+            website_url,
+            logo_url,
+            rating,
+            review_count,
+            founded_year,
+            specialties,
+            benefits,
+            culture_description,
+            is_featured,
+            created_by,
+            created_at,
+            updated_at
+          )
+        )
+      `)
+      .eq('id', applicationId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching application by ID:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error fetching application by ID:', error);
+    return null;
+  }
+}
+
+    const analytics = {
+      total_applications: totalApplications,
+      pending_applications: pendingApplications,
+      interviews_scheduled: interviewsScheduled,
+      offers_received: offersReceived,
+      applications_this_month: applicationsThisMonth,
+      response_rate: Math.round(responseRate * 100) / 100, // Round to 2 decimal places
+      interview_rate: Math.round(interviewRate * 100) / 100 // Round to 2 decimal places
+    };
+
+    return analytics;
+  } catch (error) {
+    console.error('Error fetching application analytics:', error);
+    return {
+      total_applications: 0,
+      pending_applications: 0,
+      interviews_scheduled: 0,
+      offers_received: 0,
+      applications_this_month: 0,
+      response_rate: 0,
+      interview_rate: 0
+    };
+  }
+}

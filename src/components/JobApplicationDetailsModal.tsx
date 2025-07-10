@@ -13,20 +13,42 @@ interface JobApplicationDetailsModalProps {
 const JobApplicationDetailsModal = ({ 
   isOpen, 
   onClose, 
-  application, 
+  application: initialApplication, 
   onWithdraw, 
   isWithdrawing = false 
 }: JobApplicationDetailsModalProps) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'documents' | 'notes'>('overview');
+  const [application, setApplication] = useState(initialApplication);
   const [timeline, setTimeline] = useState<any[]>([]);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
+  const [loadingApplication, setLoadingApplication] = useState(false);
 
   useEffect(() => {
+    const loadApplication = async () => {
+      if (initialApplication?.id) {
+        setLoadingApplication(true);
+        try {
+          const { getApplicationById } = await import('../lib/applications');
+          const freshApplication = await getApplicationById(initialApplication.id);
+          if (freshApplication) {
+            setApplication(freshApplication);
+          }
+        } catch (error) {
+          console.error('Error loading fresh application data:', error);
+          // Fall back to initial application data if fetch fails
+          setApplication(initialApplication);
+        } finally {
+          setLoadingApplication(false);
+        }
+      }
+    };
+
     const loadTimeline = async () => {
-      if (application?.id) {
+      if (initialApplication?.id) {
         setLoadingTimeline(true);
         try {
-          const timelineData = await getApplicationStatusTimeline(application.id);
+          const { getApplicationStatusTimeline } = await import('../lib/applications');
+          const timelineData = await getApplicationStatusTimeline(initialApplication.id);
           setTimeline(timelineData);
         } catch (error) {
           console.error('Error loading timeline:', error);
@@ -36,10 +58,15 @@ const JobApplicationDetailsModal = ({
       }
     };
 
-    if (isOpen && application) {
+    if (isOpen && initialApplication) {
+      loadApplication();
       loadTimeline();
+    } else if (!isOpen) {
+      // Reset state when modal closes
+      setApplication(initialApplication);
+      setTimeline([]);
     }
-  }, [isOpen, application]);
+  }, [isOpen, initialApplication]);
 
   if (!isOpen || !application) return null;
 
