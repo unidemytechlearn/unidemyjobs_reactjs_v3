@@ -246,11 +246,6 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const handleWithdrawClick = (applicationId: string) => {
     const application = applications.find(app => app.id === applicationId);
     if (application) {
-      setSelectedApplication(application);
-      setIsWithdrawConfirmOpen(true);
-    }
-  };
-
   const handleWithdrawConfirm = async () => {
     if (!selectedApplication || !user) return;
 
