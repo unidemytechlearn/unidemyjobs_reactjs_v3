@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { User, Briefcase, Heart, FileText, TrendingUp, Bell, Search, Filter, MapPin, Clock, DollarSign, Building, Star, Share2, Eye, Send, CheckCircle, XCircle, AlertCircle, Calendar, Award, Target, Users, Plus, ArrowRight, Bookmark, ExternalLink, ChevronRight, BarChart3, PieChart, Activity, Zap, MoreHorizontal } from 'lucide-react';
 import ApplyModal from './ApplyModal';
 import ProfilePage from './ProfilePage';
-import JobApplicationDetailsModal from './JobApplicationDetailsModal';
+import { getUserApplications, getApplicationAnalytics, withdrawApplication } from '../lib/applications';
 import { getUserApplications, getApplicationAnalytics, withdrawApplication } from '../lib/applications';
 import { useAuthContext } from './AuthProvider';
 import { getJobs, getUserSavedJobs, saveJob, unsaveJob, isJobSaved } from '../lib/supabase';
+import JobApplicationDetailsModal from './JobApplicationDetailsModal';
+import WithdrawConfirmationModal from './WithdrawConfirmationModal';
 
 interface DashboardProps {
   onNavigate?: (page: string) => void;
@@ -27,6 +29,10 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<any>(null);
+  const [isApplicationDetailsOpen, setIsApplicationDetailsOpen] = useState(false);
+  const [isWithdrawConfirmOpen, setIsWithdrawConfirmOpen] = useState(false);
+  const [withdrawingApplicationId, setWithdrawingApplicationId] = useState<string | null>(null);
   const [isApplicationDetailsOpen, setIsApplicationDetailsOpen] = useState(false);
   const [withdrawingApplicationId, setWithdrawingApplicationId] = useState<string | null>(null);
 
@@ -234,6 +240,44 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     };
     setSelectedJob(normalizedJob);
     setIsApplyModalOpen(true);
+  };
+
+  const handleViewApplicationDetails = (application: any) => {
+    setSelectedApplication(application);
+    setIsApplicationDetailsOpen(true);
+  };
+
+  const handleWithdrawClick = (applicationId: string) => {
+    const application = applications.find(app => app.id === applicationId);
+    if (application) {
+      setSelectedApplication(application);
+      setIsWithdrawConfirmOpen(true);
+    }
+  };
+
+  const handleWithdrawConfirm = async () => {
+    if (!selectedApplication || !user) return;
+
+    setWithdrawingApplicationId(selectedApplication.id);
+    
+    try {
+      await withdrawApplication(selectedApplication.id, user.id);
+      
+      // Refresh applications list
+      const updatedApplications = await getUserApplications(user.id);
+      setApplications(updatedApplications);
+      
+      // Close modals
+      setIsWithdrawConfirmOpen(false);
+      setIsApplicationDetailsOpen(false);
+      setSelectedApplication(null);
+      
+    } catch (error) {
+      console.error('Error withdrawing application:', error);
+      alert(error instanceof Error ? error.message : 'Failed to withdraw application');
+    } finally {
+      setWithdrawingApplicationId(null);
+    }
   };
 
   const handleViewApplicationDetails = (application: any) => {
@@ -1007,6 +1051,24 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                         </div>
                       )}
 
+                      <div className="flex items-center justify-between">
+                        <button
+                          onClick={() => handleViewApplicationDetails(application)}
+                          className="text-blue-600 hover:text-blue-700 font-medium text-sm"
+                        >
+                          View Details
+                        </button>
+                        
+                        {['submitted', 'under_review', 'interview_scheduled'].includes(application.status) && (
+                          <button
+                            onClick={() => handleWithdrawClick(application.id)}
+                            className="text-red-600 hover:text-red-700 font-medium text-sm"
+                          >
+                            Withdraw
+                          </button>
+                        )}
+                      </div>
+
                       {/* Application Timeline */}
                       {application.status_history && application.status_history.length > 0 && (
                         <div className="mt-4 pt-4 border-t border-gray-100">
@@ -1060,6 +1122,36 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
             setSelectedJob(null);
           }}
           job={selectedJob}
+        />
+      )}
+
+      {/* Application Details Modal */}
+      {selectedApplication && (
+        <JobApplicationDetailsModal
+          isOpen={isApplicationDetailsOpen}
+          onClose={() => {
+            setIsApplicationDetailsOpen(false);
+            setSelectedApplication(null);
+          }}
+          application={selectedApplication}
+          onWithdraw={handleWithdrawClick}
+          isWithdrawing={withdrawingApplicationId === selectedApplication.id}
+        />
+      )}
+
+      {/* Withdraw Confirmation Modal */}
+      {selectedApplication && (
+        <WithdrawConfirmationModal
+          isOpen={isWithdrawConfirmOpen}
+          onClose={() => {
+            setIsWithdrawConfirmOpen(false);
+            setSelectedApplication(null);
+          }}
+          onConfirm={handleWithdrawConfirm}
+          isWithdrawing={withdrawingApplicationId === selectedApplication.id}
+          jobTitle={selectedApplication.job?.title || 'Unknown Position'}
+          companyName={selectedApplication.job?.company?.name || 'Unknown Company'}
+          applicationStatus={selectedApplication.status}
         />
       )}
 
