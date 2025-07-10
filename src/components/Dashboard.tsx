@@ -19,11 +19,12 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedJobType, setSelectedJobType] = useState('All Types');
-  const [savedJobs, setSavedJobs] = useState<string[]>(['a1b2c3d4-e5f6-7890-1234-567890abcdef', 'c3d4e5f6-g7h8-9012-3456-789012cdefgh', 'e5f6g7h8-i9j0-1234-5678-901234efghij']);
+  const [savedJobs, setSavedJobs] = useState<string[]>([]);
   const [allJobs, setAllJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const [loadingSavedJobs, setLoadingSavedJobs] = useState(false);
 
   const { user } = useAuthContext();
 
@@ -62,6 +63,26 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
 
     loadApplicationData();
   }, [user, activeTab]);
+
+  // Load saved jobs
+  React.useEffect(() => {
+    const loadSavedJobs = async () => {
+      if (user) {
+        setLoadingSavedJobs(true);
+        try {
+          const { getUserSavedJobs } = await import('../lib/supabase');
+          const userSavedJobs = await getUserSavedJobs(user.id);
+          setSavedJobs(userSavedJobs.map(savedJob => savedJob.job_id));
+        } catch (error) {
+          console.error('Error loading saved jobs:', error);
+        } finally {
+          setLoadingSavedJobs(false);
+        }
+      }
+    };
+
+    loadSavedJobs();
+  }, [user]);
 
   // Load jobs from database
   React.useEffect(() => {
@@ -171,12 +192,23 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
 
   const recommendedJobs = allJobs.slice(0, 3);
 
-  const toggleSaveJob = (jobId: string) => {
-    setSavedJobs(prev => 
-      prev.includes(jobId) 
-        ? prev.filter(id => id !== jobId)
-        : [...prev, jobId]
-    );
+  const toggleSaveJob = async (jobId: string) => {
+    if (!user) return;
+    
+    try {
+      const { saveJob, unsaveJob } = await import('../lib/supabase');
+      
+      if (savedJobs.includes(jobId)) {
+        await unsaveJob(user.id, jobId);
+        setSavedJobs(prev => prev.filter(id => id !== jobId));
+      } else {
+        await saveJob(user.id, jobId);
+        setSavedJobs(prev => [...prev, jobId]);
+      }
+    } catch (error) {
+      console.error('Error toggling saved job:', error);
+      alert('Failed to save/unsave job. Please try again.');
+    }
   };
 
   const handleApplyClick = (job: any) => {
