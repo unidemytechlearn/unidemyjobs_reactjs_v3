@@ -18,7 +18,6 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedJobType, setSelectedJobType] = useState('All Types');
-  const [savedJobs, setSavedJobs] = useState<number[]>([1, 3, 5]);
   const [savedJobs, setSavedJobs] = useState<string[]>(['a1b2c3d4-e5f6-7890-1234-567890abcdef', 'c3d4e5f6-g7h8-9012-3456-789012cdefgh', 'e5f6g7h8-i9j0-1234-5678-901234efghij']);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
