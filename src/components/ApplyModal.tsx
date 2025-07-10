@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { X, CheckCircle, AlertCircle, MapPin, Clock, DollarSign, Building, User, Mail, Phone, FileText, Upload, Briefcase } from 'lucide-react';
+import { supabase } from "../lib/supabase";
+import { useAuthContext } from '../components/AuthProvider';
 
 interface ApplyModalProps {
   isOpen: boolean;
@@ -17,6 +19,7 @@ interface ApplyModalProps {
 }
 
 const ApplyModal = ({ isOpen, onClose, job }: ApplyModalProps) => {
+    const { user } = useAuthContext(); // ✅ valid hook usage
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [formData, setFormData] = useState({
@@ -48,16 +51,68 @@ const ApplyModal = ({ isOpen, onClose, job }: ApplyModalProps) => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setIsSubmitting(false);
+  setIsSubmitting(true);
+
+  try {
+    if (!user) {
+      throw new Error("You must be logged in to apply for a job.");
+    }
+
+    let resumeUrl = null;
+
+    // 1. Upload Resume to Supabase Storage
+    if (uploadedResume) {
+      const fileExt = uploadedResume.name.split(".").pop();
+      const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("resumes")
+        .upload(filePath, uploadedResume, {
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { publicUrl } = supabase.storage
+        .from("resumes")
+        .getPublicUrl(uploadData.path);
+      resumeUrl = publicUrl;
+    }
+
+    // 2. Insert application record into Supabase
+    const { error: insertError } = await supabase.from("applications").insert([
+      {
+        job_id: job.id,
+        user_id: user.id,
+        resume_url: resumeUrl,
+        expected_salary: formData.expectedSalary,
+        availability_date: formData.availability ? new Date(formData.availability) : null,
+        cover_letter: formData.coverLetter,
+        portfolio_url: formData.portfolio,
+        linkedin_url: formData.linkedin,
+        additional_info: {
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          experience: formData.experience,
+        },
+      },
+    ]);
+
+    if (insertError) throw insertError;
+
     setIsSubmitted(true);
-  };
+  } catch (error) {
+    console.error("Application submission failed:", error);
+    alert("Something went wrong while submitting your application.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const resetModal = () => {
     setIsSubmitted(false);
