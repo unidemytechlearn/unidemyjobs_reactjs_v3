@@ -9,7 +9,7 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ onNavigate }: DashboardProps) => {
-  const { isAuthenticated } = useAuthContext();
+  const { isAuthenticated, loading } = useAuthContext();
   const [activeTab, setActiveTab] = useState<'overview' | 'browse-jobs' | 'saved-jobs' | 'applications' | 'profile'>('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
@@ -17,6 +17,11 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const [savedJobs, setSavedJobs] = useState<number[]>([1, 3, 5]);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+
+  // Don't render anything while loading
+  if (loading) {
+    return null;
+  }
 
   // Redirect to home if not authenticated
   if (!isAuthenticated) {

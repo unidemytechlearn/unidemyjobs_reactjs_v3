@@ -30,7 +30,7 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const auth = useAuth();
 
-  // Don't render children until auth is initialized
+  // Show loading screen only during initial auth check
   if (auth.loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

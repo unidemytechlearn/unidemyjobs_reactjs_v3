@@ -7,7 +7,6 @@ export const useAuth = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
-  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -15,7 +14,7 @@ export const useAuth = () => {
     // Get initial session
     const getInitialSession = async () => {
       try {
-        setLoading(true);
+        console.log('Getting initial session...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -24,10 +23,11 @@ export const useAuth = () => {
             setUser(null);
             setProfile(null);
             setLoading(false);
-            setInitialized(true);
           }
           return;
         }
+        
+        console.log('Session found:', !!session?.user);
         
         if (session?.user && mounted) {
           setUser(session.user);
@@ -37,6 +37,7 @@ export const useAuth = () => {
             const userProfile = await getProfile(session.user.id);
             if (mounted) {
               setProfile(userProfile);
+              console.log('Profile loaded:', !!userProfile);
             }
           } catch (profileError) {
             console.error('Error fetching profile:', profileError);
@@ -60,8 +61,8 @@ export const useAuth = () => {
         }
       } finally {
         if (mounted) {
+          console.log('Setting loading to false');
           setLoading(false);
-          setInitialized(true);
         }
       }
     };
@@ -71,7 +72,7 @@ export const useAuth = () => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.id);
+        console.log('Auth state changed:', event, !!session?.user);
         
         if (!mounted) return;
         
@@ -144,12 +145,14 @@ export const useAuth = () => {
     }
   };
 
+  console.log('Auth state:', { user: !!user, profile: !!profile, loading, profileLoading, isAuthenticated: !!user });
+
   return {
     user,
     profile,
-    loading: loading || !initialized,
+    loading,
     profileLoading,
-    isAuthenticated: !!user && initialized,
+    isAuthenticated: !!user,
     refreshProfile,
     signOut,
   };

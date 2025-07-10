@@ -66,11 +66,9 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
     profileCompleteness: 85, // Calculate based on filled fields
   });
 
-  // Show loading spinner while authentication is being restored
+  // Don't render anything while loading
   if (loading) {
-    return (
-      null // AuthProvider handles loading state
-    );
+    return null;
   }
 
   // Redirect to home if not authenticated
