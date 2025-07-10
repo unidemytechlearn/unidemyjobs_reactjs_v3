@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, MapPin, Briefcase, Calendar, Globe, Linkedin, Github, Camera, Save, X, Edit3, Shield, Bell, Eye, EyeOff, Upload, FileText, Award, Star, TrendingUp, AlertCircle, CheckCircle, Loader } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Briefcase, Calendar, Globe, Linkedin, Github, Camera, Save, X, Edit3, Shield, Bell, Eye, EyeOff, Upload, FileText, Award, Star, TrendingUp, AlertCircle, CheckCircle, Loader, Download } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
 import { updateProfile, resetPassword } from '../lib/supabase';
+import ResumeUploadSection from './ResumeUploadSection';
 
 interface ProfilePageProps {
   onNavigate?: (page: string) => void;
@@ -18,6 +19,7 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [uploadedResume, setUploadedResume] = useState<File | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [resumeUploadMessage, setResumeUploadMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [profileData, setProfileData] = useState({
     // Personal Information
@@ -60,11 +62,15 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
   });
 
   const [profileStats] = useState({
-    profileViews: profile?.profile_views || 0,
-    applicationsSent: 23, // This would come from applications table
-    savedJobs: 45, // This would come from saved_jobs table
-    profileCompleteness: 85, // Calculate based on filled fields
+    profileViews: 0,
+    applicationsSent: 0,
+    savedJobs: 0,
+    profileCompleteness: 85,
   });
+  const [realStats, setRealStats] = useState({
+    profileViews: 0,
+  });
+  const [loadingStats, setLoadingStats] = useState(true);
 
   // Don't render anything while loading
   if (loading) {
@@ -113,6 +119,40 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
     }
   }, [profile, user, profileLoading]);
 
+  // Load real statistics from database
+  useEffect(() => {
+    const loadRealStats = async () => {
+      if (user) {
+        setLoadingStats(true);
+        try {
+          const [applicationsModule, savedJobsModule] = await Promise.all([
+            import('../lib/applications'),
+            import('../lib/supabase')
+          ]);
+          
+          const [userApplications, userSavedJobs] = await Promise.all([
+            applicationsModule.getUserApplications(user.id),
+            savedJobsModule.getUserSavedJobs(user.id)
+          ]);
+          
+          setRealStats({
+            applicationsSent: userApplications.length,
+            savedJobsCount: userSavedJobs.length,
+            profileViews: profile?.profile_views || 0,
+            profileCompleteness: 85 // This could be calculated based on filled fields
+          });
+          
+        } catch (error) {
+          console.error('Error loading real stats:', error);
+        } finally {
+          setLoadingStats(false);
+        }
+      }
+    };
+
+    loadRealStats();
+  }, [user, profile]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     setProfileData({
@@ -131,16 +171,23 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
     });
   };
 
-  const handleResumeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        setMessage({ type: 'error', text: 'File size must be less than 5MB' });
-        return;
-      }
-      setUploadedResume(file);
-      setMessage(null);
-    }
+  const handleResumeUploadSuccess = (url: string, fileName: string) => {
+    setResumeUploadMessage({ type: 'success', text: 'Resume uploaded successfully!' });
+    // Refresh profile to get updated resume info
+    refreshProfile();
+    setTimeout(() => setResumeUploadMessage(null), 3000);
+  };
+
+  const handleResumeUploadError = (error: string) => {
+    setResumeUploadMessage({ type: 'error', text: error });
+    setTimeout(() => setResumeUploadMessage(null), 5000);
+  };
+
+  const handleResumeDeleteSuccess = () => {
+    setResumeUploadMessage({ type: 'success', text: 'Resume deleted successfully!' });
+    // Refresh profile to get updated resume info
+    refreshProfile();
+    setTimeout(() => setResumeUploadMessage(null), 3000);
   };
 
   const handleSave = async () => {
@@ -284,20 +331,48 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
 
       {/* Profile Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white border border-gray-200 rounded-xl p-6 text-center">
-          <div className="text-2xl font-bold text-blue-600 mb-2">{profileStats.profileViews}</div>
+        <div className="bg-white border border-gray-200 rounded-xl p-6 text-center relative">
+          {loadingStats && (
+            <div className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-xl">
+              <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
+          <div className="text-2xl font-bold text-blue-600 mb-2">
+            {loadingStats ? '...' : realStats.profileViews}
+          </div>
           <div className="text-gray-600 text-sm">Profile Views</div>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-6 text-center">
-          <div className="text-2xl font-bold text-green-600 mb-2">{profileStats.applicationsSent}</div>
+        <div className="bg-white border border-gray-200 rounded-xl p-6 text-center relative">
+          {loadingStats && (
+            <div className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-xl">
+              <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
+          <div className="text-2xl font-bold text-green-600 mb-2">
+            {loadingStats ? '...' : realStats.applicationsSent}
+          </div>
           <div className="text-gray-600 text-sm">Applications Sent</div>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-6 text-center">
-          <div className="text-2xl font-bold text-purple-600 mb-2">{profileStats.savedJobs}</div>
+        <div className="bg-white border border-gray-200 rounded-xl p-6 text-center relative">
+          {loadingStats && (
+            <div className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-xl">
+              <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
+          <div className="text-2xl font-bold text-purple-600 mb-2">
+            {loadingStats ? '...' : realStats.savedJobsCount}
+          </div>
           <div className="text-gray-600 text-sm">Saved Jobs</div>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-6 text-center">
-          <div className="text-2xl font-bold text-orange-600 mb-2">{profileStats.profileCompleteness}%</div>
+        <div className="bg-white border border-gray-200 rounded-xl p-6 text-center relative">
+          {loadingStats && (
+            <div className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-xl">
+              <div className="w-4 h-4 border-2 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
+          <div className="text-2xl font-bold text-orange-600 mb-2">
+            {loadingStats ? '...' : realStats.profileCompleteness}%
+          </div>
           <div className="text-gray-600 text-sm">Profile Complete</div>
         </div>
       </div>
@@ -373,6 +448,21 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
                   <span className="text-gray-600">{profileData.location}</span>
                 </div>
               )}
+              {profile?.resume_url && profile?.resume_file_name && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <FileText className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-600">{profile.resume_file_name}</span>
+                  </div>
+                  <button
+                    onClick={() => window.open(profile.resume_url, '_blank')}
+                    className="text-blue-600 hover:text-blue-700 transition-colors"
+                    title="Download resume"
+                  >
+                    <Download className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -423,17 +513,21 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Profile Completeness</h3>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Overall Progress</span>
-                <span className="font-semibold text-gray-900">{profileStats.profileCompleteness}%</span>
+                <span className="text-gray-600">
+                  {loadingStats ? 'Loading...' : 'Overall Progress'}
+                </span>
+                <span className="font-semibold text-gray-900">
+                  {loadingStats ? '...' : `${realStats.profileCompleteness}%`}
+                </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
                   className="bg-gradient-to-r from-blue-600 to-indigo-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${profileStats.profileCompleteness}%` }}
+                  style={{ width: `${loadingStats ? 0 : realStats.profileCompleteness}%` }}
                 ></div>
               </div>
               <div className="text-sm text-gray-500">
-                Add more skills and experience to reach 100%
+                {loadingStats ? 'Calculating...' : 'Add more skills and experience to reach 100%'}
               </div>
             </div>
           </div>
@@ -662,36 +756,33 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
           </div>
 
           {/* Resume Upload */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Update Resume</label>
-            <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-400 transition-colors">
-              <input
-                type="file"
-                accept=".pdf,.doc,.docx"
-                onChange={handleResumeUpload}
-                className="hidden"
-                id="resume-upload"
-              />
-              <label htmlFor="resume-upload" className="cursor-pointer">
-                <Upload className="h-8 w-8 text-gray-400 mx-auto mb-3" />
-                {uploadedResume ? (
-                  <div className="text-green-600">
-                    <FileText className="h-5 w-5 inline mr-2" />
-                    <span className="font-medium">{uploadedResume.name}</span>
-                  </div>
+          {/* Resume Upload Message */}
+          {resumeUploadMessage && (
+            <div className={`p-4 rounded-xl ${
+              resumeUploadMessage.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+            }`}>
+              <div className="flex items-center space-x-2">
+                {resumeUploadMessage.type === 'success' ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
                 ) : (
-                  <div>
-                    <p className="font-medium text-gray-700 mb-1">
-                      Upload new resume
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      PDF, DOC, DOCX (max 5MB)
-                    </p>
-                  </div>
+                  <AlertCircle className="h-5 w-5 text-red-600" />
                 )}
-              </label>
+                <p className={`text-sm ${resumeUploadMessage.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
+                  {resumeUploadMessage.text}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
+
+          <ResumeUploadSection
+            currentResumeUrl={profile?.resume_url}
+            currentResumeFileName={profile?.resume_file_name}
+            currentResumeFileSize={profile?.resume_file_size}
+            currentResumeUploadedAt={profile?.resume_uploaded_at}
+            onUploadSuccess={handleResumeUploadSuccess}
+            onUploadError={handleResumeUploadError}
+            onDeleteSuccess={handleResumeDeleteSuccess}
+          />
 
           <div className="flex justify-end space-x-4">
             <button
