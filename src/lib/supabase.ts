@@ -209,7 +209,13 @@ export const getProfile = async (userId: string): Promise<Profile | null> => {
     .eq('id', userId)
     .single();
 
-  if (error && error.code !== 'PGRST116') throw error;
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // No profile found, return null
+      return null;
+    }
+    throw error;
+  }
   return data;
 };
 

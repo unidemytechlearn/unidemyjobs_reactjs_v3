@@ -7,37 +7,62 @@ export const useAuth = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
+
     // Get initial session
     const getInitialSession = async () => {
       try {
         setLoading(true);
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (session?.user) {
+        if (error) {
+          console.error('Error getting session:', error);
+          if (mounted) {
+            setUser(null);
+            setProfile(null);
+            setLoading(false);
+            setInitialized(true);
+          }
+          return;
+        }
+        
+        if (session?.user && mounted) {
           setUser(session.user);
           setProfileLoading(true);
           
           try {
             const userProfile = await getProfile(session.user.id);
-            setProfile(userProfile);
-          } catch (error) {
-            console.error('Error fetching profile:', error);
-            setProfile(null);
+            if (mounted) {
+              setProfile(userProfile);
+            }
+          } catch (profileError) {
+            console.error('Error fetching profile:', profileError);
+            if (mounted) {
+              setProfile(null);
+            }
           } finally {
-            setProfileLoading(false);
+            if (mounted) {
+              setProfileLoading(false);
+            }
           }
-        } else {
+        } else if (mounted) {
           setUser(null);
           setProfile(null);
         }
       } catch (error) {
-        console.error('Error getting initial session:', error);
-        setUser(null);
-        setProfile(null);
+        console.error('Error in getInitialSession:', error);
+        if (mounted) {
+          setUser(null);
+          setProfile(null);
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+          setInitialized(true);
+        }
       }
     };
 
@@ -46,7 +71,9 @@ export const useAuth = () => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event);
+        console.log('Auth state changed:', event, session?.user?.id);
+        
+        if (!mounted) return;
         
         if (event === 'SIGNED_OUT' || !session?.user) {
           setUser(null);
@@ -62,20 +89,31 @@ export const useAuth = () => {
           
           try {
             const userProfile = await getProfile(session.user.id);
-            setProfile(userProfile);
+            if (mounted) {
+              setProfile(userProfile);
+            }
           } catch (error) {
-            console.error('Error fetching profile:', error);
-            setProfile(null);
+            console.error('Error fetching profile after auth change:', error);
+            if (mounted) {
+              setProfile(null);
+            }
           } finally {
-            setProfileLoading(false);
+            if (mounted) {
+              setProfileLoading(false);
+            }
           }
         }
         
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const refreshProfile = async () => {
@@ -86,6 +124,7 @@ export const useAuth = () => {
         setProfile(userProfile);
       } catch (error) {
         console.error('Error refreshing profile:', error);
+        setProfile(null);
       } finally {
         setProfileLoading(false);
       }
@@ -96,9 +135,7 @@ export const useAuth = () => {
     try {
       setLoading(true);
       await supabaseSignOut();
-      // Clear state immediately
-      setUser(null);
-      setProfile(null);
+      // State will be cleared by the auth state change listener
     } catch (error) {
       console.error('Error signing out:', error);
       throw error;
@@ -110,9 +147,9 @@ export const useAuth = () => {
   return {
     user,
     profile,
-    loading,
+    loading: loading || !initialized,
     profileLoading,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && initialized,
     refreshProfile,
     signOut,
   };

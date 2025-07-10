@@ -20,7 +20,9 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
 
   // Redirect to home if not authenticated
   if (!isAuthenticated) {
-    onNavigate?.('home');
+    if (onNavigate) {
+      onNavigate('home');
+    }
     return null;
   }
   // Mock data for jobs

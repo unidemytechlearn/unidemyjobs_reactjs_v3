@@ -69,54 +69,51 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
   // Show loading spinner while authentication is being restored
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center">
-        <div className="text-center">
-          <Loader className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
+      null // AuthProvider handles loading state
     );
   }
 
   // Redirect to home if not authenticated
   if (!isAuthenticated) {
-    onNavigate?.('home');
+    if (onNavigate) {
+      onNavigate('home');
+    }
     return null;
   }
 
   // Load profile data when component mounts or profile changes
   useEffect(() => {
-    if (profile && user) {
+    if (user) {
       setProfileData({
-        firstName: profile.first_name || '',
-        lastName: profile.last_name || '',
+        firstName: profile?.first_name || '',
+        lastName: profile?.last_name || '',
         email: user.email || '',
-        phone: profile.phone || '',
-        location: profile.location || '',
-        bio: profile.bio || '',
-        jobTitle: profile.job_title || '',
-        company: profile.company || '',
-        experience: profile.experience_level || '',
+        phone: profile?.phone || '',
+        location: profile?.location || '',
+        bio: profile?.bio || '',
+        jobTitle: profile?.job_title || '',
+        company: profile?.company || '',
+        experience: profile?.experience_level || '',
         skills: [], // Skills would need to be fetched from user_skills table
-        salary: profile.salary_range || '',
-        availability: profile.availability || '',
-        linkedin: profile.linkedin_url || '',
-        github: profile.github_url || '',
-        portfolio: profile.portfolio_url || '',
-        profileVisibility: profile.profile_visibility || 'public',
-        showSalary: profile.show_salary || false,
-        showContact: profile.show_contact !== false,
-        emailNotifications: profile.email_notifications !== false,
-        jobAlerts: profile.job_alerts !== false,
-        applicationUpdates: profile.application_updates !== false,
-        marketingEmails: profile.marketing_emails || false,
-        twoFactorEnabled: profile.two_factor_enabled || false,
+        salary: profile?.salary_range || '',
+        availability: profile?.availability || '',
+        linkedin: profile?.linkedin_url || '',
+        github: profile?.github_url || '',
+        portfolio: profile?.portfolio_url || '',
+        profileVisibility: profile?.profile_visibility || 'public',
+        showSalary: profile?.show_salary || false,
+        showContact: profile?.show_contact !== false,
+        emailNotifications: profile?.email_notifications !== false,
+        jobAlerts: profile?.job_alerts !== false,
+        applicationUpdates: profile?.application_updates !== false,
+        marketingEmails: profile?.marketing_emails || false,
+        twoFactorEnabled: profile?.two_factor_enabled || false,
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
       });
     }
-  }, [profile, user]);
+  }, [profile, user, profileLoading]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -213,7 +210,7 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
   };
 
   // Show loading spinner while profile is being loaded
-  if (profileLoading && !profile) {
+  if (profileLoading) {
     return (
       <div className="min-h-screen bg-gray-50 pt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -249,11 +246,11 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
             <h1 className="text-3xl font-bold mb-2">
               {profileData.firstName || profileData.lastName ? 
                 `${profileData.firstName} ${profileData.lastName}` : 
-                'Complete Your Profile'
+                user?.email?.split('@')[0] || 'Complete Your Profile'
               }
             </h1>
             <p className="text-xl text-blue-100 mb-4">
-              {profileData.jobTitle ? `${profileData.jobTitle}${profileData.company ? ` at ${profileData.company}` : ''}` : 'Professional'}
+              {profileData.jobTitle ? `${profileData.jobTitle}${profileData.company ? ` at ${profileData.company}` : ''}` : 'Job Seeker'}
             </p>
             <div className="flex flex-wrap items-center gap-4 text-blue-100">
               {profileData.location && (
