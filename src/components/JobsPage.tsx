@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, MapPin, Filter, SlidersHorizontal, Grid, List, ChevronDown, Bookmark, Clock, DollarSign, Building } from 'lucide-react';
+import { Search, MapPin, Filter, SlidersHorizontal, Grid, List, ChevronDown, Bookmark, Clock, DollarSign, Building, X, ChevronUp } from 'lucide-react';
 import ApplyModal from './ApplyModal';
 import { getJobs } from '../lib/supabase';
 
@@ -28,12 +28,20 @@ const JobsPage = () => {
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedExperience, setSelectedExperience] = useState('All Levels');
   const [selectedLocation, setSelectedLocation] = useState('All Locations');
-  const [showFilters, setShowFilters] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState('newest');
   const [selectedJob, setSelectedJob] = useState<typeof allJobs[0] | null>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [error, setError] = useState<string>('');
+  
+  // Advanced filter states
+  const [salaryRange, setSalaryRange] = useState<[number, number]>([0, 200000]);
+  const [isRemoteOnly, setIsRemoteOnly] = useState(false);
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [datePosted, setDatePosted] = useState('any');
+  const [companySize, setCompanySize] = useState('any');
 
   // Helper functions
   const getJobTypeColor = (jobType: string) => {
@@ -92,8 +100,44 @@ const JobsPage = () => {
       const matchesLocation = selectedLocation === 'All Locations' || 
                              job.location === selectedLocation || 
                              (selectedLocation === 'Remote' && job.remote);
+      
+      // Advanced filters
+      const matchesSalary = (() => {
+        if (!job.salary_min && !job.salary_max) return true;
+        const jobMin = job.salary_min || 0;
+        const jobMax = job.salary_max || 999999;
+        return jobMax >= salaryRange[0] && jobMin <= salaryRange[1];
+      })();
+      
+      const matchesRemote = !isRemoteOnly || job.is_remote;
+      
+      const matchesCompany = selectedCompanies.length === 0 || 
+                            selectedCompanies.includes(job.company?.name || '');
+      
+      const matchesSkills = selectedSkills.length === 0 || 
+                           selectedSkills.some(skill => 
+                             job.skills_required?.some((jobSkill: string) => 
+                               jobSkill.toLowerCase().includes(skill.toLowerCase())
+                             )
+                           );
+      
+      const matchesDatePosted = (() => {
+        if (datePosted === 'any') return true;
+        const jobDate = new Date(job.created_at);
+        const now = new Date();
+        const daysDiff = Math.floor((now.getTime() - jobDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        switch (datePosted) {
+          case 'today': return daysDiff === 0;
+          case 'week': return daysDiff <= 7;
+          case 'month': return daysDiff <= 30;
+          default: return true;
+        }
+      })();
 
-      return matchesSearch && matchesJobType && matchesCategory && matchesExperience && matchesLocation;
+      return matchesSearch && matchesJobType && matchesCategory && matchesExperience && 
+             matchesLocation && matchesSalary && matchesRemote && matchesCompany && 
+             matchesSkills && matchesDatePosted;
     });
 
     // Sort jobs
@@ -111,7 +155,8 @@ const JobsPage = () => {
     }
 
     return filtered;
-  }, [displayedJobs, searchTerm, selectedJobTypes, selectedCategory, selectedExperience, selectedLocation, sortBy]);
+  }, [searchTerm, selectedJobTypes, selectedCategory, selectedExperience, selectedLocation, 
+      sortBy, salaryRange, isRemoteOnly, selectedCompanies, selectedSkills, datePosted]);
 
   // Load jobs from database
   useEffect(() => {
@@ -177,6 +222,76 @@ const JobsPage = () => {
   const handleApplyClick = (job: typeof allJobs[0]) => {
     setSelectedJob(job);
     setIsApplyModalOpen(true);
+  };
+
+  // Get unique companies for filter
+  const uniqueCompanies = useMemo(() => {
+    const companies = allJobs
+      .map(job => job.company?.name)
+      .filter(Boolean)
+      .filter((company, index, arr) => arr.indexOf(company) === index);
+    return companies;
+  }, [allJobs]);
+
+  // Get unique skills for filter
+  const uniqueSkills = useMemo(() => {
+    const skills = allJobs
+      .flatMap(job => job.skills_required || [])
+      .filter((skill, index, arr) => arr.indexOf(skill) === index);
+    return skills;
+  }, [allJobs]);
+
+  const toggleJobType = (typeId: string) => {
+    setSelectedJobTypes(prev => 
+      prev.includes(typeId) 
+        ? prev.filter(id => id !== typeId)
+        : [...prev, typeId]
+    );
+  };
+
+  const toggleCompany = (company: string) => {
+    setSelectedCompanies(prev => 
+      prev.includes(company) 
+        ? prev.filter(c => c !== company)
+        : [...prev, company]
+    );
+  };
+
+  const toggleSkill = (skill: string) => {
+    setSelectedSkills(prev => 
+      prev.includes(skill) 
+        ? prev.filter(s => s !== skill)
+        : [...prev, skill]
+    );
+  };
+
+  const clearAllFilters = () => {
+    setSearchTerm('');
+    setSelectedJobTypes([]);
+    setSelectedCategory('All Categories');
+    setSelectedExperience('All Levels');
+    setSelectedLocation('All Locations');
+    setSalaryRange([0, 200000]);
+    setIsRemoteOnly(false);
+    setSelectedCompanies([]);
+    setSelectedSkills([]);
+    setDatePosted('any');
+    setCompanySize('any');
+  };
+
+  const getActiveFiltersCount = () => {
+    let count = 0;
+    if (searchTerm) count++;
+    if (selectedJobTypes.length > 0) count++;
+    if (selectedCategory !== 'All Categories') count++;
+    if (selectedExperience !== 'All Levels') count++;
+    if (selectedLocation !== 'All Locations') count++;
+    if (salaryRange[0] > 0 || salaryRange[1] < 200000) count++;
+    if (isRemoteOnly) count++;
+    if (selectedCompanies.length > 0) count++;
+    if (selectedSkills.length > 0) count++;
+    if (datePosted !== 'any') count++;
+    return count;
   };
 
   const JobCard = ({ job, isListView = false }: { job: typeof allJobs[0], isListView?: boolean }) => (
@@ -301,15 +416,23 @@ const JobsPage = () => {
               </div>
 
               <button
-                onClick={() => setShowFilters(!showFilters)}
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
                 className="lg:hidden flex items-center justify-center px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
               >
-                <Filter className="h-5 w-5 mr-2" />
-                Filters
+                <SlidersHorizontal className="h-5 w-5 mr-2" />
+                Filters {getActiveFiltersCount() > 0 && `(${getActiveFiltersCount()})`}
               </button>
             </div>
 
             <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className="hidden lg:flex items-center justify-center px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+              >
+                <SlidersHorizontal className="h-5 w-5 mr-2" />
+                Advanced Filters {getActiveFiltersCount() > 0 && `(${getActiveFiltersCount()})`}
+              </button>
+              
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
@@ -317,6 +440,7 @@ const JobsPage = () => {
               >
                 <option value="newest">Newest First</option>
                 <option value="salary">Highest Salary</option>
+                <option value="company">Company A-Z</option>
               </select>
 
               <div className="flex border border-gray-200 rounded-xl overflow-hidden">
@@ -336,6 +460,265 @@ const JobsPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Advanced Filters Panel */}
+        {showAdvancedFilters && (
+          <div className="bg-white border-t border-gray-200">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Advanced Filters</h3>
+                <div className="flex items-center space-x-3">
+                  {getActiveFiltersCount() > 0 && (
+                    <button
+                      onClick={clearAllFilters}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                    >
+                      Clear All ({getActiveFiltersCount()})
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowAdvancedFilters(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <ChevronUp className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {/* Job Type Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Job Type</label>
+                  <div className="space-y-2">
+                    {jobTypes.map((type) => (
+                      <label key={type.id} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedJobTypes.includes(type.id)}
+                          onChange={() => toggleJobType(type.id)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">{type.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Experience Level */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Experience Level</label>
+                  <select
+                    value={selectedExperience}
+                    onChange={(e) => setSelectedExperience(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {experienceLevels.map((level) => (
+                      <option key={level} value={level}>
+                        {level}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Location */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Location</label>
+                  <select
+                    value={selectedLocation}
+                    onChange={(e) => setSelectedLocation(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {locations.map((location) => (
+                      <option key={location} value={location}>
+                        {location}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Remote Work */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Work Type</label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={isRemoteOnly}
+                      onChange={(e) => setIsRemoteOnly(e.target.checked)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Remote Only</span>
+                  </label>
+                </div>
+
+                {/* Salary Range */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Salary Range: ${(salaryRange[0] / 1000).toFixed(0)}k - ${(salaryRange[1] / 1000).toFixed(0)}k
+                  </label>
+                  <div className="px-3">
+                    <input
+                      type="range"
+                      min="0"
+                      max="200000"
+                      step="5000"
+                      value={salaryRange[0]}
+                      onChange={(e) => setSalaryRange([parseInt(e.target.value), salaryRange[1]])}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                    />
+                    <input
+                      type="range"
+                      min="0"
+                      max="200000"
+                      step="5000"
+                      value={salaryRange[1]}
+                      onChange={(e) => setSalaryRange([salaryRange[0], parseInt(e.target.value)])}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2"
+                    />
+                  </div>
+                </div>
+
+                {/* Date Posted */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Date Posted</label>
+                  <select
+                    value={datePosted}
+                    onChange={(e) => setDatePosted(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="any">Any Time</option>
+                    <option value="today">Today</option>
+                    <option value="week">Past Week</option>
+                    <option value="month">Past Month</option>
+                  </select>
+                </div>
+
+                {/* Companies */}
+                {uniqueCompanies.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Companies {selectedCompanies.length > 0 && `(${selectedCompanies.length})`}
+                    </label>
+                    <div className="max-h-32 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-2">
+                      {uniqueCompanies.map((company) => (
+                        <label key={company} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedCompanies.includes(company)}
+                            onChange={() => toggleCompany(company)}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <span className="ml-2 text-sm text-gray-700 truncate">{company}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Skills */}
+                {uniqueSkills.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Skills {selectedSkills.length > 0 && `(${selectedSkills.length})`}
+                    </label>
+                    <div className="max-h-32 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-2">
+                      {uniqueSkills.slice(0, 10).map((skill) => (
+                        <label key={skill} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedSkills.includes(skill)}
+                            onChange={() => toggleSkill(skill)}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <span className="ml-2 text-sm text-gray-700 truncate">{skill}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Active Filters Display */}
+              {getActiveFiltersCount() > 0 && (
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Active Filters:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {searchTerm && (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700">
+                        Search: "{searchTerm}"
+                        <button
+                          onClick={() => setSearchTerm('')}
+                          className="ml-2 text-blue-500 hover:text-blue-700"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    )}
+                    
+                    {selectedJobTypes.map((type) => (
+                      <span key={type} className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-100 text-green-700">
+                        {jobTypes.find(t => t.id === type)?.label}
+                        <button
+                          onClick={() => toggleJobType(type)}
+                          className="ml-2 text-green-500 hover:text-green-700"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                    
+                    {selectedCategory !== 'All Categories' && (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-700">
+                        {selectedCategory}
+                        <button
+                          onClick={() => setSelectedCategory('All Categories')}
+                          className="ml-2 text-purple-500 hover:text-purple-700"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    )}
+                    
+                    {isRemoteOnly && (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-indigo-100 text-indigo-700">
+                        Remote Only
+                        <button
+                          onClick={() => setIsRemoteOnly(false)}
+                          className="ml-2 text-indigo-500 hover:text-indigo-700"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    )}
+                    
+                    {selectedCompanies.map((company) => (
+                      <span key={company} className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-orange-100 text-orange-700">
+                        {company}
+                        <button
+                          onClick={() => toggleCompany(company)}
+                          className="ml-2 text-orange-500 hover:text-orange-700"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                    
+                    {selectedSkills.map((skill) => (
+                      <span key={skill} className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-pink-100 text-pink-700">
+                        {skill}
+                        <button
+                          onClick={() => toggleSkill(skill)}
+                          className="ml-2 text-pink-500 hover:text-pink-700"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Results */}
