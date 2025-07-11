@@ -35,6 +35,42 @@ const JobsPage = () => {
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [error, setError] = useState<string>('');
 
+  // Define filteredJobs immediately after state declarations
+  const filteredJobs = useMemo(() => {
+    let filtered = displayedJobs.filter(job => {
+      const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (job.company && job.company.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      const matchesJobType = selectedJobTypes.length === 0 || 
+                            selectedJobTypes.some(type => 
+                              job.type.toLowerCase().replace(' ', '-') === type
+                            );
+      
+      const matchesCategory = selectedCategory === 'All Categories' || job.category === selectedCategory;
+      const matchesExperience = selectedExperience === 'All Levels' || job.experience === selectedExperience;
+      const matchesLocation = selectedLocation === 'All Locations' || 
+                             job.location === selectedLocation || 
+                             (selectedLocation === 'Remote' && job.remote);
+
+      return matchesSearch && matchesJobType && matchesCategory && matchesExperience && matchesLocation;
+    });
+
+    // Sort jobs
+    if (sortBy === 'newest') {
+      filtered.sort((a, b) => new Date(a.postedDate).getTime() - new Date(b.postedDate).getTime());
+    } else if (sortBy === 'salary') {
+      filtered.sort((a, b) => {
+        const getSalaryValue = (salary: string) => {
+          const match = salary.match(/\$(\d+)k?/);
+          return match ? parseInt(match[1]) * (salary.includes('k') ? 1000 : 1) : 0;
+        };
+        return getSalaryValue(b.salary) - getSalaryValue(a.salary);
+      });
+    }
+
+    return filtered;
+  }, [displayedJobs, searchTerm, selectedJobTypes, selectedCategory, selectedExperience, selectedLocation, sortBy]);
+
   // Load jobs from database
   useEffect(() => {
     const loadJobs = async () => {
@@ -195,41 +231,6 @@ const JobsPage = () => {
     setSelectedJob(job);
     setIsApplyModalOpen(true);
   };
-
-  const filteredJobs = useMemo(() => {
-    let filtered = displayedJobs.filter(job => {
-      const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           (job.company && job.company.toLowerCase().includes(searchTerm.toLowerCase()));
-      
-      const matchesJobType = selectedJobTypes.length === 0 || 
-                            selectedJobTypes.some(type => 
-                              job.type.toLowerCase().replace(' ', '-') === type
-                            );
-      
-      const matchesCategory = selectedCategory === 'All Categories' || job.category === selectedCategory;
-      const matchesExperience = selectedExperience === 'All Levels' || job.experience === selectedExperience;
-      const matchesLocation = selectedLocation === 'All Locations' || 
-                             job.location === selectedLocation || 
-                             (selectedLocation === 'Remote' && job.remote);
-
-      return matchesSearch && matchesJobType && matchesCategory && matchesExperience && matchesLocation;
-    });
-
-    // Sort jobs
-    if (sortBy === 'newest') {
-      filtered.sort((a, b) => new Date(a.postedDate).getTime() - new Date(b.postedDate).getTime());
-    } else if (sortBy === 'salary') {
-      filtered.sort((a, b) => {
-        const getSalaryValue = (salary: string) => {
-          const match = salary.match(/\$(\d+)k?/);
-          return match ? parseInt(match[1]) * (salary.includes('k') ? 1000 : 1) : 0;
-        };
-        return getSalaryValue(b.salary) - getSalaryValue(a.salary);
-      });
-    }
-
-    return filtered;
-  }, [displayedJobs, searchTerm, selectedJobTypes, selectedCategory, selectedExperience, selectedLocation, sortBy]);
 
   const JobCard = ({ job, isListView = false }: { job: typeof allJobs[0], isListView?: boolean }) => (
     <div className={`group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden ${isListView ? 'flex items-center space-x-6' : ''}`}>
