@@ -78,7 +78,7 @@ function AppContent() {
           onLogin={handleLogin}
           onLogout={handleLogout}
         />
-        <CompaniesPage />
+        <CompaniesPage onNavigate={setCurrentPage} />
         <Footer />
       </div>
     );

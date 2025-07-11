@@ -5,9 +5,10 @@ import { getCompanies } from '../lib/supabase';
 
 // Static filter options - these could also be fetched from the database
 const industries = ['All Industries', 'Technology', 'Design', 'Data & Analytics', 'Marketing', 'Finance', 'Healthcare'];
+  onNavigate?: (page: 'home' | 'jobs' | 'companies' | 'about' | 'resume-builder' | 'dashboard') => void;
 const companySizes = ['All Sizes', '1-50', '50-200', '200-500', '500-1000', '1000-5000', '5000+'];
 
-const CompaniesPage = () => {
+const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [locations, setLocations] = useState<string[]>(['All Locations']);
@@ -213,13 +214,28 @@ const CompaniesPage = () => {
           </div>
           {!isListView && (
             <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm">
-              View Company
+              <span onClick={() => handleViewJobs(company.id, company.name)}>
+                View Jobs
+              </span>
             </button>
           )}
         </div>
       </div>
     </div>
   );
+
+  const handleViewJobs = (companyId: string, companyName: string) => {
+    // Store company filter for jobs page
+    localStorage.setItem('companyFilter', JSON.stringify({
+      id: companyId,
+      name: companyName
+    }));
+    
+    // Navigate to jobs page
+    if (onNavigate) {
+      onNavigate('jobs');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
@@ -254,7 +270,9 @@ const CompaniesPage = () => {
                 className="lg:hidden flex items-center justify-center px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
               >
                 <Filter className="h-5 w-5 mr-2" />
-                Filters
+                <span onClick={() => handleViewJobs(company.id, company.name)}>
+                  View Jobs →
+                </span>
               </button>
             </div>
 

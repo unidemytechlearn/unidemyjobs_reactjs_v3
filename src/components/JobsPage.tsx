@@ -221,6 +221,7 @@ const JobsPage = () => {
     const searchTerm = localStorage.getItem('jobSearchTerm');
     const locationFilter = localStorage.getItem('jobLocationFilter');
     const jobTypeFilters = localStorage.getItem('jobTypeFilters');
+    const companyFilter = localStorage.getItem('companyFilter');
     
     if (jobTypeFilter) {
       // Map the job type to the correct filter format
@@ -261,6 +262,17 @@ const JobsPage = () => {
         localStorage.removeItem('jobTypeFilters');
       } catch (error) {
         console.error('Error parsing job type filters:', error);
+      }
+    }
+    
+    // Apply company filter from companies page
+    if (companyFilter) {
+      try {
+        const company = JSON.parse(companyFilter);
+        setSelectedCompanies([company.name]);
+        localStorage.removeItem('companyFilter');
+      } catch (error) {
+        console.error('Error parsing company filter:', error);
       }
     }
   }, []);
