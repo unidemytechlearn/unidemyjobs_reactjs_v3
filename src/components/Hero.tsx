@@ -33,7 +33,26 @@ const Hero = ({ onNavigateToResumeBuilder, onNavigateToJobs }: HeroProps = {}) =
 
   const handleSearch = () => {
     if (onNavigateToJobs) {
-      // Navigate to jobs page with search parameters
+      // Store search parameters in localStorage for the jobs page to pick up
+      if (jobTitle.trim()) {
+        localStorage.setItem('jobSearchTerm', jobTitle.trim());
+      }
+      if (location.trim()) {
+        localStorage.setItem('jobLocationFilter', location.trim());
+      }
+      if (selectedJobTypes.length > 0) {
+        localStorage.setItem('jobTypeFilters', JSON.stringify(selectedJobTypes));
+      }
+      
+      // Navigate to jobs page
+      onNavigateToJobs();
+    }
+  };
+
+  const handlePopularSearchClick = (searchTerm: string) => {
+    // Store the search term and navigate to jobs page
+    localStorage.setItem('jobSearchTerm', searchTerm);
+    if (onNavigateToJobs) {
       onNavigateToJobs();
     }
   };
@@ -122,7 +141,11 @@ const Hero = ({ onNavigateToResumeBuilder, onNavigateToJobs }: HeroProps = {}) =
             <div className="flex flex-wrap gap-2 mt-6">
               <span className="text-sm text-gray-500">Popular searches:</span>
               {['Frontend Developer', 'Data Scientist', 'Product Manager', 'UX Designer', 'Software Engineer'].map((term) => (
-                <button key={term} className="text-sm text-blue-600 hover:text-blue-700 hover:underline">
+                <button 
+                  key={term} 
+                  onClick={() => handlePopularSearchClick(term)}
+                  className="text-sm text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+                >
                   {term}
                 </button>
               ))}

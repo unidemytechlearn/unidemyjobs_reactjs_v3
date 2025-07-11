@@ -218,6 +218,10 @@ const JobsPage = () => {
   // Check for job type filter from navigation
   useEffect(() => {
     const jobTypeFilter = localStorage.getItem('jobTypeFilter');
+    const searchTerm = localStorage.getItem('jobSearchTerm');
+    const locationFilter = localStorage.getItem('jobLocationFilter');
+    const jobTypeFilters = localStorage.getItem('jobTypeFilters');
+    
     if (jobTypeFilter) {
       // Map the job type to the correct filter format
       const jobTypeMapping: Record<string, string> = {
@@ -235,6 +239,29 @@ const JobsPage = () => {
       
       // Clear the filter from localStorage
       localStorage.removeItem('jobTypeFilter');
+    }
+    
+    // Apply search term from homepage
+    if (searchTerm) {
+      setSearchTerm(searchTerm);
+      localStorage.removeItem('jobSearchTerm');
+    }
+    
+    // Apply location filter from homepage
+    if (locationFilter) {
+      setSelectedLocation(locationFilter);
+      localStorage.removeItem('jobLocationFilter');
+    }
+    
+    // Apply job type filters from homepage
+    if (jobTypeFilters) {
+      try {
+        const filters = JSON.parse(jobTypeFilters);
+        setSelectedJobTypes(filters);
+        localStorage.removeItem('jobTypeFilters');
+      } catch (error) {
+        console.error('Error parsing job type filters:', error);
+      }
     }
   }, []);
 
