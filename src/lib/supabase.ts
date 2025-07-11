@@ -9,6 +9,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Create a separate client for anonymous access to public data
+export const publicSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  }
+});
+
 // Database types
 export interface Profile {
   id: string;
@@ -244,7 +252,8 @@ export const getJobs = async (filters?: {
   limit?: number;
   offset?: number;
 }): Promise<Job[]> => {
-  let query = supabase
+  // Use publicSupabase to ensure anonymous access works
+  let query = publicSupabase
     .from('jobs')
     .select(`
       *,
@@ -312,7 +321,8 @@ export const getCompanies = async (filters?: {
   limit?: number;
   offset?: number;
 }): Promise<Company[]> => {
-  let query = supabase
+  // Use publicSupabase to ensure anonymous access works
+  let query = publicSupabase
     .from('companies')
     .select('*')
     .order('name', { ascending: true });
