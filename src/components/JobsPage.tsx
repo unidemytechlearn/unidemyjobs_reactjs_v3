@@ -3,6 +3,8 @@ import { Search, MapPin, Filter, SlidersHorizontal, Grid, List, ChevronDown, Boo
 import ApplyModal from './ApplyModal';
 import { getJobs } from '../lib/supabase';
 import { useAuthContext } from './AuthProvider';
+import SignUpModal from './SignUpModal';
+import SignInModal from './SignInModal';
 
 const jobTypes = [
   { id: 'full-time', label: 'Full Time', color: 'bg-blue-100 text-blue-700 border-blue-200' },
@@ -36,6 +38,8 @@ const JobsPage = () => {
   const [selectedJob, setSelectedJob] = useState<typeof allJobs[0] | null>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [error, setError] = useState<string>('');
+  const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
+  const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
   
   // Advanced filter states
   const [salaryRange, setSalaryRange] = useState<[number, number]>([0, 200000]);
@@ -243,8 +247,27 @@ const JobsPage = () => {
   }, [allJobs, displayedJobs, filteredJobs, hasMoreJobs]);
 
   const handleApplyClick = (job: typeof allJobs[0]) => {
-    setSelectedJob(job);
-    setIsApplyModalOpen(true);
+    if (isAuthenticated) {
+      setSelectedJob(job);
+      setIsApplyModalOpen(true);
+    } else {
+      setIsSignUpModalOpen(true);
+    }
+  };
+
+  const handleSwitchToSignIn = () => {
+    setIsSignUpModalOpen(false);
+    setIsSignInModalOpen(true);
+  };
+
+  const handleSwitchToSignUp = () => {
+    setIsSignInModalOpen(false);
+    setIsSignUpModalOpen(true);
+  };
+
+  const handleAuthSuccess = () => {
+    setIsSignUpModalOpen(false);
+    setIsSignInModalOpen(false);
   };
 
   // Get unique companies for filter
@@ -393,8 +416,6 @@ const JobsPage = () => {
           </div>
           {!isListView && (
             <button 
-              onClick={() => handleApplyClick(job)}
-              disabled={!isAuthenticated}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
             >
               Apply Now
@@ -812,6 +833,20 @@ const JobsPage = () => {
           job={selectedJob}
         />
       )}
+
+      {/* Authentication Modals */}
+      <SignUpModal
+        isOpen={isSignUpModalOpen}
+        onClose={() => setIsSignUpModalOpen(false)}
+        onSwitchToSignIn={handleSwitchToSignIn}
+        onSuccess={handleAuthSuccess}
+      />
+      <SignInModal
+        isOpen={isSignInModalOpen}
+        onClose={() => setIsSignInModalOpen(false)}
+        onSwitchToSignUp={handleSwitchToSignUp}
+        onSuccess={handleAuthSuccess}
+      />
     </div>
   );
 };
