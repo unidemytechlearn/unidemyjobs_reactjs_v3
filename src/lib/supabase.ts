@@ -391,6 +391,24 @@ export const markNotificationAsRead = async (notificationId: string) => {
   if (error) throw error;
 };
 
+// Saved Jobs functions
+export const getUserSavedJobs = async (userId: string): Promise<SavedJob[]> => {
+  const { data, error } = await supabase
+    .from('saved_jobs')
+    .select(`
+      *,
+      job:jobs(
+        *,
+        company:companies(*)
+      )
+    `)
+    .eq('user_id', userId)
+    .order('saved_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
 // File upload functions
 export const uploadFile = async (bucket: string, path: string, file: File) => {
   const { data, error } = await supabase.storage
