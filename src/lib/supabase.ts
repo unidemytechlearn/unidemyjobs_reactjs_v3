@@ -26,6 +26,9 @@ export interface Profile {
   github_url?: string;
   portfolio_url?: string;
   resume_url?: string;
+  resume_file_name?: string;
+  resume_uploaded_at?: string;
+  resume_file_size?: number;
   profile_visibility: string;
   show_salary: boolean;
   show_contact: boolean;
