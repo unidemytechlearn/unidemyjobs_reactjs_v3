@@ -289,20 +289,6 @@ export const getJobs = async (filters?: {
   }
   
   return data || [];
-  const { data, error } = await supabase
-    .from('saved_jobs')
-    .select(`
-      *,
-      job:jobs(
-        *,
-        company:companies(*)
-      )
-    `)
-    .eq('user_id', userId)
-    .order('saved_at', { ascending: false });
-
-  if (error) throw error;
-  return data || [];
 };
 
 export const isJobSaved = async (userId: string, jobId: string): Promise<boolean> => {
