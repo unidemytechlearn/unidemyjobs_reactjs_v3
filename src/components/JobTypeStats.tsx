@@ -113,6 +113,7 @@ const JobTypeStats = ({ onNavigateToJobs }: JobTypeStatsProps) => {
           </p>
           <button className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all transform hover:scale-105 font-semibold shadow-lg">
             onClick={() => onNavigateToJobs?.()}
+          >
             Explore All Job Types
           </button>
         </div>
