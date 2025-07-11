@@ -210,10 +210,7 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
               {company.openJobs} open positions
             </span>
             {isListView && (
-              <button 
-                onClick={() => handleViewJobs(company.id, company.name)}
-                className="text-gray-400 hover:text-blue-500 transition-colors"
-              >
+              <button className="text-gray-400 hover:text-blue-500 transition-colors">
                 <ExternalLink className="h-5 w-5" />
               </button>
             )}
@@ -224,6 +221,8 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
             >
               View Jobs →
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -275,9 +274,7 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
                 className="lg:hidden flex items-center justify-center px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
               >
                 <Filter className="h-5 w-5 mr-2" />
-                <span onClick={() => handleViewJobs(company.id, company.name)}>
-                  View Jobs →
-                </span>
+                <span>Filters</span>
               </button>
             </div>
 
