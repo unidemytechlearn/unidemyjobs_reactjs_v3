@@ -83,7 +83,23 @@ const stats = [
   }
 ];
 
-const Companies = () => {
+interface CompaniesProps {
+  onNavigate?: (page: 'home' | 'jobs' | 'companies' | 'about' | 'resume-builder' | 'dashboard') => void;
+}
+
+const Companies = ({ onNavigate }: CompaniesProps) => {
+  const handleViewJobs = (companyName: string) => {
+    // Store company filter for jobs page
+    localStorage.setItem('companyFilter', JSON.stringify({
+      name: companyName
+    }));
+    
+    // Navigate to jobs page
+    if (onNavigate) {
+      onNavigate('jobs');
+    }
+  };
+
   return (
     <section className="py-20 bg-gradient-to-br from-gray-50 via-white to-blue-50 relative overflow-hidden">
       {/* Background decoration */}
@@ -174,7 +190,10 @@ const Companies = () => {
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
                     Hiring Now
                   </span>
-                  <button className="text-blue-600 hover:text-blue-700 text-sm font-medium group-hover:underline transition-all">
+                  <button 
+                    onClick={() => handleViewJobs(company.name)}
+                    className="text-blue-600 hover:text-blue-700 text-sm font-medium group-hover:underline transition-all"
+                  >
                     View Jobs →
                   </button>
                 </div>

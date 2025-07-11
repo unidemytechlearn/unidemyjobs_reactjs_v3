@@ -130,7 +130,7 @@ function AppContent() {
         onNavigateToJobs={handleNavigateToJobsWithFilter}
       />
       <JobTypeStats onNavigateToJobs={handleNavigateToJobsWithFilter} />
-      <Companies />
+      <Companies onNavigate={setCurrentPage} />
       <JobCategories />
       <FeaturedJobs onViewAllJobs={() => setCurrentPage('jobs')} />
       <Newsletter />
