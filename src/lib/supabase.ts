@@ -244,124 +244,51 @@ export const getJobs = async (filters?: {
   limit?: number;
   offset?: number;
 }): Promise<Job[]> => {
-  try {
-    // First, try with authentication
-    let query = supabase
-      .from('jobs')
-      .select(`
-        *,
-        company:companies(*)
-      `)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false });
+  let query = supabase
+    .from('jobs')
+    .select(`
+      *,
+      company:companies(*)
+    `)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false });
 
-    if (filters?.search) {
-      query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
-    }
-
-    if (filters?.job_type) {
-      query = query.eq('job_type', filters.job_type);
-    }
-
-    if (filters?.location) {
-      query = query.eq('location', filters.location);
-    }
-
-    if (filters?.experience_level) {
-      query = query.eq('experience_level', filters.experience_level);
-    }
-
-    if (filters?.is_remote !== undefined) {
-      query = query.eq('is_remote', filters.is_remote);
-    }
-
-    if (filters?.limit) {
-      query = query.limit(filters.limit);
-    }
-
-    if (filters?.offset) {
-      query = query.range(filters.offset, filters.offset + (filters.limit || 10) - 1);
-    }
-
-    const { data, error } = await query;
-    
-    if (error) {
-      console.error('Error fetching jobs:', error);
-      
-      // If there's an auth error or RLS error, try a simpler query for anonymous users
-      if (error.code === 'PGRST301' || error.code === '42501' || error.message?.includes('JWT') || error.message?.includes('RLS')) {
-        console.log('Auth/RLS error detected, trying anonymous access...');
-        
-        try {
-          // Create a new supabase client instance for anonymous access
-          const { createClient } = await import('@supabase/supabase-js');
-          const anonClient = createClient(
-            import.meta.env.VITE_SUPABASE_URL,
-            import.meta.env.VITE_SUPABASE_ANON_KEY,
-            {
-              auth: {
-                persistSession: false,
-                autoRefreshToken: false,
-              }
-            }
-          );
-          
-          let anonQuery = anonClient
-            .from('jobs')
-            .select(`
-              *,
-              company:companies(*)
-            `)
-            .eq('is_active', true)
-            .order('created_at', { ascending: false });
-
-          // Apply the same filters for anonymous query
-          if (filters?.search) {
-            anonQuery = anonQuery.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
-          }
-          if (filters?.job_type) {
-            anonQuery = anonQuery.eq('job_type', filters.job_type);
-          }
-          if (filters?.location) {
-            anonQuery = anonQuery.eq('location', filters.location);
-          }
-          if (filters?.experience_level) {
-            anonQuery = anonQuery.eq('experience_level', filters.experience_level);
-          }
-          if (filters?.is_remote !== undefined) {
-            anonQuery = anonQuery.eq('is_remote', filters.is_remote);
-          }
-          if (filters?.limit) {
-            anonQuery = anonQuery.limit(filters.limit);
-          }
-          if (filters?.offset) {
-            anonQuery = anonQuery.range(filters.offset, filters.offset + (filters.limit || 10) - 1);
-          }
-          
-          const { data: anonData, error: anonError } = await anonQuery;
-          
-          if (anonError) {
-            console.error('Anonymous jobs fetch failed:', anonError);
-            throw anonError;
-          }
-          
-          console.log('Successfully fetched jobs anonymously:', anonData?.length || 0);
-          return anonData || [];
-          
-        } catch (anonErr) {
-          console.error('Anonymous client creation failed:', anonErr);
-          throw error; // Throw original error if anonymous access also fails
-        }
-      }
-      throw error;
-    }
-    
-    console.log('Successfully fetched jobs with auth:', data?.length || 0);
-    return data || [];
-  } catch (error) {
-    console.error('Jobs fetch error:', error);
-    throw error; // Re-throw to let the component handle the error
+  if (filters?.search) {
+    query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
   }
+
+  if (filters?.job_type) {
+    query = query.eq('job_type', filters.job_type);
+  }
+
+  if (filters?.location) {
+    query = query.eq('location', filters.location);
+  }
+
+  if (filters?.experience_level) {
+    query = query.eq('experience_level', filters.experience_level);
+  }
+
+  if (filters?.is_remote !== undefined) {
+    query = query.eq('is_remote', filters.is_remote);
+  }
+
+  if (filters?.limit) {
+    query = query.limit(filters.limit);
+  }
+
+  if (filters?.offset) {
+    query = query.range(filters.offset, filters.offset + (filters.limit || 10) - 1);
+  }
+
+  const { data, error } = await query;
+  
+  if (error) {
+    console.error('Error fetching jobs:', error);
+    throw error;
+  }
+  
+  return data || [];
 };
 
 export const getJob = async (jobId: string): Promise<Job | null> => {
