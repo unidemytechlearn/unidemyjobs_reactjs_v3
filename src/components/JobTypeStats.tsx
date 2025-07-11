@@ -111,8 +111,9 @@ const JobTypeStats = ({ onNavigateToJobs }: JobTypeStatsProps) => {
           <p className="text-gray-600 mb-6">
             Find the perfect work arrangement that fits your lifestyle and career goals.
           </p>
-          <button className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all transform hover:scale-105 font-semibold shadow-lg">
+          <button 
             onClick={() => onNavigateToJobs?.()}
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all transform hover:scale-105 font-semibold shadow-lg"
           >
             Explore All Job Types
           </button>
