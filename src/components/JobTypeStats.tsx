@@ -49,7 +49,17 @@ const jobTypeStats = [
   },
 ];
 
-const JobTypeStats = () => {
+interface JobTypeStatsProps {
+  onNavigateToJobs?: (jobType?: string) => void;
+}
+
+const JobTypeStats = ({ onNavigateToJobs }: JobTypeStatsProps) => {
+  const handleJobTypeClick = (jobType: string) => {
+    if (onNavigateToJobs) {
+      onNavigateToJobs(jobType);
+    }
+  };
+
   return (
     <section className="py-20 bg-gradient-to-br from-gray-50 to-blue-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -66,9 +76,10 @@ const JobTypeStats = () => {
           {jobTypeStats.map((stat, index) => {
             const Icon = stat.icon;
             return (
-              <div
+              <button
                 key={stat.type}
-                className={`${stat.bgColor} rounded-2xl p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer border border-white/50`}
+                onClick={() => handleJobTypeClick(stat.type)}
+                className={`${stat.bgColor} rounded-2xl p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer border border-white/50 text-left w-full`}
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <div className={`${stat.color} w-12 h-12 rounded-xl flex items-center justify-center mb-4`}>
@@ -91,7 +102,7 @@ const JobTypeStats = () => {
                     jobs available
                   </p>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -101,6 +112,7 @@ const JobTypeStats = () => {
             Find the perfect work arrangement that fits your lifestyle and career goals.
           </p>
           <button className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all transform hover:scale-105 font-semibold shadow-lg">
+            onClick={() => onNavigateToJobs?.()}
             Explore All Job Types
           </button>
         </div>

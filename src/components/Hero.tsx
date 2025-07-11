@@ -13,7 +13,12 @@ interface HeroProps {
   onNavigateToResumeBuilder?: () => void;
 }
 
-const Hero = ({ onNavigateToResumeBuilder }: HeroProps = {}) => {
+interface HeroProps {
+  onNavigateToResumeBuilder?: () => void;
+  onNavigateToJobs?: (jobType?: string) => void;
+}
+
+const Hero = ({ onNavigateToResumeBuilder, onNavigateToJobs }: HeroProps = {}) => {
   const [jobTitle, setJobTitle] = useState('');
   const [location, setLocation] = useState('');
   const [selectedJobTypes, setSelectedJobTypes] = useState<string[]>([]);
@@ -24,6 +29,13 @@ const Hero = ({ onNavigateToResumeBuilder }: HeroProps = {}) => {
         ? prev.filter(id => id !== typeId)
         : [...prev, typeId]
     );
+  };
+
+  const handleSearch = () => {
+    if (onNavigateToJobs) {
+      // Navigate to jobs page with search parameters
+      onNavigateToJobs();
+    }
   };
 
   return (
@@ -76,7 +88,10 @@ const Hero = ({ onNavigateToResumeBuilder }: HeroProps = {}) => {
                 />
               </div>
 
-              <button className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all transform hover:scale-105 font-semibold shadow-lg">
+              <button 
+                onClick={handleSearch}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all transform hover:scale-105 font-semibold shadow-lg"
+              >
                 Search Jobs
               </button>
             </div>

@@ -27,6 +27,15 @@ function AppContent() {
     setCurrentPage('home');
   };
 
+  const handleNavigateToJobsWithFilter = (jobType?: string) => {
+    setCurrentPage('jobs');
+    // Store the job type filter for the jobs page
+    if (jobType) {
+      // We'll pass this through a state or context later
+      localStorage.setItem('jobTypeFilter', jobType);
+    }
+  };
+
   if (currentPage === 'dashboard' && isAuthenticated) {
     return (
       <div className="min-h-screen bg-white">
@@ -116,8 +125,11 @@ function AppContent() {
         onLogin={handleLogin}
         onLogout={handleLogout}
       />
-      <Hero onNavigateToResumeBuilder={() => setCurrentPage('resume-builder')} />
-      <JobTypeStats />
+      <Hero 
+        onNavigateToResumeBuilder={() => setCurrentPage('resume-builder')}
+        onNavigateToJobs={handleNavigateToJobsWithFilter}
+      />
+      <JobTypeStats onNavigateToJobs={handleNavigateToJobsWithFilter} />
       <Companies />
       <JobCategories />
       <FeaturedJobs onViewAllJobs={() => setCurrentPage('jobs')} />

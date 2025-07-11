@@ -209,6 +209,29 @@ const JobsPage = () => {
     loadJobs();
   }, []);
 
+  // Check for job type filter from navigation
+  useEffect(() => {
+    const jobTypeFilter = localStorage.getItem('jobTypeFilter');
+    if (jobTypeFilter) {
+      // Map the job type to the correct filter format
+      const jobTypeMapping: Record<string, string> = {
+        'Full Time': 'full-time',
+        'Part Time': 'part-time',
+        'Contract': 'contract',
+        'Internship': 'internship',
+        'Freelancing': 'freelancing'
+      };
+      
+      const filterValue = jobTypeMapping[jobTypeFilter];
+      if (filterValue) {
+        setSelectedJobTypes([filterValue]);
+      }
+      
+      // Clear the filter from localStorage
+      localStorage.removeItem('jobTypeFilter');
+    }
+  }, []);
+
   // Debug: Log when jobs change
   useEffect(() => {
     console.log('All jobs count:', allJobs.length);
