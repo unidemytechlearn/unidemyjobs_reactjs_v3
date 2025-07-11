@@ -423,6 +423,16 @@ export const saveJob = async (userId: string, jobId: string) => {
   return data;
 };
 
+export const unsaveJob = async (userId: string, jobId: string) => {
+  const { error } = await supabase
+    .from('saved_jobs')
+    .delete()
+    .eq('user_id', userId)
+    .eq('job_id', jobId);
+
+  if (error) throw error;
+};
+
 // File upload functions
 export const uploadFile = async (bucket: string, path: string, file: File) => {
   const { data, error } = await supabase.storage
