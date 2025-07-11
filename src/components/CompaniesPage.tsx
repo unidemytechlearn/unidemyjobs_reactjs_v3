@@ -1,158 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Search, MapPin, Users, Star, Building, Filter, Grid, List, ExternalLink, Briefcase, TrendingUp, Award, Globe } from 'lucide-react';
+import { getCompanies } from '../lib/supabase';
 
-const companies = [
-  {
-    id: 1,
-    name: 'TechCorp',
-    logo: 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
-    industry: 'Technology',
-    size: '1000-5000',
-    location: 'San Francisco, CA',
-    rating: 4.8,
-    reviewCount: 1247,
-    description: 'Leading technology company specializing in cloud computing and AI solutions.',
-    openJobs: 45,
-    website: 'https://techcorp.com',
-    founded: 2010,
-    specialties: ['Cloud Computing', 'Artificial Intelligence', 'Machine Learning', 'Software Development'],
-    benefits: ['Health Insurance', 'Remote Work', '401k Matching', 'Stock Options', 'Unlimited PTO'],
-    culture: 'Innovation-driven culture with focus on work-life balance and continuous learning.',
-    featured: true,
-  },
-  {
-    id: 2,
-    name: 'InnovateLab',
-    logo: 'https://images.pexels.com/photos/1181533/pexels-photo-1181533.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
-    industry: 'Technology',
-    size: '500-1000',
-    location: 'New York, NY',
-    rating: 4.6,
-    reviewCount: 892,
-    description: 'Innovative startup focused on developing cutting-edge mobile applications.',
-    openJobs: 23,
-    website: 'https://innovatelab.com',
-    founded: 2015,
-    specialties: ['Mobile Development', 'Product Design', 'User Experience', 'Agile Development'],
-    benefits: ['Health Insurance', 'Flexible Hours', 'Learning Budget', 'Team Events'],
-    culture: 'Fast-paced startup environment with emphasis on creativity and collaboration.',
-    featured: true,
-  },
-  {
-    id: 3,
-    name: 'DesignStudio',
-    logo: 'https://images.pexels.com/photos/1181406/pexels-photo-1181406.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
-    industry: 'Design',
-    size: '50-200',
-    location: 'Los Angeles, CA',
-    rating: 4.9,
-    reviewCount: 456,
-    description: 'Creative design agency working with Fortune 500 companies on brand identity.',
-    openJobs: 12,
-    website: 'https://designstudio.com',
-    founded: 2012,
-    specialties: ['Brand Design', 'UI/UX Design', 'Digital Marketing', 'Creative Strategy'],
-    benefits: ['Health Insurance', 'Creative Freedom', 'Professional Development', 'Flexible PTO'],
-    culture: 'Creative and collaborative environment that values artistic expression.',
-    featured: false,
-  },
-  {
-    id: 4,
-    name: 'DataFlow',
-    logo: 'https://images.pexels.com/photos/1181298/pexels-photo-1181298.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
-    industry: 'Data & Analytics',
-    size: '200-500',
-    location: 'Austin, TX',
-    rating: 4.7,
-    reviewCount: 623,
-    description: 'Data analytics company helping businesses make data-driven decisions.',
-    openJobs: 18,
-    website: 'https://dataflow.com',
-    founded: 2018,
-    specialties: ['Data Science', 'Business Intelligence', 'Machine Learning', 'Analytics'],
-    benefits: ['Health Insurance', 'Remote Work', 'Learning Stipend', 'Performance Bonuses'],
-    culture: 'Data-driven culture with focus on continuous improvement and innovation.',
-    featured: false,
-  },
-  {
-    id: 5,
-    name: 'CloudTech',
-    logo: 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
-    industry: 'Technology',
-    size: '1000-5000',
-    location: 'Seattle, WA',
-    rating: 4.5,
-    reviewCount: 1089,
-    description: 'Cloud infrastructure provider serving enterprise clients worldwide.',
-    openJobs: 67,
-    website: 'https://cloudtech.com',
-    founded: 2008,
-    specialties: ['Cloud Infrastructure', 'DevOps', 'Security', 'Enterprise Solutions'],
-    benefits: ['Health Insurance', 'Stock Options', '401k Matching', 'Parental Leave'],
-    culture: 'Engineering excellence with strong emphasis on reliability and scalability.',
-    featured: true,
-  },
-  {
-    id: 6,
-    name: 'GrowthHack',
-    logo: 'https://images.pexels.com/photos/1181677/pexels-photo-1181677.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
-    industry: 'Marketing',
-    size: '50-200',
-    location: 'Miami, FL',
-    rating: 4.4,
-    reviewCount: 234,
-    description: 'Digital marketing agency specializing in growth hacking and performance marketing.',
-    openJobs: 8,
-    website: 'https://growthhack.com',
-    founded: 2019,
-    specialties: ['Digital Marketing', 'Growth Hacking', 'Performance Marketing', 'Analytics'],
-    benefits: ['Health Insurance', 'Flexible Hours', 'Results Bonuses', 'Team Retreats'],
-    culture: 'Results-oriented culture with focus on experimentation and rapid growth.',
-    featured: false,
-  },
-  {
-    id: 7,
-    name: 'FinanceFlow',
-    logo: 'https://images.pexels.com/photos/267371/pexels-photo-267371.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
-    industry: 'Finance',
-    size: '500-1000',
-    location: 'Chicago, IL',
-    rating: 4.6,
-    reviewCount: 567,
-    description: 'Financial technology company revolutionizing personal finance management.',
-    openJobs: 29,
-    website: 'https://financeflow.com',
-    founded: 2016,
-    specialties: ['FinTech', 'Personal Finance', 'Mobile Banking', 'Investment Tools'],
-    benefits: ['Health Insurance', 'Financial Planning', 'Stock Options', 'Wellness Programs'],
-    culture: 'Mission-driven culture focused on financial empowerment and inclusion.',
-    featured: true,
-  },
-  {
-    id: 8,
-    name: 'HealthTech Solutions',
-    logo: 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
-    industry: 'Healthcare',
-    size: '200-500',
-    location: 'Boston, MA',
-    rating: 4.8,
-    reviewCount: 445,
-    description: 'Healthcare technology company improving patient outcomes through innovation.',
-    openJobs: 34,
-    website: 'https://healthtech.com',
-    founded: 2014,
-    specialties: ['Healthcare Technology', 'Medical Devices', 'Patient Care', 'Health Analytics'],
-    benefits: ['Health Insurance', 'Medical Benefits', 'Research Time', 'Conference Attendance'],
-    culture: 'Purpose-driven culture dedicated to improving healthcare outcomes.',
-    featured: false,
-  },
-];
 
+// Static filter options - these could also be fetched from the database
 const industries = ['All Industries', 'Technology', 'Design', 'Data & Analytics', 'Marketing', 'Finance', 'Healthcare'];
 const companySizes = ['All Sizes', '1-50', '50-200', '200-500', '500-1000', '1000-5000', '5000+'];
-const locations = ['All Locations', 'San Francisco, CA', 'New York, NY', 'Los Angeles, CA', 'Austin, TX', 'Seattle, WA', 'Miami, FL', 'Chicago, IL', 'Boston, MA'];
 
 const CompaniesPage = () => {
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [locations, setLocations] = useState<string[]>(['All Locations']);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIndustry, setSelectedIndustry] = useState('All Industries');
   const [selectedSize, setSelectedSize] = useState('All Sizes');
@@ -160,6 +18,84 @@ const CompaniesPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState('featured');
+
+  // Load companies from database
+  useEffect(() => {
+    const loadCompanies = async () => {
+      try {
+        setLoading(true);
+        const fetchedCompanies = await getCompanies();
+        
+        // Transform the data to match the expected format
+        const transformedCompanies = fetchedCompanies.map(company => ({
+          id: company.id,
+          name: company.name,
+          logo: company.logo_url || 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
+          industry: company.industry || 'Technology',
+          size: company.size_range || '50-200',
+          location: company.location || 'Remote',
+          rating: company.rating || 4.5,
+          reviewCount: company.review_count || 0,
+          description: company.description || 'No description available.',
+          openJobs: 0, // This would need to be calculated from jobs table
+          website: company.website_url || '#',
+          founded: company.founded_year || new Date().getFullYear(),
+          specialties: company.specialties || [],
+          benefits: company.benefits || [],
+          culture: company.culture_description || 'Great company culture.',
+          featured: company.is_featured || false,
+        }));
+        
+        setCompanies(transformedCompanies);
+        
+        // Extract unique locations for filter
+        const uniqueLocations = ['All Locations', ...new Set(transformedCompanies.map(c => c.location).filter(Boolean))];
+        setLocations(uniqueLocations);
+        
+      } catch (error) {
+        console.error('Error loading companies:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCompanies();
+  }, []);
+
+  // Load job counts for companies
+  useEffect(() => {
+    const loadJobCounts = async () => {
+      if (companies.length === 0) return;
+      
+      try {
+        // Import jobs function dynamically to avoid circular imports
+        const { getJobs } = await import('../lib/supabase');
+        
+        // Get all jobs to count by company
+        const allJobs = await getJobs();
+        
+        // Count jobs per company
+        const jobCounts = companies.reduce((acc, company) => {
+          const companyJobs = allJobs.filter(job => job.company_id === company.id && job.is_active);
+          acc[company.id] = companyJobs.length;
+          return acc;
+        }, {} as Record<string, number>);
+        
+        // Update companies with job counts
+        setCompanies(prevCompanies => 
+          prevCompanies.map(company => ({
+            ...company,
+            openJobs: jobCounts[company.id] || 0
+          }))
+        );
+        
+      } catch (error) {
+        console.error('Error loading job counts:', error);
+      }
+    };
+
+    loadJobCounts();
+  }, [companies.length]); // Only run when companies are first loaded
 
   const filteredCompanies = useMemo(() => {
     let filtered = companies.filter(company => {
@@ -419,11 +355,45 @@ const CompaniesPage = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-6">
           <p className="text-gray-600">
-            Showing {filteredCompanies.length} of {companies.length} companies
+            {loading ? 'Loading companies...' : `Showing ${filteredCompanies.length} of ${companies.length} companies`}
           </p>
         </div>
 
-        {filteredCompanies.length === 0 ? (
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, index) => (
+              <div key={index} className="bg-white border border-gray-200 rounded-2xl p-6 animate-pulse">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="w-16 h-16 bg-gray-200 rounded-xl"></div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-4 h-4 bg-gray-200 rounded"></div>
+                    <div className="w-8 h-4 bg-gray-200 rounded"></div>
+                  </div>
+                </div>
+                
+                <div className="w-32 h-6 bg-gray-200 rounded mb-2"></div>
+                
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-center justify-between">
+                    <div className="w-16 h-4 bg-gray-200 rounded"></div>
+                    <div className="w-20 h-4 bg-gray-200 rounded"></div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="w-20 h-4 bg-gray-200 rounded"></div>
+                    <div className="w-16 h-4 bg-gray-200 rounded"></div>
+                  </div>
+                </div>
+                
+                <div className="w-full h-12 bg-gray-200 rounded mb-6"></div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="w-20 h-6 bg-gray-200 rounded"></div>
+                  <div className="w-16 h-4 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredCompanies.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
               <Building className="h-16 w-16 mx-auto" />
@@ -440,7 +410,7 @@ const CompaniesPage = () => {
         )}
 
         {/* Load More */}
-        {filteredCompanies.length > 0 && (
+        {!loading && filteredCompanies.length > 0 && (
           <div className="text-center mt-12">
             <button className="bg-gray-900 text-white px-8 py-4 rounded-xl hover:bg-gray-800 transition-colors font-semibold">
               Load More Companies
@@ -464,14 +434,14 @@ const CompaniesPage = () => {
               <div className="bg-white/10 w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <Building className="h-8 w-8" />
               </div>
-              <div className="text-3xl font-bold mb-2">500+</div>
+              <div className="text-3xl font-bold mb-2">{loading ? '...' : `${companies.length}+`}</div>
               <div className="text-blue-100">Partner Companies</div>
             </div>
             <div className="text-center">
               <div className="bg-white/10 w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <Briefcase className="h-8 w-8" />
               </div>
-              <div className="text-3xl font-bold mb-2">10,000+</div>
+              <div className="text-3xl font-bold mb-2">{loading ? '...' : `${companies.reduce((sum, c) => sum + c.openJobs, 0)}+`}</div>
               <div className="text-blue-100">Open Positions</div>
             </div>
             <div className="text-center">
@@ -485,7 +455,7 @@ const CompaniesPage = () => {
               <div className="bg-white/10 w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <Award className="h-8 w-8" />
               </div>
-              <div className="text-3xl font-bold mb-2">4.8</div>
+              <div className="text-3xl font-bold mb-2">{loading ? '...' : (companies.reduce((sum, c) => sum + c.rating, 0) / companies.length || 0).toFixed(1)}</div>
               <div className="text-blue-100">Average Rating</div>
             </div>
           </div>
