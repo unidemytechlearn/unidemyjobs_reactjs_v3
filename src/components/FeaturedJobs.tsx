@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { MapPin, Clock, DollarSign, Bookmark } from 'lucide-react';
 import ApplyModal from './ApplyModal';
 import { getJobs } from '../lib/supabase';
+import { useAuthContext } from './AuthProvider';
 
 interface FeaturedJobsProps {
   onViewAllJobs?: () => void;
 }
 
 const FeaturedJobs = ({ onViewAllJobs }: FeaturedJobsProps) => {
+  const { isAuthenticated } = useAuthContext();
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedJob, setSelectedJob] = useState<typeof jobs[0] | null>(null);
@@ -170,6 +172,7 @@ const FeaturedJobs = ({ onViewAllJobs }: FeaturedJobsProps) => {
 
                 <button 
                   onClick={() => handleApplyClick(job)}
+                  disabled={!isAuthenticated}
                   className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-indigo-600"
                 >
                   Apply Now

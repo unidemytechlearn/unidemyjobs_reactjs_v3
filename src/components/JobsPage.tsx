@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Search, MapPin, Filter, SlidersHorizontal, Grid, List, ChevronDown, Bookmark, Clock, DollarSign, Building, X, ChevronUp } from 'lucide-react';
 import ApplyModal from './ApplyModal';
 import { getJobs } from '../lib/supabase';
+import { useAuthContext } from './AuthProvider';
 
 const jobTypes = [
   { id: 'full-time', label: 'Full Time', color: 'bg-blue-100 text-blue-700 border-blue-200' },
@@ -16,6 +17,7 @@ const experienceLevels = ['All Levels', 'Entry-level', 'Mid-level', 'Senior', 'E
 const locations = ['All Locations', 'Remote', 'San Francisco, CA', 'New York, NY', 'Austin, TX', 'Seattle, WA', 'Los Angeles, CA', 'Boston, MA'];
 
 const JobsPage = () => {
+  const { isAuthenticated } = useAuthContext();
   const [allJobs, setAllJobs] = useState<any[]>([]);
   const [displayedJobs, setDisplayedJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -382,6 +384,7 @@ const JobsPage = () => {
             {isListView && (
               <button 
                 onClick={() => handleApplyClick(job)}
+                disabled={!isAuthenticated}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
               >
                 Apply Now
@@ -391,6 +394,7 @@ const JobsPage = () => {
           {!isListView && (
             <button 
               onClick={() => handleApplyClick(job)}
+              disabled={!isAuthenticated}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
             >
               Apply Now
