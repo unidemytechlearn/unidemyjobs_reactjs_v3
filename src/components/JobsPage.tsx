@@ -268,8 +268,8 @@ const JobsPage = () => {
     // Apply company filter from companies page
     if (companyFilter) {
       try {
-        const company = JSON.parse(companyFilter);
-        setSelectedCompanies([company.name]);
+        const companyData = JSON.parse(companyFilter);
+        setSelectedCompanies([companyData.name]);
         localStorage.removeItem('companyFilter');
       } catch (error) {
         console.error('Error parsing company filter:', error);

@@ -210,18 +210,20 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
               {company.openJobs} open positions
             </span>
             {isListView && (
-              <button className="text-gray-400 hover:text-blue-500 transition-colors">
+              <button 
+                onClick={() => handleViewJobs(company.id, company.name)}
+                className="text-gray-400 hover:text-blue-500 transition-colors"
+              >
                 <ExternalLink className="h-5 w-5" />
               </button>
             )}
           </div>
           {!isListView && (
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm">
-              <span onClick={() => handleViewJobs(company.id, company.name)}>
-                View Jobs
-              </span>
-            </button>
-          )}
+            <button 
+              onClick={() => handleViewJobs(company.id, company.name)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+            >
+              View Jobs →
         </div>
       </div>
     </div>
