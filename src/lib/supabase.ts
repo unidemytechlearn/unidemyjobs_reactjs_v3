@@ -409,6 +409,20 @@ export const getUserSavedJobs = async (userId: string): Promise<SavedJob[]> => {
   return data || [];
 };
 
+export const saveJob = async (userId: string, jobId: string) => {
+  const { data, error } = await supabase
+    .from('saved_jobs')
+    .insert({
+      user_id: userId,
+      job_id: jobId
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
 // File upload functions
 export const uploadFile = async (bucket: string, path: string, file: File) => {
   const { data, error } = await supabase.storage
