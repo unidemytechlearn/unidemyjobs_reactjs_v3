@@ -466,16 +466,11 @@ const JobsPage = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {[...Array(6)].map((_, index) => (
                   <div key={index} className="bg-white border border-gray-200 rounded-2xl p-6 animate-pulse">
-                Showing {filteredJobs.length} jobs
-                {allJobs.length > displayedJobs.length && (
-                  <span className="text-blue-600"> • {allJobs.length - displayedJobs.length} more available</span>
-                )}
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
-                        <div>
-                          <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
-                          <div className="h-3 bg-gray-200 rounded w-24"></div>
-                        </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
+                      <div>
+                        <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-24"></div>
                       </div>
                     </div>
                     <div className="space-y-3 mb-4">
