@@ -28,12 +28,16 @@ const JobsPage = () => {
   const [sortBy, setSortBy] = useState('newest');
   const [selectedJob, setSelectedJob] = useState<typeof allJobs[0] | null>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const [error, setError] = useState<string>('');
 
   // Load jobs from database
   useEffect(() => {
     const loadJobs = async () => {
       try {
+        setLoading(true);
+        setError('');
         const fetchedJobs = await getJobs();
+        console.log('Fetched jobs:', fetchedJobs); // Debug log
         const jobsWithMockData = fetchedJobs.map(job => ({
           ...job,
           company: job.company?.name || 'Unknown Company',
@@ -51,6 +55,7 @@ const JobsPage = () => {
         setAllJobs(jobsWithMockData);
       } catch (error) {
         console.error('Error loading jobs:', error);
+        setError('Failed to load jobs. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -418,8 +423,20 @@ const JobsPage = () => {
                 <div className="text-gray-400 mb-4">
                   <Building className="h-16 w-16 mx-auto" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
-                <p className="text-gray-600">Try adjusting your filters or search terms</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  {error ? 'Error Loading Jobs' : 'No jobs found'}
+                </h3>
+                <p className="text-gray-600">
+                  {error || 'Try adjusting your filters or search terms'}
+                </p>
+                {error && (
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Retry
+                  </button>
+                )}
               </div>
             ) : (
               <div className={viewMode === 'grid' ? 'grid grid-cols-1 lg:grid-cols-2 gap-6' : 'space-y-4'}>
