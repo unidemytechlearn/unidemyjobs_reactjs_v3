@@ -17,7 +17,12 @@ const locations = ['All Locations', 'Remote', 'San Francisco, CA', 'New York, NY
 
 const JobsPage = () => {
   const [allJobs, setAllJobs] = useState<any[]>([]);
+  const [displayedJobs, setDisplayedJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMoreJobs, setHasMoreJobs] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const JOBS_PER_PAGE = 6;
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedJobTypes, setSelectedJobTypes] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
@@ -36,7 +41,8 @@ const JobsPage = () => {
       try {
         setLoading(true);
         setError('');
-        const fetchedJobs = await getJobs();
+        // Fetch more jobs than we initially display to enable pagination
+        const fetchedJobs = await getJobs({ limit: 50 });
         console.log('Fetched jobs:', fetchedJobs); // Debug log
         const jobsWithMockData = fetchedJobs.map(job => ({
           ...job,
@@ -53,6 +59,11 @@ const JobsPage = () => {
           description: job.description,
         }));
         setAllJobs(jobsWithMockData);
+        
+        // Set initial displayed jobs
+        setDisplayedJobs(jobsWithMockData.slice(0, JOBS_PER_PAGE));
+        setHasMoreJobs(jobsWithMockData.length > JOBS_PER_PAGE);
+        setCurrentPage(1);
       } catch (error) {
         console.error('Error loading jobs:', error);
         setError('Failed to load jobs. Please try again.');
@@ -64,6 +75,60 @@ const JobsPage = () => {
     loadJobs();
   }, []);
 
+  // Handle load more functionality
+  const handleLoadMore = async () => {
+    setLoadingMore(true);
+    
+    try {
+      // Calculate next batch of jobs to show
+      const nextPage = currentPage + 1;
+      const startIndex = currentPage * JOBS_PER_PAGE;
+      const endIndex = nextPage * JOBS_PER_PAGE;
+      
+      // If we have enough jobs in allJobs, just show more
+      if (endIndex <= allJobs.length) {
+        const newJobs = allJobs.slice(startIndex, endIndex);
+        setDisplayedJobs(prev => [...prev, ...newJobs]);
+        setCurrentPage(nextPage);
+        setHasMoreJobs(endIndex < allJobs.length);
+      } else {
+        // If we need more jobs, fetch from database
+        const additionalJobs = await getJobs({ 
+          limit: JOBS_PER_PAGE, 
+          offset: allJobs.length 
+        });
+        
+        if (additionalJobs.length > 0) {
+          const jobsWithMockData = additionalJobs.map(job => ({
+            ...job,
+            company: job.company?.name || 'Unknown Company',
+            type: job.job_type,
+            salary: formatSalary(job.salary_min, job.salary_max, job.salary_currency),
+            logo: job.company?.logo_url || 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
+            featured: job.is_featured,
+            typeColor: getJobTypeColor(job.job_type),
+            category: getCategoryFromJobType(job.job_type),
+            experience: job.experience_level || 'Mid-level',
+            remote: job.is_remote,
+            postedDate: getRelativeDate(job.created_at),
+            description: job.description,
+          }));
+          
+          setAllJobs(prev => [...prev, ...jobsWithMockData]);
+          setDisplayedJobs(prev => [...prev, ...jobsWithMockData]);
+          setCurrentPage(nextPage);
+          setHasMoreJobs(additionalJobs.length === JOBS_PER_PAGE);
+        } else {
+          setHasMoreJobs(false);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading more jobs:', error);
+      setError('Failed to load more jobs. Please try again.');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
   const formatSalary = (min?: number, max?: number, currency: string = 'USD') => {
     if (!min && !max) return 'Salary not specified';
     if (min && max) {
@@ -122,7 +187,7 @@ const JobsPage = () => {
   };
 
   const filteredJobs = useMemo(() => {
-    let filtered = allJobs.filter(job => {
+    let filtered = displayedJobs.filter(job => {
       const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            job.company.toLowerCase().includes(searchTerm.toLowerCase());
       
@@ -154,7 +219,7 @@ const JobsPage = () => {
     }
 
     return filtered;
-  }, [searchTerm, selectedJobTypes, selectedCategory, selectedExperience, selectedLocation, sortBy]);
+  }, [displayedJobs, searchTerm, selectedJobTypes, selectedCategory, selectedExperience, selectedLocation, sortBy]);
 
   const JobCard = ({ job, isListView = false }: { job: typeof allJobs[0], isListView?: boolean }) => (
     <div className={`group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden ${isListView ? 'flex items-center space-x-6' : ''}`}>
@@ -401,7 +466,10 @@ const JobsPage = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {[...Array(6)].map((_, index) => (
                   <div key={index} className="bg-white border border-gray-200 rounded-2xl p-6 animate-pulse">
-                    <div className="flex items-start justify-between mb-4">
+                Showing {filteredJobs.length} jobs
+                {allJobs.length > displayedJobs.length && (
+                  <span className="text-blue-600"> • {allJobs.length - displayedJobs.length} more available</span>
+                )}
                       <div className="flex items-center space-x-4">
                         <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
                         <div>
@@ -447,11 +515,29 @@ const JobsPage = () => {
             )}
 
             {/* Load More */}
-            {filteredJobs.length > 0 && (
+            {filteredJobs.length > 0 && hasMoreJobs && !loading && (
               <div className="text-center mt-12">
-                <button className="bg-gray-900 text-white px-8 py-4 rounded-xl hover:bg-gray-800 transition-colors font-semibold">
-                  Load More Jobs
+                <button 
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  className="bg-gray-900 text-white px-8 py-4 rounded-xl hover:bg-gray-800 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 mx-auto"
+                >
+                  {loadingMore ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Loading More Jobs...</span>
+                    </>
+                  ) : (
+                    <span>Load More Jobs</span>
+                  )}
                 </button>
+              </div>
+            )}
+            
+            {/* End of results message */}
+            {!hasMoreJobs && filteredJobs.length > 0 && !loading && (
+              <div className="text-center mt-12">
+                <p className="text-gray-600">You've seen all available jobs matching your criteria</p>
               </div>
             )}
           </div>
