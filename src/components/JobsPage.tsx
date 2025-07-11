@@ -172,8 +172,8 @@ const JobsPage = () => {
         console.log('Total jobs fetched:', fetchedJobs.length);
         
         if (!fetchedJobs || fetchedJobs.length === 0) {
-          console.log('No jobs found in database');
-          setError('No jobs available at the moment. Please check back later.');
+          console.log('No jobs found in database - this might be normal for a new installation');
+          // Don't set error for empty results, just show empty state
           setAllJobs([]);
           setDisplayedJobs([]);
           setHasMoreJobs(false);
@@ -199,7 +199,18 @@ const JobsPage = () => {
         setAllJobs(jobsWithMockData);
         setDisplayedJobs(jobsWithMockData);
         setHasMoreJobs(false); // Show all jobs initially
-        setCurrentPage(1);
+        // Provide more specific error messages
+        if (error instanceof Error) {
+          if (error.message.includes('RLS') || error.message.includes('policy')) {
+            setError('Database access issue. Please contact support if this persists.');
+          } else if (error.message.includes('network') || error.message.includes('fetch')) {
+            setError('Network error. Please check your connection and try again.');
+          } else {
+            setError('Unable to load jobs at the moment. Please try refreshing the page.');
+          }
+        } else {
+          setError('An unexpected error occurred. Please try again.');
+        }
       } catch (error) {
         console.error('Error loading jobs:', error);
         setError('Failed to load jobs. This might be a temporary issue. Please try refreshing the page.');
@@ -765,12 +776,9 @@ const JobsPage = () => {
             <div className="text-gray-400 mb-4">
               <Building className="h-16 w-16 mx-auto" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs available</h3>
             <p className="text-gray-600">
-              {allJobs.length === 0 
-                ? 'No jobs are currently available in the database.' 
-                : 'Try adjusting your filters or search terms'
-              }
+              No jobs are currently posted. Check back soon for new opportunities!
             </p>
           </div>
         ) : (
