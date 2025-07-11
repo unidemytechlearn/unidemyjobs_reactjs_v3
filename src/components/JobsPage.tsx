@@ -84,9 +84,9 @@ const JobsPage = () => {
 
   // Define filteredJobs
   const filteredJobs = useMemo(() => {
-    if (!displayedJobs || displayedJobs.length === 0) return [];
+    if (!allJobs || allJobs.length === 0) return [];
     
-    let filtered = displayedJobs.filter(job => {
+    let filtered = allJobs.filter(job => {
       const matchesSearch = job.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            (job.company && job.company.toLowerCase().includes(searchTerm.toLowerCase()));
       
@@ -155,7 +155,7 @@ const JobsPage = () => {
     }
 
     return filtered;
-  }, [searchTerm, selectedJobTypes, selectedCategory, selectedExperience, selectedLocation, 
+  }, [allJobs, searchTerm, selectedJobTypes, selectedCategory, selectedExperience, selectedLocation, 
       sortBy, salaryRange, isRemoteOnly, selectedCompanies, selectedSkills, datePosted]);
 
   // Load jobs from database
