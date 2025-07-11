@@ -3,9 +3,12 @@ import { Search, MapPin, Users, Star, Building, Filter, Grid, List, ExternalLink
 import { getCompanies } from '../lib/supabase';
 
 
+interface CompaniesPageProps {
+  onNavigate?: (page: 'home' | 'jobs' | 'companies' | 'about' | 'resume-builder' | 'dashboard') => void;
+}
+
 // Static filter options - these could also be fetched from the database
 const industries = ['All Industries', 'Technology', 'Design', 'Data & Analytics', 'Marketing', 'Finance', 'Healthcare'];
-  onNavigate?: (page: 'home' | 'jobs' | 'companies' | 'about' | 'resume-builder' | 'dashboard') => void;
 const companySizes = ['All Sizes', '1-50', '50-200', '200-500', '500-1000', '1000-5000', '5000+'];
 
 const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
