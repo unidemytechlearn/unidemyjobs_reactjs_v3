@@ -77,10 +77,15 @@ const JobsPage = () => {
       try {
         setLoading(true);
         setError('');
-        // Fetch all jobs from database
-        const fetchedJobs = await getJobs();
+        // Fetch all active jobs from database (same as Dashboard Browse Jobs)
+        const fetchedJobs = await getJobs({ limit: 100 }); // Fetch more than we expect
         console.log('Fetched jobs:', fetchedJobs); // Debug log
         console.log('Total jobs fetched:', fetchedJobs.length); // Debug log
+        
+        // Filter only active jobs
+        const activeJobs = fetchedJobs.filter(job => job.is_active === true);
+        console.log('Active jobs:', activeJobs.length); // Debug log
+        
         const jobsWithMockData = fetchedJobs.map(job => ({
           ...job,
           company: job.company?.name || 'Unknown Company',
@@ -95,12 +100,14 @@ const JobsPage = () => {
           postedDate: getRelativeDate(job.created_at),
           description: job.description,
         }));
+        
+        console.log('Processed jobs:', jobsWithMockData.length); // Debug log
         setAllJobs(jobsWithMockData);
         
-        // Set initial displayed jobs - show first batch
-        const initialJobs = jobsWithMockData.slice(0, JOBS_PER_PAGE);
-        setDisplayedJobs(initialJobs);
+        // Show all jobs initially (no pagination limit for now)
+        setDisplayedJobs(jobsWithMockData);
         setHasMoreJobs(jobsWithMockData.length > JOBS_PER_PAGE);
+        setCurrentPage(1);
       } catch (error) {
         console.error('Error loading jobs:', error);
         setError('Failed to load jobs. Please try again.');
@@ -139,7 +146,7 @@ const JobsPage = () => {
       } else {
         // If we need more jobs, fetch from database
         const additionalJobs = await getJobs({
-          limit: JOBS_PER_PAGE, 
+          limit: JOBS_PER_PAGE,
           offset: allJobs.length 
         });
         
@@ -322,7 +329,7 @@ const JobsPage = () => {
               ) : (
                 <p className="text-gray-600 mt-2">
                   Showing {filteredJobs.length} of {allJobs.length} jobs
-                </p>
+                  {allJobs.length > 0 && ` • Total in database: ${allJobs.length}`}
               )}
             </div>
 
@@ -521,7 +528,7 @@ const JobsPage = () => {
             )}
 
             {/* Load More */}
-            {filteredJobs.length > 0 && hasMoreJobs && !loading && (
+            {filteredJobs.length > 0 && hasMoreJobs && !loading && allJobs.length > JOBS_PER_PAGE && (
               <div className="text-center mt-12">
                 <button
                   onClick={handleLoadMore}
@@ -541,7 +548,7 @@ const JobsPage = () => {
             )}
             
             {/* End of results message */}
-            {!hasMoreJobs && filteredJobs.length > 0 && !loading && (
+            {!hasMoreJobs && filteredJobs.length > 0 && !loading && allJobs.length > JOBS_PER_PAGE && (
               <div className="text-center mt-12">
                 <p className="text-gray-600">You've seen all available jobs matching your criteria</p>
               </div>
