@@ -41,9 +41,10 @@ const JobsPage = () => {
       try {
         setLoading(true);
         setError('');
-        // Fetch more jobs than we initially display to enable pagination
-        const fetchedJobs = await getJobs({ limit: 50 });
+        // Fetch all jobs from database
+        const fetchedJobs = await getJobs();
         console.log('Fetched jobs:', fetchedJobs); // Debug log
+        console.log('Total jobs fetched:', fetchedJobs.length); // Debug log
         const jobsWithMockData = fetchedJobs.map(job => ({
           ...job,
           company: job.company?.name || 'Unknown Company',
@@ -60,10 +61,10 @@ const JobsPage = () => {
         }));
         setAllJobs(jobsWithMockData);
         
-        // Set initial displayed jobs
-        setDisplayedJobs(jobsWithMockData.slice(0, JOBS_PER_PAGE));
+        // Set initial displayed jobs - show first batch
+        const initialJobs = jobsWithMockData.slice(0, JOBS_PER_PAGE);
+        setDisplayedJobs(initialJobs);
         setHasMoreJobs(jobsWithMockData.length > JOBS_PER_PAGE);
-        setCurrentPage(1);
       } catch (error) {
         console.error('Error loading jobs:', error);
         setError('Failed to load jobs. Please try again.');
@@ -75,6 +76,14 @@ const JobsPage = () => {
     loadJobs();
   }, []);
 
+  // Debug: Log when jobs change
+  useEffect(() => {
+    console.log('All jobs count:', allJobs.length);
+    console.log('Displayed jobs count:', displayedJobs.length);
+    console.log('Filtered jobs count:', filteredJobs.length);
+    console.log('Has more jobs:', hasMoreJobs);
+  }, [allJobs, displayedJobs, filteredJobs, hasMoreJobs]);
+
   // Handle load more functionality
   const handleLoadMore = async () => {
     setLoadingMore(true);
@@ -85,7 +94,7 @@ const JobsPage = () => {
       const startIndex = currentPage * JOBS_PER_PAGE;
       const endIndex = nextPage * JOBS_PER_PAGE;
       
-      // If we have enough jobs in allJobs, just show more
+      // Show more jobs from allJobs array
       if (endIndex <= allJobs.length) {
         const newJobs = allJobs.slice(startIndex, endIndex);
         setDisplayedJobs(prev => [...prev, ...newJobs]);
@@ -93,7 +102,7 @@ const JobsPage = () => {
         setHasMoreJobs(endIndex < allJobs.length);
       } else {
         // If we need more jobs, fetch from database
-        const additionalJobs = await getJobs({ 
+        const additionalJobs = await getJobs({
           limit: JOBS_PER_PAGE, 
           offset: allJobs.length 
         });
@@ -129,6 +138,7 @@ const JobsPage = () => {
       setLoadingMore(false);
     }
   };
+
   const formatSalary = (min?: number, max?: number, currency: string = 'USD') => {
     if (!min && !max) return 'Salary not specified';
     if (min && max) {
@@ -189,7 +199,7 @@ const JobsPage = () => {
   const filteredJobs = useMemo(() => {
     let filtered = displayedJobs.filter(job => {
       const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           job.company.toLowerCase().includes(searchTerm.toLowerCase());
+                           (job.company && job.company.toLowerCase().includes(searchTerm.toLowerCase()));
       
       const matchesJobType = selectedJobTypes.length === 0 || 
                             selectedJobTypes.some(type => 
@@ -307,7 +317,7 @@ const JobsPage = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">All Jobs</h1>
               {loading ? (
-                <p className="text-gray-600 mt-2">Loading jobs...</p>
+                <p className="text-gray-600 mt-2">Loading all jobs...</p>
               ) : (
                 <p className="text-gray-600 mt-2">
                   Showing {filteredJobs.length} of {allJobs.length} jobs
@@ -512,7 +522,7 @@ const JobsPage = () => {
             {/* Load More */}
             {filteredJobs.length > 0 && hasMoreJobs && !loading && (
               <div className="text-center mt-12">
-                <button 
+                <button
                   onClick={handleLoadMore}
                   disabled={loadingMore}
                   className="bg-gray-900 text-white px-8 py-4 rounded-xl hover:bg-gray-800 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 mx-auto"
