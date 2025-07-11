@@ -166,7 +166,17 @@ const JobsPage = () => {
         setError('');
         console.log('Starting to fetch jobs...');
         
-        setError('Failed to load jobs. Please try again.');
+        const fetchedJobs = await getJobs({ limit: 100 });
+        console.log('Fetched jobs:', fetchedJobs);
+        console.log('Total jobs fetched:', fetchedJobs.length);
+        
+        if (!fetchedJobs || fetchedJobs.length === 0) {
+          console.log('No jobs found in database - this might be normal for a new installation');
+          // Don't set error for empty results, just show empty state
+          setAllJobs([]);
+          setDisplayedJobs([]);
+          return;
+        }
         
         const jobsWithMockData = fetchedJobs.map(job => ({
           ...job,
@@ -186,8 +196,6 @@ const JobsPage = () => {
         console.log('Processed jobs:', jobsWithMockData.length);
         setAllJobs(jobsWithMockData);
         setDisplayedJobs(jobsWithMockData);
-        setHasMoreJobs(false); // Show all jobs initially
-        setError('Failed to load jobs. Please try again.');
       } catch (error) {
         console.error('Error loading jobs:', error);
         setError('Failed to load jobs. This might be a temporary issue. Please try refreshing the page.');
