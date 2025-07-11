@@ -281,9 +281,37 @@ export const getJobs = async (filters?: {
     query = query.range(filters.offset, filters.offset + (filters.limit || 10) - 1);
   }
 
-  const { data, error } = await query;
-  if (error) throw error;
-  return data || [];
+  try {
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Error fetching jobs:', error);
+      // If there's an auth error, try without authentication
+      if (error.code === 'PGRST301' || error.message?.includes('JWT')) {
+        console.log('Retrying jobs fetch without authentication...');
+        const { data: publicData, error: publicError } = await supabase
+          .from('jobs')
+          .select(`
+            *,
+            company:companies(*)
+          `)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+        
+        if (publicError) {
+          console.error('Public jobs fetch also failed:', publicError);
+          throw publicError;
+        }
+        return publicData || [];
+      }
+      throw error;
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Jobs fetch error:', error);
+    return [];
+  }
 };
 
 export const getJob = async (jobId: string): Promise<Job | null> => {

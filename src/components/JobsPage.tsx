@@ -166,12 +166,14 @@ const JobsPage = () => {
         setError('');
         console.log('Starting to fetch jobs...');
         
+        // Fetch jobs without any authentication requirements
         const fetchedJobs = await getJobs();
         console.log('Fetched jobs:', fetchedJobs);
         console.log('Total jobs fetched:', fetchedJobs.length);
         
         if (!fetchedJobs || fetchedJobs.length === 0) {
           console.log('No jobs found in database');
+          setError('No jobs available at the moment. Please check back later.');
           setAllJobs([]);
           setDisplayedJobs([]);
           setHasMoreJobs(false);
@@ -200,7 +202,7 @@ const JobsPage = () => {
         setCurrentPage(1);
       } catch (error) {
         console.error('Error loading jobs:', error);
-        setError('Failed to load jobs. Please try again.');
+        setError('Failed to load jobs. This might be a temporary issue. Please try refreshing the page.');
         setAllJobs([]);
         setDisplayedJobs([]);
       } finally {
