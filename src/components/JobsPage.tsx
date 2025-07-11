@@ -407,6 +407,7 @@ const JobsPage = () => {
             {isListView && (
               <button 
                 onClick={() => handleApplyClick(job)}
+                onClick={() => handleApplyClick(job)}
                 disabled={!isAuthenticated}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
               >
@@ -416,6 +417,7 @@ const JobsPage = () => {
           </div>
           {!isListView && (
             <button 
+              onClick={() => handleApplyClick(job)}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
             >
               Apply Now
