@@ -166,19 +166,7 @@ const JobsPage = () => {
         setError('');
         console.log('Starting to fetch jobs...');
         
-        // Fetch all jobs without limit to ensure we get everything
-        const fetchedJobs = await getJobs();
-        const fetchedJobs = await getJobs();
-        console.log('Fetched jobs:', fetchedJobs);
-        console.log('Total jobs fetched:', fetchedJobs.length);
-        
-        if (!fetchedJobs || fetchedJobs.length === 0) {
-          console.log('No jobs found in database');
-          setAllJobs([]);
-          setDisplayedJobs([]);
-          setHasMoreJobs(false);
-          return;
-        }
+        setError('Failed to load jobs. Please try again.');
         
         const jobsWithMockData = fetchedJobs.map(job => ({
           ...job,
