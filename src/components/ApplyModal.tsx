@@ -73,11 +73,6 @@ const ApplyModal = ({ isOpen, onClose, job }: ApplyModalProps) => {
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
     });
   };
-      
-      // Refresh the page after successful application to update button states
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
 
   const handleResumeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
