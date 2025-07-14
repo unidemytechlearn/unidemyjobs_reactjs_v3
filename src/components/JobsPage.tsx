@@ -482,7 +482,7 @@ const JobsPage = () => {
               ) : (
                 <p className="text-gray-600 mt-2">
                   Showing {filteredJobs.length} of {allJobs.length} jobs
-                  {allJobs.length > 0 && ` • Total in database: ${allJobs.length}`}
+                  {allJobs.length > 0 && ` • Total : ${allJobs.length}`}
                 </p>
               )}
             </div>
