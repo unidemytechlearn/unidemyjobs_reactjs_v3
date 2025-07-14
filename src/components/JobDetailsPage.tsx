@@ -12,7 +12,7 @@ interface JobDetailsPageProps {
 }
 
 const JobDetailsPage = ({ jobId, onNavigate }: JobDetailsPageProps) => {
-  const { isAuthenticated } = useAuthContext();
+  const { isAuthenticated, user } = useAuthContext();
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
