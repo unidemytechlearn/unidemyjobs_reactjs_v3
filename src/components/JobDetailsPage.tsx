@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, MapPin, Clock, DollarSign, Building, Star, Calendar, Users, Share2, Bookmark, ExternalLink, CheckCircle, Briefcase, Globe, Eye, MessageSquare } from 'lucide-react';
 import ApplyModal from './ApplyModal';
 import { useAuthContext } from './AuthProvider';
+import { hasUserAppliedToJob } from '../lib/supabase';
 import SignUpModal from './SignUpModal';
 import SignInModal from './SignInModal';
 
@@ -18,6 +19,8 @@ const JobDetailsPage = ({ jobId, onNavigate }: JobDetailsPageProps) => {
   const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [hasApplied, setHasApplied] = useState(false);
+  const [checkingApplication, setCheckingApplication] = useState(false);
 
   useEffect(() => {
     const loadJobDetails = async () => {
@@ -51,6 +54,81 @@ const JobDetailsPage = ({ jobId, onNavigate }: JobDetailsPageProps) => {
       loadJobDetails();
     }
   }, [jobId]);
+
+  // Check if user has already applied to this job
+  useEffect(() => {
+    const checkApplicationStatus = async () => {
+      if (job && user && isAuthenticated) {
+        setCheckingApplication(true);
+        try {
+          const applied = await hasUserAppliedToJob(user.id, job.id);
+          setHasApplied(applied);
+        } catch (error) {
+          console.error('Error checking application status:', error);
+        } finally {
+          setCheckingApplication(false);
+        }
+      }
+    };
+
+    checkApplicationStatus();
+  }, [job, user, isAuthenticated]);
+
+  // Check if application deadline has passed
+  const isDeadlinePassed = (deadline: string | null) => {
+    if (!deadline) return false;
+    return new Date(deadline) < new Date();
+  };
+
+  // Check if user can apply to job
+  const canApplyToJob = () => {
+    if (!job) return false;
+    if (!isAuthenticated) return true; // Show apply button for non-authenticated users
+    if (hasApplied) return false; // Already applied
+    if (isDeadlinePassed(job.application_deadline)) return false; // Deadline passed
+    return true;
+  };
+
+  // Get apply button text and styling
+  const getApplyButtonInfo = () => {
+    if (checkingApplication) {
+      return { 
+        text: 'Checking...', 
+        disabled: true, 
+        className: 'bg-gray-400 cursor-not-allowed' 
+      };
+    }
+    
+    if (!isAuthenticated) {
+      return { 
+        text: 'Apply for this Position', 
+        disabled: false, 
+        className: 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700' 
+      };
+    }
+    
+    if (hasApplied) {
+      return { 
+        text: 'Already Applied', 
+        disabled: true, 
+        className: 'bg-green-600 cursor-not-allowed' 
+      };
+    }
+    
+    if (job && isDeadlinePassed(job.application_deadline)) {
+      return { 
+        text: 'Application Deadline Passed', 
+        disabled: true, 
+        className: 'bg-gray-400 cursor-not-allowed' 
+      };
+    }
+    
+    return { 
+      text: 'Apply for this Position', 
+      disabled: false, 
+      className: 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700' 
+    };
+  };
 
   const getJobTypeColor = (jobType: string) => {
     const colorMap: Record<string, string> = {
@@ -86,6 +164,8 @@ const JobDetailsPage = ({ jobId, onNavigate }: JobDetailsPageProps) => {
   };
 
   const handleApplyClick = () => {
+    if (!canApplyToJob()) return;
+    
     if (isAuthenticated) {
       setIsApplyModalOpen(true);
     } else {
@@ -253,12 +333,18 @@ const JobDetailsPage = ({ jobId, onNavigate }: JobDetailsPageProps) => {
               </div>
 
               {/* Apply Button */}
-              <button
-                onClick={handleApplyClick}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-              >
-                Apply for this Position
-              </button>
+              {(() => {
+                const buttonInfo = getApplyButtonInfo();
+                return (
+                  <button
+                    onClick={handleApplyClick}
+                    disabled={buttonInfo.disabled}
+                    className={`w-full ${buttonInfo.className} text-white py-4 rounded-xl transition-all font-semibold text-lg shadow-lg ${!buttonInfo.disabled ? 'hover:shadow-xl transform hover:-translate-y-0.5' : ''}`}
+                  >
+                    {buttonInfo.text}
+                  </button>
+                );
+              })()}
             </div>
 
             {/* Job Description */}
@@ -391,8 +477,11 @@ const JobDetailsPage = ({ jobId, onNavigate }: JobDetailsPageProps) => {
               {job.company?.description && (
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <h4 className="font-medium text-gray-900 mb-3">Company Description</h4>
-                  <p className="text-gray-600 text-sm leading-relaxed">
+                  <span className={`font-semibold ${isDeadlinePassed(job.application_deadline) ? 'text-red-600' : 'text-gray-900'}`}>
                     {job.company.description}
+                    {isDeadlinePassed(job.application_deadline) && (
+                      <span className="text-xs text-red-500 block">Expired</span>
+                    )}
                   </p>
                 </div>
               )}
@@ -427,18 +516,36 @@ const JobDetailsPage = ({ jobId, onNavigate }: JobDetailsPageProps) => {
             </div>
 
             {/* Quick Apply */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white">
-              <h3 className="text-lg font-semibold mb-3">Ready to Apply?</h3>
-              <p className="text-blue-100 text-sm mb-4">
-                Join thousands of professionals who have found their dream job through our platform.
-              </p>
-              <button
-                onClick={handleApplyClick}
-                className="w-full bg-white text-blue-600 py-3 rounded-xl hover:bg-gray-50 transition-colors font-semibold"
-              >
-                Apply Now
-              </button>
-            </div>
+            {(() => {
+              const buttonInfo = getApplyButtonInfo();
+              const canApply = canApplyToJob();
+              
+              return (
+                <div className={`rounded-2xl p-6 text-white ${
+                  canApply ? 'bg-gradient-to-r from-blue-600 to-indigo-600' : 'bg-gray-500'
+                }`}>
+                  <h3 className="text-lg font-semibold mb-3">
+                    {hasApplied ? 'Application Submitted' : 
+                     isDeadlinePassed(job?.application_deadline) ? 'Application Closed' : 
+                     'Ready to Apply?'}
+                  </h3>
+                  <p className={`text-sm mb-4 ${canApply ? 'text-blue-100' : 'text-gray-200'}`}>
+                    {hasApplied ? 'You have already applied for this position. Check your dashboard for updates.' :
+                     isDeadlinePassed(job?.application_deadline) ? 'The application deadline for this position has passed.' :
+                     'Join thousands of professionals who have found their dream job through our platform.'}
+                  </p>
+                  <button
+                    onClick={handleApplyClick}
+                    disabled={buttonInfo.disabled}
+                    className={`w-full py-3 rounded-xl transition-colors font-semibold ${
+                      canApply ? 'bg-white text-blue-600 hover:bg-gray-50' : 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                    }`}
+                  >
+                    {buttonInfo.text}
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
