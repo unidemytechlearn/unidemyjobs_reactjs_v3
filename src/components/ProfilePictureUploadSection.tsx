@@ -102,7 +102,12 @@ const ProfilePictureUploadSection = ({
         setSelectedFile(null);
         setPreviewUrl('');
         setUploadProgress(0);
+        // Force refresh profile data and call success callback
         onUploadSuccess?.(result.url, result.fileName);
+        // Add timestamp to force image refresh
+        window.dispatchEvent(new CustomEvent('profilePictureUpdated', { 
+          detail: { url: result.url + '?t=' + Date.now() } 
+        }));
       }, 500);
 
     } catch (error) {
@@ -125,6 +130,10 @@ const ProfilePictureUploadSection = ({
     try {
       await deleteExistingProfilePicture(user.id);
       onDeleteSuccess?.();
+      // Force refresh profile data
+      window.dispatchEvent(new CustomEvent('profilePictureUpdated', { 
+        detail: { url: null } 
+      }));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete profile picture';
       onUploadError?.(errorMessage);
