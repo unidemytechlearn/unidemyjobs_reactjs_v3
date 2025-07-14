@@ -142,7 +142,7 @@ const Header = ({ onNavigate, currentPage = 'home', onLogin, onLogout }: HeaderP
                       className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors"
                     >
                       <img
-                        src="https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&fit=crop"
+                        src={profile?.profile_picture_url || "https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&fit=crop"}
                         alt="Profile"
                         className="w-8 h-8 rounded-full object-cover"
                       />

@@ -278,7 +278,7 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center space-y-6 md:space-y-0 md:space-x-8">
           <div className="relative">
             <img
-              src="https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop"
+              src={profile?.profile_picture_url || "https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop"}
               alt="Profile"
               className="w-24 h-24 rounded-full object-cover border-4 border-white/20"
             />
