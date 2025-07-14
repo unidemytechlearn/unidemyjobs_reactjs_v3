@@ -305,7 +305,7 @@ const ResumeBuilderPage = () => {
       skills: {
         technical: ['JavaScript', 'TypeScript', 'React', 'Node.js', 'Python', 'Java', 'AWS', 'Docker', 'Kubernetes', 'MongoDB', 'PostgreSQL'],
         soft: ['Leadership', 'Team Management', 'Problem Solving', 'Communication', 'Agile Methodology'],
-        languages: ['English (Native)', 'Spanish (Conversational)', 'French (Basic)'],
+        languages: languages?.filter(Boolean)?.map(lang => lang?.value) || [],
         tools: ['Git', 'Jenkins', 'Jira', 'Figma', 'VS Code', 'Postman']
       },
       projects: resumeData.projects.length > 0 ? resumeData.projects : [
