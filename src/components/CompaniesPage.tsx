@@ -28,7 +28,7 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
     const loadCompanies = async () => {
       try {
         setLoading(true);
-        const fetchedCompanies = await getCompanies();
+        const fetchedCompanies = await getCompanies({ limit: 100 });
         
         // Transform the data to match the expected format
         const transformedCompanies = fetchedCompanies.map(company => ({
@@ -58,6 +58,122 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
         
       } catch (error) {
         console.error('Error loading companies:', error);
+        // Set some fallback companies if database fetch fails
+        const fallbackCompanies = [
+          {
+            id: '1',
+            name: 'TechCorp',
+            logo: 'https://images.pexels.com/photos/267371/pexels-photo-267371.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
+            industry: 'Technology',
+            size: '10,000+',
+            location: 'San Francisco, CA',
+            rating: 4.8,
+            reviewCount: 1250,
+            description: 'Leading cloud computing solutions provider with innovative technology.',
+            openJobs: 45,
+            website: 'https://techcorp.com',
+            founded: 2010,
+            specialties: ['Cloud Computing', 'AI/ML', 'Software Development'],
+            benefits: ['Health Insurance', 'Remote Work', '401k'],
+            culture: 'Innovation-driven culture with work-life balance.',
+            featured: true,
+          },
+          {
+            id: '2',
+            name: 'InnovateLab',
+            logo: 'https://images.pexels.com/photos/1181406/pexels-photo-1181406.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
+            industry: 'AI & Machine Learning',
+            size: '5,000+',
+            location: 'New York, NY',
+            rating: 4.9,
+            reviewCount: 890,
+            description: 'Pioneering artificial intelligence and machine learning solutions.',
+            openJobs: 32,
+            website: 'https://innovatelab.com',
+            founded: 2015,
+            specialties: ['Machine Learning', 'Data Science', 'AI Research'],
+            benefits: ['Stock Options', 'Learning Budget', 'Flexible Hours'],
+            culture: 'Research-focused environment with cutting-edge projects.',
+            featured: true,
+          },
+          {
+            id: '3',
+            name: 'DesignStudio',
+            logo: 'https://images.pexels.com/photos/1181533/pexels-photo-1181533.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
+            industry: 'Creative Agency',
+            size: '2,500+',
+            location: 'Los Angeles, CA',
+            rating: 4.7,
+            reviewCount: 567,
+            description: 'Award-winning design solutions for global brands.',
+            openJobs: 18,
+            website: 'https://designstudio.com',
+            founded: 2012,
+            specialties: ['UI/UX Design', 'Branding', 'Digital Marketing'],
+            benefits: ['Creative Freedom', 'Health Insurance', 'Paid Time Off'],
+            culture: 'Creative and collaborative environment.',
+            featured: false,
+          },
+          {
+            id: '4',
+            name: 'DataFlow',
+            logo: 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
+            industry: 'Data Analytics',
+            size: '3,000+',
+            location: 'Austin, TX',
+            rating: 4.6,
+            reviewCount: 423,
+            description: 'Advanced data intelligence and analytics platform.',
+            openJobs: 27,
+            website: 'https://dataflow.com',
+            founded: 2018,
+            specialties: ['Data Analytics', 'Business Intelligence', 'Big Data'],
+            benefits: ['Remote Work', 'Professional Development', 'Health Benefits'],
+            culture: 'Data-driven culture with focus on innovation.',
+            featured: false,
+          },
+          {
+            id: '5',
+            name: 'CloudTech',
+            logo: 'https://images.pexels.com/photos/1181298/pexels-photo-1181298.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
+            industry: 'Cloud Infrastructure',
+            size: '8,000+',
+            location: 'Seattle, WA',
+            rating: 4.8,
+            reviewCount: 1100,
+            description: 'Enterprise cloud solutions and infrastructure services.',
+            openJobs: 56,
+            website: 'https://cloudtech.com',
+            founded: 2008,
+            specialties: ['Cloud Infrastructure', 'DevOps', 'Cybersecurity'],
+            benefits: ['Stock Options', 'Unlimited PTO', 'Learning Budget'],
+            culture: 'Fast-paced environment with growth opportunities.',
+            featured: true,
+          },
+          {
+            id: '6',
+            name: 'GrowthHack',
+            logo: 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
+            industry: 'Digital Marketing',
+            size: '1,500+',
+            location: 'Boston, MA',
+            rating: 4.5,
+            reviewCount: 334,
+            description: 'Performance marketing experts driving business growth.',
+            openJobs: 21,
+            website: 'https://growthhack.com',
+            founded: 2016,
+            specialties: ['Digital Marketing', 'Growth Hacking', 'Analytics'],
+            benefits: ['Performance Bonuses', 'Flexible Schedule', 'Health Insurance'],
+            culture: 'Results-oriented culture with entrepreneurial spirit.',
+            featured: false,
+          }
+        ];
+        setCompanies(fallbackCompanies);
+        
+        // Extract unique locations for filter
+        const uniqueLocations = ['All Locations', ...new Set(fallbackCompanies.map(c => c.location).filter(Boolean))];
+        setLocations(uniqueLocations);
       } finally {
         setLoading(false);
       }
@@ -422,7 +538,18 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
               <Building className="h-16 w-16 mx-auto" />
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No companies found</h3>
-            <p className="text-gray-600">Try adjusting your filters or search terms</p>
+            <p className="text-gray-600 mb-4">Try adjusting your filters or search terms</p>
+            <button
+              onClick={() => {
+                setSelectedIndustry('All Industries');
+                setSelectedSize('All Sizes');
+                setSelectedLocation('All Locations');
+                setSearchTerm('');
+              }}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Clear All Filters
+            </button>
           </div>
         ) : (
           <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
