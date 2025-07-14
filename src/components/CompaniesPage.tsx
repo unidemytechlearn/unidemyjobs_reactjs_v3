@@ -50,6 +50,7 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
           featured: company.is_featured || false,
         }));
         
+        console.log('Transformed companies:', transformedCompanies);
         setCompanies(transformedCompanies);
         
         // Extract unique locations for filter
@@ -58,122 +59,8 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
         
       } catch (error) {
         console.error('Error loading companies:', error);
-        // Set some fallback companies if database fetch fails
-        const fallbackCompanies = [
-          {
-            id: '1',
-            name: 'TechCorp',
-            logo: 'https://images.pexels.com/photos/267371/pexels-photo-267371.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
-            industry: 'Technology',
-            size: '10,000+',
-            location: 'San Francisco, CA',
-            rating: 4.8,
-            reviewCount: 1250,
-            description: 'Leading cloud computing solutions provider with innovative technology.',
-            openJobs: 45,
-            website: 'https://techcorp.com',
-            founded: 2010,
-            specialties: ['Cloud Computing', 'AI/ML', 'Software Development'],
-            benefits: ['Health Insurance', 'Remote Work', '401k'],
-            culture: 'Innovation-driven culture with work-life balance.',
-            featured: true,
-          },
-          {
-            id: '2',
-            name: 'InnovateLab',
-            logo: 'https://images.pexels.com/photos/1181406/pexels-photo-1181406.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
-            industry: 'AI & Machine Learning',
-            size: '5,000+',
-            location: 'New York, NY',
-            rating: 4.9,
-            reviewCount: 890,
-            description: 'Pioneering artificial intelligence and machine learning solutions.',
-            openJobs: 32,
-            website: 'https://innovatelab.com',
-            founded: 2015,
-            specialties: ['Machine Learning', 'Data Science', 'AI Research'],
-            benefits: ['Stock Options', 'Learning Budget', 'Flexible Hours'],
-            culture: 'Research-focused environment with cutting-edge projects.',
-            featured: true,
-          },
-          {
-            id: '3',
-            name: 'DesignStudio',
-            logo: 'https://images.pexels.com/photos/1181533/pexels-photo-1181533.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
-            industry: 'Creative Agency',
-            size: '2,500+',
-            location: 'Los Angeles, CA',
-            rating: 4.7,
-            reviewCount: 567,
-            description: 'Award-winning design solutions for global brands.',
-            openJobs: 18,
-            website: 'https://designstudio.com',
-            founded: 2012,
-            specialties: ['UI/UX Design', 'Branding', 'Digital Marketing'],
-            benefits: ['Creative Freedom', 'Health Insurance', 'Paid Time Off'],
-            culture: 'Creative and collaborative environment.',
-            featured: false,
-          },
-          {
-            id: '4',
-            name: 'DataFlow',
-            logo: 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
-            industry: 'Data Analytics',
-            size: '3,000+',
-            location: 'Austin, TX',
-            rating: 4.6,
-            reviewCount: 423,
-            description: 'Advanced data intelligence and analytics platform.',
-            openJobs: 27,
-            website: 'https://dataflow.com',
-            founded: 2018,
-            specialties: ['Data Analytics', 'Business Intelligence', 'Big Data'],
-            benefits: ['Remote Work', 'Professional Development', 'Health Benefits'],
-            culture: 'Data-driven culture with focus on innovation.',
-            featured: false,
-          },
-          {
-            id: '5',
-            name: 'CloudTech',
-            logo: 'https://images.pexels.com/photos/1181298/pexels-photo-1181298.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
-            industry: 'Cloud Infrastructure',
-            size: '8,000+',
-            location: 'Seattle, WA',
-            rating: 4.8,
-            reviewCount: 1100,
-            description: 'Enterprise cloud solutions and infrastructure services.',
-            openJobs: 56,
-            website: 'https://cloudtech.com',
-            founded: 2008,
-            specialties: ['Cloud Infrastructure', 'DevOps', 'Cybersecurity'],
-            benefits: ['Stock Options', 'Unlimited PTO', 'Learning Budget'],
-            culture: 'Fast-paced environment with growth opportunities.',
-            featured: true,
-          },
-          {
-            id: '6',
-            name: 'GrowthHack',
-            logo: 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
-            industry: 'Digital Marketing',
-            size: '1,500+',
-            location: 'Boston, MA',
-            rating: 4.5,
-            reviewCount: 334,
-            description: 'Performance marketing experts driving business growth.',
-            openJobs: 21,
-            website: 'https://growthhack.com',
-            founded: 2016,
-            specialties: ['Digital Marketing', 'Growth Hacking', 'Analytics'],
-            benefits: ['Performance Bonuses', 'Flexible Schedule', 'Health Insurance'],
-            culture: 'Results-oriented culture with entrepreneurial spirit.',
-            featured: false,
-          }
-        ];
-        setCompanies(fallbackCompanies);
-        
-        // Extract unique locations for filter
-        const uniqueLocations = ['All Locations', ...new Set(fallbackCompanies.map(c => c.location).filter(Boolean))];
-        setLocations(uniqueLocations);
+        // Just set empty array on error, let the empty state handle it
+        setCompanies([]);
       } finally {
         setLoading(false);
       }
@@ -218,12 +105,14 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
   }, [companies.length]); // Only run when companies are first loaded
 
   const filteredCompanies = useMemo(() => {
+    if (companies.length === 0) return [];
+    
     let filtered = companies.filter(company => {
       const matchesSearch = company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            company.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           company.specialties.some(specialty => 
+                           (company.specialties && company.specialties.some(specialty => 
                              specialty.toLowerCase().includes(searchTerm.toLowerCase())
-                           );
+                           ));
       
       const matchesIndustry = selectedIndustry === 'All Industries' || company.industry === selectedIndustry;
       const matchesSize = selectedSize === 'All Sizes' || company.size === selectedSize;
@@ -244,7 +133,7 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
     }
 
     return filtered;
-  }, [searchTerm, selectedIndustry, selectedSize, selectedLocation, sortBy]);
+  }, [companies, searchTerm, selectedIndustry, selectedSize, selectedLocation, sortBy]);
 
   const CompanyCard = ({ company, isListView = false }: { company: typeof companies[0], isListView?: boolean }) => (
     <div className={`group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden ${isListView ? 'flex items-start space-x-6' : ''}`}>
