@@ -482,7 +482,7 @@ const JobDetailsPage = ({ jobId, onNavigate }: JobDetailsPageProps) => {
                     {isDeadlinePassed(job.application_deadline) && (
                       <span className="text-xs text-red-500 block">Expired</span>
                     )}
-                  </p>
+                  </span>
                 </div>
               )}
             </div>
