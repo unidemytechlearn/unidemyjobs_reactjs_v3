@@ -210,7 +210,7 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
         <div className="p-6 overflow-y-auto max-h-[60vh]">
           {/* Profile Tab */}
           {activeTab === 'profile' && (
-            <div className="space-y-6">
+            <div className="space-y-8">
               {/* Resume Upload Message */}
               {resumeUploadMessage && (
                 <div className={`p-4 rounded-xl ${
@@ -230,29 +230,52 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
               )}
 
               {/* Profile Picture */}
-              <div className="flex items-center space-x-6">
-                <div className="relative">
-                  <img
-                    src="https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=80&h=80&fit=crop"
-                    alt="Profile"
-                    className="w-20 h-20 rounded-full object-cover"
-                  />
-                  <button className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors">
-                    <Camera className="h-3 w-3" />
-                  </button>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Profile Picture</h3>
-                  <p className="text-gray-600 text-sm">Upload a professional photo</p>
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-8 border border-blue-100">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+                  <Camera className="h-5 w-5 mr-2 text-blue-600" />
+                  Profile Picture
+                </h3>
+                <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
+                  <div className="relative group">
+                    <img
+                      src="https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop"
+                      alt="Profile"
+                      className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg group-hover:shadow-xl transition-all duration-300"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-full transition-all duration-300 flex items-center justify-center">
+                      <Camera className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    </div>
+                    <button className="absolute -bottom-1 -right-1 bg-blue-600 text-white p-2.5 rounded-full hover:bg-blue-700 transition-colors shadow-lg hover:shadow-xl transform hover:scale-105">
+                      <Camera className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="text-center sm:text-left">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-2">Upload Profile Photo</h4>
+                    <p className="text-gray-600 text-sm mb-4">Choose a professional photo that represents you well</p>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm">
+                        Upload Photo
+                      </button>
+                      <button className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm">
+                        Remove
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Personal Information */}
-              <div>
-                <h4 className="font-medium text-gray-900 mb-4">Personal Information</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+              {/* Personal Information Section */}
+              <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+                  <User className="h-5 w-5 mr-2 text-blue-600" />
+                  Personal Information
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      First Name <span className="text-red-500">*</span>
+                    </label>
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                       <input
@@ -260,13 +283,16 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
                         name="first_name"
                         value={formData.first_name}
                         onChange={handleInputChange}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        placeholder="Enter your first name"
                       />
                     </div>
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Last Name <span className="text-red-500">*</span>
+                    </label>
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                       <input
@@ -274,30 +300,56 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
                         name="last_name"
                         value={formData.last_name}
                         onChange={handleInputChange}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        placeholder="Enter your last name"
                       />
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Email Address
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                      <input
+                        type="email"
+                        name="email"
+                        value={user?.email || ''}
+                        disabled
+                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 flex items-center">
+                      <Shield className="h-3 w-3 mr-1" />
+                      Email cannot be changed for security reasons
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Phone Number
+                    </label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        placeholder="Enter your phone number"
+                      />
+                    </div>
                   </div>
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+
+                <div className="mt-6 space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Location
+                  </label>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                     <input
@@ -305,30 +357,42 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
                       name="location"
                       value={formData.location}
                       onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      placeholder="City, State, Country"
                     />
                   </div>
                 </div>
+
+                <div className="mt-6 space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Professional Bio
+                  </label>
+                  <textarea
+                    name="bio"
+                    value={formData.bio}
+                    onChange={handleInputChange}
+                    rows={4}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-all"
+                    placeholder="Write a brief professional summary about yourself..."
+                  />
+                  <p className="text-xs text-gray-500">
+                    {formData.bio?.length || 0}/500 characters
+                  </p>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
-                <textarea
-                  name="bio"
-                  value={formData.bio}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                  placeholder="Tell us about yourself..."
-                />
-              </div>
-
-              {/* Professional Information */}
-              <div>
-                <h4 className="font-medium text-gray-900 mb-4">Professional Information</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Job Title</label>
+              {/* Professional Information Section */}
+              <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+                  <Briefcase className="h-5 w-5 mr-2 text-blue-600" />
+                  Professional Information
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Job Title
+                    </label>
                     <div className="relative">
                       <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                       <input
@@ -336,77 +400,93 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
                         name="job_title"
                         value={formData.job_title}
                         onChange={handleInputChange}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        placeholder="e.g., Senior Software Engineer"
                       />
                     </div>
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Company</label>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Company
+                    </label>
                     <input
                       type="text"
                       name="company"
                       value={formData.company}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      placeholder="Current or previous company"
                     />
                   </div>
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Experience Level
+                    </label>
+                    <select
+                      name="experience_level"
+                      value={formData.experience_level}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    >
+                      <option value="">Select experience level</option>
+                      <option value="Entry-level">Entry-level (0-2 years)</option>
+                      <option value="1-2 years">Junior (1-2 years)</option>
+                      <option value="3-5 years">Mid-level (3-5 years)</option>
+                      <option value="5+ years">Senior (5+ years)</option>
+                      <option value="10+ years">Expert (10+ years)</option>
+                    </select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Availability
+                    </label>
+                    <select
+                      name="availability"
+                      value={formData.availability}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    >
+                      <option value="">Select availability</option>
+                      <option value="Open to opportunities">🟢 Open to opportunities</option>
+                      <option value="Actively looking">🔍 Actively looking</option>
+                      <option value="Not looking">⏸️ Not looking</option>
+                      <option value="Open to freelance">💼 Open to freelance</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-6 space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Salary Range
+                  </label>
+                  <input
+                    type="text"
+                    name="salary_range"
+                    value={formData.salary_range}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    placeholder="e.g., $120k - $160k annually"
+                  />
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Experience Level</label>
-                  <select
-                    name="experience_level"
-                    value={formData.experience_level}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select experience</option>
-                    <option value="Entry-level">Entry-level</option>
-                    <option value="1-2 years">1-2 years</option>
-                    <option value="3-5 years">3-5 years</option>
-                    <option value="5+ years">5+ years</option>
-                    <option value="10+ years">10+ years</option>
-                  </select>
-                </div>
+              {/* Social Links Section */}
+              <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+                  <Globe className="h-5 w-5 mr-2 text-blue-600" />
+                  Social & Professional Links
+                </h3>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Availability</label>
-                  <select
-                    name="availability"
-                    value={formData.availability}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select availability</option>
-                    <option value="Open to opportunities">Open to opportunities</option>
-                    <option value="Actively looking">Actively looking</option>
-                    <option value="Not looking">Not looking</option>
-                    <option value="Open to freelance">Open to freelance</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Salary Range</label>
-                <input
-                  type="text"
-                  name="salary_range"
-                  value={formData.salary_range}
-                  onChange={handleInputChange}
-                  placeholder="e.g., $120k - $160k"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {/* Social Links */}
-              <div>
-                <h4 className="font-medium text-gray-900 mb-4">Social Links</h4>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">LinkedIn Profile</label>
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      LinkedIn Profile
+                    </label>
                     <div className="relative">
                       <Linkedin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                       <input
@@ -414,13 +494,16 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
                         name="linkedin_url"
                         value={formData.linkedin_url}
                         onChange={handleInputChange}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        placeholder="https://linkedin.com/in/yourprofile"
                       />
                     </div>
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">GitHub Profile</label>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      GitHub Profile
+                    </label>
                     <div className="relative">
                       <Github className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                       <input
@@ -428,13 +511,16 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
                         name="github_url"
                         value={formData.github_url}
                         onChange={handleInputChange}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        placeholder="https://github.com/yourprofile"
                       />
                     </div>
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Portfolio Website</label>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Portfolio Website
+                    </label>
                     <div className="relative">
                       <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                       <input
@@ -442,7 +528,8 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
                         name="portfolio_url"
                         value={formData.portfolio_url}
                         onChange={handleInputChange}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        placeholder="https://yourportfolio.com"
                       />
                     </div>
                   </div>
@@ -628,17 +715,22 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
 
         {/* Footer */}
         <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
-          <button
-            onClick={onClose}
-            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
-          >
-            Cancel
-          </button>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={onClose}
+              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+            >
+              Cancel
+            </button>
+            <span className="text-sm text-gray-500">
+              Changes are saved automatically
+            </span>
+          </div>
           
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
           >
             {isSaving ? (
               <>
