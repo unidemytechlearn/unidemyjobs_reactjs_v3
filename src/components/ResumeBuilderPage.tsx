@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ArrowRight, Download, Share2, Eye, Edit3, Sparkles, User, Briefcase, GraduationCap, Code, FolderOpen, FileText, Save, Plus, X, Calendar, MapPin, Mail, Phone, Globe, Linkedin, Github, Star, Award, Target, Zap, CheckCircle, AlertCircle, Loader, Palette, Layout, Wand2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Download, Share2, Eye, Edit3, Sparkles, User, Briefcase, GraduationCap, Code, FolderOpen, FileText, Save, Plus, X, Calendar, MapPin, Mail, Phone, Globe, Linkedin, Github, Star, Award, Target, Zap, CheckCircle, AlertCircle, Loader, Palette, Layout, Wand2, RefreshCw, Upload } from 'lucide-react';
 
 interface PersonalInfo {
   firstName: string;
