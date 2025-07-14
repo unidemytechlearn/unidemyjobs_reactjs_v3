@@ -8,7 +8,7 @@ import { useAuthContext } from './AuthProvider';
 import { getJobs, getUserSavedJobs, saveJob, unsaveJob, isJobSaved } from '../lib/supabase';
 
 interface DashboardProps {
-  onNavigate?: (page: string) => void;
+  onNavigate?: (page: string, jobId?: string) => void;
 }
 
 const Dashboard = ({ onNavigate }: DashboardProps) => {

@@ -13,10 +13,12 @@ import CompaniesPage from './components/CompaniesPage';
 import AboutPage from './components/AboutPage';
 import ResumeBuilderPage from './components/ResumeBuilderPage';
 import Dashboard from './components/Dashboard';
+import JobDetailsPage from './components/JobDetailsPage';
 import { useAuthContext } from './components/AuthProvider';
 
 function AppContent() {
-  const [currentPage, setCurrentPage] = useState<'home' | 'jobs' | 'companies' | 'about' | 'resume-builder' | 'dashboard'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'jobs' | 'companies' | 'about' | 'resume-builder' | 'dashboard' | 'job-details'>('home');
+  const [selectedJobId, setSelectedJobId] = useState<string>('');
   const { isAuthenticated, user } = useAuthContext();
 
   const handleLogin = () => {
@@ -36,6 +38,11 @@ function AppContent() {
     }
   };
 
+  const handleNavigateWithJobId = (page: string, jobId?: string) => {
+    setCurrentPage(page as any);
+    if (jobId) setSelectedJobId(jobId);
+  };
+
   if (currentPage === 'dashboard' && isAuthenticated) {
     return (
       <div className="min-h-screen bg-white">
@@ -46,7 +53,7 @@ function AppContent() {
           onLogin={handleLogin}
           onLogout={handleLogout}
         />
-        <Dashboard onNavigate={setCurrentPage} />
+        <Dashboard onNavigate={handleNavigateWithJobId} />
         <Footer />
       </div>
     );
@@ -112,6 +119,21 @@ function AppContent() {
         />
         <ResumeBuilderPage />
         <Footer />
+      </div>
+    );
+  }
+
+  if (currentPage === 'job-details') {
+    return (
+      <div className="min-h-screen bg-white">
+        <Header 
+          onNavigate={setCurrentPage} 
+          currentPage={currentPage}
+          isLoggedIn={isAuthenticated}
+          onLogin={handleLogin}
+          onLogout={handleLogout}
+        />
+        <JobDetailsPage jobId={selectedJobId} onNavigate={handleNavigateWithJobId} />
       </div>
     );
   }
