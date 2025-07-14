@@ -480,7 +480,10 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
           </span>
         </div>
         <div className="flex space-x-2">
-          <button className="px-3 py-1.5 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm">
+          <button
+            onClick={() => onNavigate?.('job-details', job.id)}
+            className="px-3 py-1.5 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+          >
             View Details
           </button>
           <button
