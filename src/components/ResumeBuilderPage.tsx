@@ -63,7 +63,9 @@ interface ResumeData {
   achievements: string[];
 }
 
-const ResumeBuilderPage = () => {
+  const [languages, setLanguages] = useState<{ value: string; proficiency: string }[]>([
+    { value: '', proficiency: 'Native' }
+  ]);
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedTemplate, setSelectedTemplate] = useState('modern');
   const [isGenerating, setIsGenerating] = useState(false);
