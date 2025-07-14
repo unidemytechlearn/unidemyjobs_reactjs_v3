@@ -207,7 +207,7 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
         company: profileData.company,
         experience_level: profileData.experience,
         salary_range: profileData.salary,
-        availability: profileData.availability,
+        availability: profileData.availability === '' ? null : profileData.availability,
         linkedin_url: profileData.linkedin,
         github_url: profileData.github,
         portfolio_url: profileData.portfolio,

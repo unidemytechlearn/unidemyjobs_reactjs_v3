@@ -122,6 +122,9 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
     setMessage(null);
     
     try {
+      // Handle empty availability value to prevent constraint violation
+      const availabilityValue = formData.availability === '' ? null : formData.availability;
+      
       await updateProfile(user.id, formData);
       await refreshProfile();
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
