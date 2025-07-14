@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, MapPin, Clock, DollarSign, Building, Star, Calendar, Users, Share2, Bookmark, ExternalLink, CheckCircle, Briefcase, Globe, Eye, MessageSquare } from 'lucide-react';
 import ApplyModal from './ApplyModal';
 import { useAuthContext } from './AuthProvider';
-import { hasUserAppliedToJob } from '../lib/supabase';
+import { hasUserAppliedToJob } from '../lib/applications';
 import SignUpModal from './SignUpModal';
 import SignInModal from './SignInModal';
 
