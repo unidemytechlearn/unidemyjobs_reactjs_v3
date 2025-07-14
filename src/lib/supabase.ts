@@ -48,6 +48,8 @@ export interface Profile {
   profile_views: number;
   created_at: string;
   updated_at: string;
+  profile_picture_url?: string;
+  profile_picture_uploaded_at?: string;
 }
 
 export interface Company {

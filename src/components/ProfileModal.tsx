@@ -3,6 +3,7 @@ import { X, User, Mail, Phone, MapPin, Briefcase, Save, Upload, FileText, Eye, E
 import { useAuthContext } from './AuthProvider';
 import { updateProfile, Profile, resetPassword } from '../lib/supabase';
 import ResumeUploadSection from './ResumeUploadSection';
+import ProfilePictureUploadSection from './ProfilePictureUploadSection';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -96,6 +97,24 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
     setTimeout(() => setResumeUploadMessage(null), 3000);
   };
 
+  const handleProfilePictureUploadSuccess = (url: string, fileName: string) => {
+    setMessage({ type: 'success', text: 'Profile picture uploaded successfully!' });
+    // Refresh profile to get updated profile picture info
+    refreshProfile();
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  const handleProfilePictureUploadError = (error: string) => {
+    setMessage({ type: 'error', text: error });
+    setTimeout(() => setMessage(null), 5000);
+  };
+
+  const handleProfilePictureDeleteSuccess = () => {
+    setMessage({ type: 'success', text: 'Profile picture deleted successfully!' });
+    // Refresh profile to get updated profile picture info
+    refreshProfile();
+    setTimeout(() => setMessage(null), 3000);
+  };
   const handleSave = async () => {
     if (!user) return;
     
@@ -235,33 +254,13 @@ const ProfileModal = ({ isOpen, onClose }: ProfileModalProps) => {
                   <Camera className="h-5 w-5 mr-2 text-blue-600" />
                   Profile Picture
                 </h3>
-                <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
-                  <div className="relative group">
-                    <img
-                      src="https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop"
-                      alt="Profile"
-                      className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg group-hover:shadow-xl transition-all duration-300"
-                    />
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-full transition-all duration-300 flex items-center justify-center">
-                      <Camera className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    </div>
-                    <button className="absolute -bottom-1 -right-1 bg-blue-600 text-white p-2.5 rounded-full hover:bg-blue-700 transition-colors shadow-lg hover:shadow-xl transform hover:scale-105">
-                      <Camera className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="text-center sm:text-left">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-2">Upload Profile Photo</h4>
-                    <p className="text-gray-600 text-sm mb-4">Choose a professional photo that represents you well</p>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm">
-                        Upload Photo
-                      </button>
-                      <button className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm">
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <ProfilePictureUploadSection
+                  currentProfilePictureUrl={profile?.profile_picture_url}
+                  currentProfilePictureUploadedAt={profile?.profile_picture_uploaded_at}
+                  onUploadSuccess={handleProfilePictureUploadSuccess}
+                  onUploadError={handleProfilePictureUploadError}
+                  onDeleteSuccess={handleProfilePictureDeleteSuccess}
+                />
               </div>
 
               {/* Personal Information Section */}
