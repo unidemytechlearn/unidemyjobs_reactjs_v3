@@ -20,7 +20,7 @@ export const publicSupabase = supabaseUrl && supabaseAnonKey
         autoRefreshToken: false,
       }
     })
-  : null;</parameter>
+  : null;
 
 // Database types
 export interface Profile {
