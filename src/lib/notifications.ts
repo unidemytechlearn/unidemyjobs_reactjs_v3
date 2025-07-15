@@ -134,6 +134,8 @@ export function subscribeToNotifications(
   userId: string,
   onNotification: (notification: Notification) => void
 ) {
+  console.log('Setting up notification subscription for user:', userId);
+  
   const subscription = supabase
     .channel(`notifications:${userId}`)
     .on(
@@ -145,10 +147,33 @@ export function subscribeToNotifications(
         filter: `user_id=eq.${userId}`
       },
       (payload) => {
+        console.log('Real-time notification received:', payload);
         onNotification(payload.new as Notification);
       }
     )
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${userId}`
+      },
+      (payload) => {
+        console.log('Notification updated:', payload);
+        // You can handle notification updates here if needed
+      }
+    )
     .subscribe();
+
+  // Log subscription status
+  subscription.on('subscribed', () => {
+    console.log('Successfully subscribed to notifications');
+  });
+  
+  subscription.on('error', (error) => {
+    console.error('Notification subscription error:', error);
+  });
 
   return subscription;
 }

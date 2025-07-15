@@ -31,6 +31,7 @@ export const useAuth = () => {
               template.type,
               '/dashboard/profile'
             );
+            console.log('Welcome notification created for new user');
           } catch (error) {
             console.error('Error creating welcome notification:', error);
           }
@@ -48,6 +49,7 @@ export const useAuth = () => {
   const {
     data: { subscription },
   } = supabase.auth.onAuthStateChange((event, session) => {
+    console.log('Auth state changed:', event);
     if (event === 'SIGNED_OUT') {
       setUser(null);
       setProfile(null);

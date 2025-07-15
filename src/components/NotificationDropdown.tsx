@@ -31,8 +31,8 @@ const NotificationDropdown = ({ onNavigate }: NotificationDropdownProps) => {
   const loadNotifications = async () => {
     if (!user) return;
     
-    setLoading(true);
     try {
+      setLoading(true);
       const [notificationsData, unreadCountData] = await Promise.all([
         getUserNotifications(user.id),
         getUnreadNotificationCount(user.id)
@@ -42,6 +42,9 @@ const NotificationDropdown = ({ onNavigate }: NotificationDropdownProps) => {
       setUnreadCount(unreadCountData);
     } catch (error) {
       console.error('Error loading notifications:', error);
+      // Set empty state on error to prevent stale data
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setLoading(false);
     }
@@ -49,16 +52,33 @@ const NotificationDropdown = ({ onNavigate }: NotificationDropdownProps) => {
 
   // Load notifications on mount and when user changes
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (isAuthenticated && user && isOpen) {
+      // Load immediately when dropdown opens
+      loadNotifications();
+    } else if (isAuthenticated && user && !isOpen) {
+      // Load in background when closed (for badge count)
       loadNotifications();
     }
+    // Also load when authentication state changes
+    if (!isAuthenticated) {
+      setNotifications([]);
+      setUnreadCount(0);
+    }
   }, [isAuthenticated, user]);
+
+  // Refresh notifications when dropdown opens
+  useEffect(() => {
+    if (isOpen && isAuthenticated && user) {
+      loadNotifications();
+    }
+  }, [isOpen]);
 
   // Subscribe to real-time notifications
   useEffect(() => {
     if (!user) return;
 
     const subscription = subscribeToNotifications(user.id, (newNotification) => {
+      console.log('New notification received:', newNotification);
       setNotifications(prev => [newNotification, ...prev]);
       setUnreadCount(prev => prev + 1);
       
@@ -69,12 +89,27 @@ const NotificationDropdown = ({ onNavigate }: NotificationDropdownProps) => {
           icon: '/favicon.ico'
         });
       }
+      
+      // Force a refresh of the notifications list to ensure consistency
+      setTimeout(() => {
+        if (isAuthenticated && user) {
+          loadNotifications();
+        }
+      }, 1000);
     });
 
     return () => {
       subscription.unsubscribe();
     };
   }, [user]);
+
+  // Periodic refresh to catch any missed notifications
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+    
+    const interval = setInterval(loadNotifications, 30000); // Refresh every 30 seconds
+    return () => clearInterval(interval);
+  }, [isAuthenticated, user]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -97,12 +132,15 @@ const NotificationDropdown = ({ onNavigate }: NotificationDropdownProps) => {
 
   const handleNotificationClick = async (notification: Notification) => {
     try {
+      // Optimistically update UI
       if (!notification.is_read) {
-        await markNotificationAsRead(notification.id);
+        setUnreadCount(prev => Math.max(0, prev - 1));
         setNotifications(prev => 
           prev.map(n => n.id === notification.id ? { ...n, is_read: true } : n)
         );
-        setUnreadCount(prev => Math.max(0, prev - 1));
+        
+        // Then update database
+        await markNotificationAsRead(notification.id);
       }
 
       // Navigate to action URL if provided
@@ -120,6 +158,8 @@ const NotificationDropdown = ({ onNavigate }: NotificationDropdownProps) => {
       setIsOpen(false);
     } catch (error) {
       console.error('Error handling notification click:', error);
+      // Revert optimistic update on error
+      loadNotifications();
     }
   };
 
@@ -127,11 +167,16 @@ const NotificationDropdown = ({ onNavigate }: NotificationDropdownProps) => {
     if (!user) return;
     
     try {
-      await markAllNotificationsAsRead(user.id);
+      // Optimistically update UI
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       setUnreadCount(0);
+      
+      // Then update database
+      await markAllNotificationsAsRead(user.id);
     } catch (error) {
       console.error('Error marking all as read:', error);
+      // Revert optimistic update on error
+      loadNotifications();
     }
   };
 
@@ -139,16 +184,19 @@ const NotificationDropdown = ({ onNavigate }: NotificationDropdownProps) => {
     event.stopPropagation();
     
     try {
-      await deleteNotification(notificationId);
-      setNotifications(prev => prev.filter(n => n.id !== notificationId));
-      
-      // Update unread count if the deleted notification was unread
+      // Optimistically update UI
       const deletedNotification = notifications.find(n => n.id === notificationId);
+      setNotifications(prev => prev.filter(n => n.id !== notificationId));
       if (deletedNotification && !deletedNotification.is_read) {
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
+      
+      // Then update database
+      await deleteNotification(notificationId);
     } catch (error) {
       console.error('Error deleting notification:', error);
+      // Revert optimistic update on error
+      loadNotifications();
     }
   };
 

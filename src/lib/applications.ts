@@ -97,6 +97,8 @@ export async function submitApplication(applicationData: ApplicationData) {
           template.type,
           `/dashboard/applications/${data.id}`
         );
+        
+        console.log('Application notification created successfully');
       }
     } catch (notificationError) {
       console.error('Error creating application notification:', notificationError);
