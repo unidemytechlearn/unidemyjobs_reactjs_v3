@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase, getCurrentUser, Profile, getProfile, signOut as supabaseSignOut } from '../lib/supabase';
+import { createNotification, NotificationTemplates } from '../lib/notifications';
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -18,6 +19,22 @@ export const useAuth = () => {
       try {
         const profile = await getProfile(user.id);
         setProfile(profile);
+        
+        // Create welcome notification for new users
+        if (profile && !profile.created_at) {
+          try {
+            const template = NotificationTemplates.WELCOME();
+            await createNotification(
+              user.id,
+              template.title,
+              template.message,
+              template.type,
+              '/dashboard/profile'
+            );
+          } catch (error) {
+            console.error('Error creating welcome notification:', error);
+          }
+        }
       } catch (err) {
         console.error("Profile load error", err);
       }

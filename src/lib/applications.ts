@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { createNotification, NotificationTemplates } from './notifications';
 
 export interface ApplicationData {
   job_id: string;
@@ -72,6 +73,34 @@ export async function submitApplication(applicationData: ApplicationData) {
     if (error) {
       console.error('Error submitting application:', error);
       throw new Error(error.message);
+    }
+
+    // Create notification for successful application submission
+    try {
+      // Get job details for notification
+      const { data: jobData } = await supabase
+        .from('jobs')
+        .select('title, company:companies(name)')
+        .eq('id', applicationData.job_id)
+        .single();
+
+      if (jobData) {
+        const template = NotificationTemplates.APPLICATION_SUBMITTED(
+          jobData.title,
+          jobData.company?.name || 'Unknown Company'
+        );
+        
+        await createNotification(
+          applicationData.user_id,
+          template.title,
+          template.message,
+          template.type,
+          `/dashboard/applications/${data.id}`
+        );
+      }
+    } catch (notificationError) {
+      console.error('Error creating application notification:', notificationError);
+      // Don't fail the application submission if notification fails
     }
 
     return data;

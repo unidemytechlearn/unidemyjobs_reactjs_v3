@@ -3,6 +3,7 @@ import { Search, Menu, X, Briefcase, User, LogOut, Bell, Settings, Eye } from 'l
 import SignUpModal from './SignUpModal';
 import SignInModal from './SignInModal';
 import ProfileModal from './ProfileModal';
+import NotificationDropdown from './NotificationDropdown';
 import { useAuthContext } from './AuthProvider';
 import { signOut } from '../lib/supabase';
 
@@ -131,12 +132,7 @@ const Header = ({ onNavigate, currentPage = 'home', onLogin, onLogout }: HeaderP
               {isAuthenticated ? (
                 <div className="relative">
                   <div className="flex items-center space-x-3">
-                    <button className="text-gray-600 hover:text-blue-600 transition-colors relative">
-                      <Bell className="h-5 w-5" />
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                        3
-                      </span>
-                    </button>
+                    <NotificationDropdown onNavigate={onNavigate} />
                     <button 
                       onClick={() => setShowUserMenu(!showUserMenu)}
                       className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors"
