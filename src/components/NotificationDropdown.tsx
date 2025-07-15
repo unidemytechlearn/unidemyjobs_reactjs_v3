@@ -29,7 +29,12 @@ const NotificationDropdown = ({ onNavigate }: NotificationDropdownProps) => {
 
   // Load notifications
   const loadNotifications = async () => {
-    if (!user) return;
+    if (!user || !isAuthenticated) {
+      console.warn('User not authenticated, skipping notification load');
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
     
     try {
       setLoading(true);
@@ -52,62 +57,82 @@ const NotificationDropdown = ({ onNavigate }: NotificationDropdownProps) => {
 
   // Load notifications on mount and when user changes
   useEffect(() => {
-    if (isAuthenticated && user && isOpen) {
-      // Load immediately when dropdown opens
-      loadNotifications();
-    } else if (isAuthenticated && user && !isOpen) {
-      // Load in background when closed (for badge count)
-      loadNotifications();
-    }
-    // Also load when authentication state changes
-    if (!isAuthenticated) {
+    if (isAuthenticated && user) {
+      // Add a small delay to ensure Supabase client is ready
+      const timeoutId = setTimeout(() => {
+        if (isOpen) {
+          // Load immediately when dropdown opens
+          loadNotifications();
+        } else {
+          // Load in background when closed (for badge count)
+          loadNotifications();
+        }
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
+    } else if (!isAuthenticated) {
       setNotifications([]);
       setUnreadCount(0);
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, isOpen]);
 
   // Refresh notifications when dropdown opens
   useEffect(() => {
     if (isOpen && isAuthenticated && user) {
-      loadNotifications();
+      // Add a small delay to ensure component is ready
+      const timeoutId = setTimeout(loadNotifications, 50);
+      return () => clearTimeout(timeoutId);
     }
-  }, [isOpen]);
+  }, [isOpen, isAuthenticated, user]);
 
   // Subscribe to real-time notifications
   useEffect(() => {
-    if (!user) return;
+    if (!user || !isAuthenticated) return;
 
-    const subscription = subscribeToNotifications(user.id, (newNotification) => {
-      console.log('New notification received:', newNotification);
-      setNotifications(prev => [newNotification, ...prev]);
-      setUnreadCount(prev => prev + 1);
-      
-      // Show browser notification if permission granted
-      if (Notification.permission === 'granted') {
-        new Notification(newNotification.title, {
-          body: newNotification.message,
-          icon: '/favicon.ico'
-        });
-      }
-      
-      // Force a refresh of the notifications list to ensure consistency
-      setTimeout(() => {
-        if (isAuthenticated && user) {
-          loadNotifications();
+    // Add a delay to ensure Supabase client is ready
+    const setupSubscription = () => {
+      const subscription = subscribeToNotifications(user.id, (newNotification) => {
+        console.log('New notification received:', newNotification);
+        setNotifications(prev => [newNotification, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        
+        // Show browser notification if permission granted
+        if (Notification.permission === 'granted') {
+          new Notification(newNotification.title, {
+            body: newNotification.message,
+            icon: '/favicon.ico'
+          });
         }
-      }, 1000);
-    });
-
-    return () => {
-      subscription.unsubscribe();
+        
+        // Force a refresh of the notifications list to ensure consistency
+        setTimeout(() => {
+          if (isAuthenticated && user) {
+            loadNotifications();
+          }
+        }, 1000);
+      });
+      return () => {
+        subscription.unsubscribe();
+      };
     };
-  }, [user]);
+
+    const timeoutId = setTimeout(setupSubscription, 200);
+    
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [user, isAuthenticated]);
 
   // Periodic refresh to catch any missed notifications
   useEffect(() => {
     if (!isAuthenticated || !user) return;
     
-    const interval = setInterval(loadNotifications, 30000); // Refresh every 30 seconds
+    const interval = setInterval(() => {
+      if (isAuthenticated && user) {
+        loadNotifications();
+      }
+    }, 30000); // Refresh every 30 seconds
+    
     return () => clearInterval(interval);
   }, [isAuthenticated, user]);
 

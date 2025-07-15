@@ -22,6 +22,19 @@ export interface NotificationPreferences {
 // Get user notifications
 export async function getUserNotifications(userId: string, limit = 50): Promise<Notification[]> {
   try {
+    // Check if we have a valid Supabase client
+    if (!supabase) {
+      console.error('Supabase client not initialized');
+      return [];
+    }
+
+    // Check if user is authenticated
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.warn('User not authenticated, skipping notifications fetch');
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('notifications')
       .select('*')
@@ -33,6 +46,7 @@ export async function getUserNotifications(userId: string, limit = 50): Promise<
     return data || [];
   } catch (error) {
     console.error('Error fetching notifications:', error);
+    // Return empty array instead of throwing to prevent UI crashes
     return [];
   }
 }
@@ -40,6 +54,19 @@ export async function getUserNotifications(userId: string, limit = 50): Promise<
 // Get unread notification count
 export async function getUnreadNotificationCount(userId: string): Promise<number> {
   try {
+    // Check if we have a valid Supabase client
+    if (!supabase) {
+      console.error('Supabase client not initialized');
+      return 0;
+    }
+
+    // Check if user is authenticated
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.warn('User not authenticated, skipping unread count fetch');
+      return 0;
+    }
+
     const { count, error } = await supabase
       .from('notifications')
       .select('*', { count: 'exact', head: true })
@@ -50,6 +77,7 @@ export async function getUnreadNotificationCount(userId: string): Promise<number
     return count || 0;
   } catch (error) {
     console.error('Error fetching unread count:', error);
+    // Return 0 instead of throwing to prevent UI crashes
     return 0;
   }
 }
