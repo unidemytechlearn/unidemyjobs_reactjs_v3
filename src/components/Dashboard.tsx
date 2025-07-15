@@ -521,25 +521,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
               </h1>
               <p className="text-gray-600 mt-2">Here's your job search overview and recommendations</p>
             </div>
-            <div className="flex items-center space-x-3">
-              <button className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                <Bell className="h-6 w-6" />
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  3
-                </span>
-              </button>
-              <button
-                onClick={() => setActiveTab('profile')}
-                className="flex items-center space-x-2 bg-white border border-gray-200 rounded-xl px-4 py-2 hover:bg-gray-50 transition-colors"
-              >
-                <img
-                  src="https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=32&h=32&fit=crop"
-                  alt="Profile"
-                  className="w-6 h-6 rounded-full object-cover"
-                />
-                <span className="text-sm font-medium text-gray-700">Profile</span>
-              </button>
-            </div>
+            
           </div>
         </div>
 
