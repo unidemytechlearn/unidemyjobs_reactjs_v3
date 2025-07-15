@@ -6,6 +6,8 @@ import JobApplicationDetailsModal from './JobApplicationDetailsModal';
 import { getUserApplications, getApplicationAnalytics, withdrawApplication } from '../lib/applications';
 import { useAuthContext } from './AuthProvider';
 import { getJobs, getUserSavedJobs, saveJob, unsaveJob, isJobSaved } from '../lib/supabase';
+import { getUserNotifications, getUnreadNotificationCount, markNotificationAsRead } from '../lib/notifications';
+import NotificationCenter from './NotificationCenter';
 
 interface DashboardProps {
   onNavigate?: (page: string, jobId?: string) => void;
@@ -13,7 +15,7 @@ interface DashboardProps {
 
 const Dashboard = ({ onNavigate }: DashboardProps) => {
   const { isAuthenticated, loading, user, profile } = useAuthContext();
-  const [activeTab, setActiveTab] = useState<'overview' | 'browse-jobs' | 'saved-jobs' | 'applications' | 'profile'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'browse-jobs' | 'saved-jobs' | 'applications' | 'notifications' | 'profile'>('overview');
   const [applications, setApplications] = useState<any[]>([]);
   const [applicationStats, setApplicationStats] = useState<any>(null);
   const [loadingApplications, setLoadingApplications] = useState(false);
@@ -45,6 +47,8 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     type: 'success' | 'error';
     text: string;
   } | null>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Don't render anything while loading
   if (loading) {
@@ -65,12 +69,16 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
       if (user && (activeTab === 'applications' || activeTab === 'overview')) {
         setLoadingApplications(true);
         try {
-          const [userApps, analytics] = await Promise.all([
+          const [userApps, analytics, notificationsData, unreadCountData] = await Promise.all([
             getUserApplications(user.id),
-            getApplicationAnalytics(user.id)
+            getApplicationAnalytics(user.id),
+            getUserNotifications(user.id, 10),
+            getUnreadNotificationCount(user.id)
           ]);
           setApplications(userApps);
           setApplicationStats(analytics);
+          setNotifications(notificationsData || []);
+          setUnreadCount(unreadCountData || 0);
         } catch (error) {
           console.error('Error loading application data:', error);
         } finally {
@@ -591,6 +599,24 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                 {applications.length > 0 && (
                   <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
                     {applications.length}
+                  </span>
+                )}
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('notifications')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm relative transition-colors ${
+                activeTab === 'notifications'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Bell className="h-4 w-4" />
+                <span>Notifications</span>
+                {unreadCount > 0 && (
+                  <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
               </div>
@@ -1155,6 +1181,9 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
             </div>
           </div>
         )}
+
+        {/* Notifications Tab */}
+        {activeTab === 'notifications' && <NotificationCenter />}
       </div>
 
       {/* Apply Modal */}
