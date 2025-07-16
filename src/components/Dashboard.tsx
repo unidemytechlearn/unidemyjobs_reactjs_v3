@@ -121,8 +121,8 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     const loadJobs = async () => {
       try {
         const fetchedJobs = await getJobs({ limit: 20 });
-        const jobsWithMockData = fetchedJobs.map(job => ({
-          ...job,
+        const { data: fetchedNotifications } = await getUserNotifications(user.id, ITEMS_PER_PAGE);
+        const { data: fetchedNotifications } = await getUserNotifications(user.id, ITEMS_PER_PAGE, offset);
           company: job.company?.name || 'Unknown Company',
           type: job.job_type,
           salary: formatSalary(job.salary_min, job.salary_max, job.salary_currency),
