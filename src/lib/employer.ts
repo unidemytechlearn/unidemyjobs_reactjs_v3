@@ -167,7 +167,7 @@ export const getEmployerJobs = async (employerId: string, filters?: {
 // Create new job
 export const createJob = async (jobData: any, employerId: string) => {
   try {
-    // Get employer's company first
+    // Get employer's company first - this is a critical check
     const company = await getEmployerCompany(employerId);
     if (!company) {
       throw new Error('Please create a company profile first');

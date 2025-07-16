@@ -26,7 +26,8 @@ import {
   X,
   Linkedin,
   Github,
-  Globe
+  Globe,
+  AlertTriangle
 } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
 import { 
@@ -64,6 +65,7 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
   const [isEditJobModalOpen, setIsEditJobModalOpen] = useState(false);
   const [isEditCompanyModalOpen, setIsEditCompanyModalOpen] = useState(false);
   const [isViewApplicationModalOpen, setIsViewApplicationModalOpen] = useState(false);
+  const [showCompanyRequiredAlert, setShowCompanyRequiredAlert] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [selectedJobForEdit, setSelectedJobForEdit] = useState<any>(null);
   const [newJobData, setNewJobData] = useState({
@@ -258,6 +260,13 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
   const handleCreateJob = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    
+    if (!company) {
+      setShowCompanyRequiredAlert(true);
+      setIsNewJobModalOpen(false);
+      setActiveTab('company');
+      return;
+    }
     
     try {
       // Format the data
@@ -473,6 +482,11 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
               <h1 className="text-3xl font-bold text-gray-900">Employer Dashboard</h1>
               <p className="text-gray-600 mt-2">
                 Welcome back, {profile?.first_name}! Manage your jobs and applications.
+                {!company && (
+                  <span className="ml-2 text-red-600 font-medium">
+                    (Please set up your company profile first)
+                  </span>
+                )}
               </p>
             </div>
             <div className="flex items-center space-x-4">
@@ -485,6 +499,32 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
             </div>
           </div>
         </div>
+
+        {/* Company Required Alert */}
+        {showCompanyRequiredAlert && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-md">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <AlertTriangle className="h-5 w-5 text-yellow-400" />
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-yellow-700">
+                  <strong>Company profile required!</strong> Please create your company profile before posting jobs.
+                </p>
+              </div>
+              <div className="ml-auto pl-3">
+                <div className="-mx-1.5 -my-1.5">
+                  <button
+                    onClick={() => setShowCompanyRequiredAlert(false)}
+                    className="inline-flex rounded-md p-1.5 text-yellow-500 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:ring-offset-2"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -620,8 +660,20 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
                 <div className="space-y-3">
                   <button 
-                    onClick={() => setIsNewJobModalOpen(true)}
-                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center space-x-2"
+                    onClick={() => {
+                      if (!company) {
+                        setShowCompanyRequiredAlert(true);
+                        setActiveTab('company');
+                      } else {
+                        setIsNewJobModalOpen(true);
+                      }
+                    }}
+                    className={`w-full py-3 px-4 rounded-lg transition-colors font-medium flex items-center justify-center space-x-2 ${
+                      company 
+                        ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                        : 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                    }`}
+                    title={company ? "Post a new job" : "Please create a company profile first"}
                   >
                     <Plus className="h-4 w-4" />
                     <span>Post New Job</span>
@@ -679,8 +731,20 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
                 <p className="text-gray-600">Create, edit, and manage your job postings</p>
               </div>
               <button 
-                onClick={() => setIsNewJobModalOpen(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2"
+                onClick={() => {
+                  if (!company) {
+                    setShowCompanyRequiredAlert(true);
+                    setActiveTab('company');
+                  } else {
+                    setIsNewJobModalOpen(true);
+                  }
+                }}
+                className={`px-4 py-2 rounded-lg font-medium flex items-center space-x-2 ${
+                  company 
+                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                    : 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                }`}
+                title={company ? "Create a new job" : "Please create a company profile first"}
               >
                 <Plus className="h-4 w-4" />
                 <span>Post New Job</span>
@@ -957,13 +1021,23 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">Company Profile</h3>
-                {company && (
+                {company ? (
+                  <div className="flex space-x-3">
+                    <button 
+                      onClick={() => setIsEditCompanyModalOpen(true)}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2"
+                    >
+                      <Edit className="h-4 w-4" />
+                      <span>Edit Profile</span>
+                    </button>
+                  </div>
+                ) : (
                   <button 
                     onClick={() => setIsEditCompanyModalOpen(true)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2"
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center space-x-2 animate-pulse"
                   >
-                    <Edit className="h-4 w-4" />
-                    <span>Edit Profile</span>
+                    <Plus className="h-4 w-4" />
+                    <span>Create Company Profile</span>
                   </button>
                 )}
               </div>
@@ -1059,15 +1133,18 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-12">
+                <div className="text-center py-12 bg-gray-50 rounded-xl border border-gray-200">
                   <Building className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                  <h4 className="text-lg font-medium text-gray-900 mb-2">No Company Profile</h4>
-                  <p className="text-gray-600 mb-6">Create your company profile to start posting jobs.</p>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Company Profile Required</h3>
+                  <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                    <strong>Important:</strong> You must create a company profile before you can post jobs. 
+                    This information will be displayed to job seekers.
+                  </p>
                   <button 
                     onClick={() => setIsEditCompanyModalOpen(true)}
-                    className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    className="bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition-colors font-medium animate-pulse"
                   >
-                    Create Company Profile
+                    Create Profile Now
                   </button>
                 </div>
               )}
