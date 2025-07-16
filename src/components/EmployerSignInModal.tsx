@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Mail, Lock, Eye, EyeOff, CheckCircle, AlertCircle, Building } from 'lucide-react';
-import { signIn } from '../lib/supabase';
+import { signIn, getProfile } from '../lib/supabase';
 import ForgotPasswordModal from './ForgotPasswordModal';
 
 interface EmployerSignInModalProps {
@@ -61,6 +61,15 @@ const EmployerSignInModal = ({ isOpen, onClose, onSwitchToSignUp, onSuccess }: E
       
       // Check if user is an employer
       if (data.user) {
+        // Fetch the user's profile to check their role
+        const profile = await getProfile(data.user.id);
+        
+        if (profile && profile.role !== 'employer') {
+          setError('This account is registered as a job seeker. Please use the regular login.');
+          return;
+        }
+        
+        // Continue with employer login
         // We'll verify the role after sign in through the auth context
         setIsSignedIn(true);
         setTimeout(() => {

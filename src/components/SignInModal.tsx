@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Mail, Lock, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
-import { signIn } from '../lib/supabase';
+import { signIn, getProfile } from '../lib/supabase';
 import ForgotPasswordModal from './ForgotPasswordModal';
 
 interface SignInModalProps {
@@ -57,12 +57,25 @@ const SignInModal = ({ isOpen, onClose, onSwitchToSignUp, onSuccess }: SignInMod
     setError('');
     
     try {
-      await signIn(formData.email, formData.password);
-      setIsSignedIn(true);
-      setTimeout(() => {
-        onSuccess?.();
-        resetModal();
-      }, 2000);
+      const { data } = await signIn(formData.email, formData.password);
+      
+      // Check if user is a job seeker
+      if (data.user) {
+        // Fetch the user's profile to check their role
+        const profile = await getProfile(data.user.id);
+        
+        if (profile && profile.role === 'employer') {
+          setError('This account is registered as an employer. Please use the employer login.');
+          return;
+        }
+        
+        // Continue with job seeker login
+        setIsSignedIn(true);
+        setTimeout(() => {
+          onSuccess?.();
+          resetModal();
+        }, 2000);
+      }
     } catch (err: any) {
       // Handle specific Supabase auth errors
       if (err.message?.includes('Invalid login credentials') || err.message?.includes('invalid_credentials')) {
