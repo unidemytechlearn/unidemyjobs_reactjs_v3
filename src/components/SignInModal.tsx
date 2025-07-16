@@ -64,7 +64,16 @@ const SignInModal = ({ isOpen, onClose, onSwitchToSignUp, onSuccess }: SignInMod
         resetModal();
       }, 2000);
     } catch (err: any) {
-      setError(err.message || 'Invalid email or password');
+      // Handle specific Supabase auth errors
+      if (err.message?.includes('Invalid login credentials') || err.message?.includes('invalid_credentials')) {
+        setError('Invalid email or password. Please check your credentials and try again.');
+      } else if (err.message?.includes('Email not confirmed')) {
+        setError('Please check your email and click the confirmation link before signing in.');
+      } else if (err.message?.includes('Too many requests')) {
+        setError('Too many sign-in attempts. Please wait a moment before trying again.');
+      } else {
+        setError(err.message || 'An error occurred during sign in. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
