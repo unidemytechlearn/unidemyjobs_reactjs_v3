@@ -14,15 +14,22 @@ import AboutPage from './components/AboutPage';
 import ResumeBuilderPage from './components/ResumeBuilderPage';
 import Dashboard from './components/Dashboard';
 import JobDetailsPage from './components/JobDetailsPage';
+import EmployerLandingPage from './components/EmployerLandingPage';
+import EmployerDashboard from './components/EmployerDashboard';
 import { useAuthContext } from './components/AuthProvider';
 
 function AppContent() {
-  const [currentPage, setCurrentPage] = useState<'home' | 'jobs' | 'companies' | 'about' | 'resume-builder' | 'dashboard' | 'job-details'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'jobs' | 'companies' | 'about' | 'resume-builder' | 'dashboard' | 'job-details' | 'employer' | 'employer-dashboard'>('home');
   const [selectedJobId, setSelectedJobId] = useState<string>('');
-  const { isAuthenticated, user } = useAuthContext();
+  const { isAuthenticated, user, profile } = useAuthContext();
 
   const handleLogin = () => {
-    setCurrentPage('dashboard');
+    // Navigate based on user role
+    if (profile?.role === 'employer') {
+      setCurrentPage('employer-dashboard');
+    } else {
+      setCurrentPage('dashboard');
+    }
   };
 
   const handleLogout = () => {
@@ -43,7 +50,26 @@ function AppContent() {
     if (jobId) setSelectedJobId(jobId);
   };
 
-  if (currentPage === 'dashboard' && isAuthenticated) {
+  if (currentPage === 'employer') {
+    return <EmployerLandingPage onNavigate={setCurrentPage} />;
+  }
+
+  if (currentPage === 'employer-dashboard' && isAuthenticated && profile?.role === 'employer') {
+    return (
+      <div className="min-h-screen bg-white">
+        <Header 
+          onNavigate={setCurrentPage} 
+          currentPage={currentPage}
+          isLoggedIn={isAuthenticated}
+          onLogin={handleLogin}
+          onLogout={handleLogout}
+        />
+        <EmployerDashboard onNavigate={handleNavigateWithJobId} />
+      </div>
+    );
+  }
+
+  if (currentPage === 'dashboard' && isAuthenticated && profile?.role !== 'employer') {
     return (
       <div className="min-h-screen bg-white">
         <Header 

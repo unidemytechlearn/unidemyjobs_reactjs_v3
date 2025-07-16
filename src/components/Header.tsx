@@ -8,8 +8,8 @@ import { useAuthContext } from './AuthProvider';
 import { signOut } from '../lib/supabase';
 
 interface HeaderProps {
-  onNavigate?: (page: 'home' | 'jobs' | 'companies' | 'about' | 'resume-builder' | 'dashboard') => void;
-  currentPage?: 'home' | 'jobs' | 'companies' | 'about' | 'resume-builder' | 'dashboard';
+  onNavigate?: (page: 'home' | 'jobs' | 'companies' | 'about' | 'resume-builder' | 'dashboard' | 'employer' | 'employer-dashboard') => void;
+  currentPage?: 'home' | 'jobs' | 'companies' | 'about' | 'resume-builder' | 'dashboard' | 'employer' | 'employer-dashboard';
   isLoggedIn?: boolean;
   onLogin?: () => void;
   onLogout?: () => void;
@@ -118,12 +118,28 @@ const Header = ({ onNavigate, currentPage = 'home', onLogin, onLogout }: HeaderP
               >
                 About
               </button>
-              {isAuthenticated && (
+              {isAuthenticated && profile?.role !== 'employer' && (
                 <button 
                   onClick={() => onNavigate?.('dashboard')}
                   className={getNavItemClass('dashboard')}
                 >
                   Dashboard
+                </button>
+              )}
+              {isAuthenticated && profile?.role === 'employer' && (
+                <button 
+                  onClick={() => onNavigate?.('employer-dashboard')}
+                  className={getNavItemClass('employer-dashboard')}
+                >
+                  Employer Dashboard
+                </button>
+              )}
+              {!isAuthenticated && (
+                <button 
+                  onClick={() => onNavigate?.('employer')}
+                  className={getNavItemClass('employer')}
+                >
+                  For Employers
                 </button>
               )}
             </nav>
@@ -163,13 +179,17 @@ const Header = ({ onNavigate, currentPage = 'home', onLogin, onLogout }: HeaderP
                       
                       <button 
                         onClick={() => {
-                          onNavigate?.('dashboard');
+                          if (profile?.role === 'employer') {
+                            onNavigate?.('employer-dashboard');
+                          } else {
+                            onNavigate?.('dashboard');
+                          }
                           setShowUserMenu(false);
                         }}
                         className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
                       >
                         <User className="h-4 w-4" />
-                        <span>Dashboard</span>
+                        <span>{profile?.role === 'employer' ? 'Employer Dashboard' : 'Dashboard'}</span>
                       </button>
                       
                       <button 
@@ -280,7 +300,7 @@ const Header = ({ onNavigate, currentPage = 'home', onLogin, onLogout }: HeaderP
               >
                 About
               </button>
-              {isAuthenticated && (
+              {isAuthenticated && profile?.role !== 'employer' && (
                 <button 
                   onClick={() => {
                     onNavigate?.('dashboard');
@@ -289,6 +309,28 @@ const Header = ({ onNavigate, currentPage = 'home', onLogin, onLogout }: HeaderP
                   className={getMobileNavItemClass('dashboard')}
                 >
                   Dashboard
+                </button>
+              )}
+              {isAuthenticated && profile?.role === 'employer' && (
+                <button 
+                  onClick={() => {
+                    onNavigate?.('employer-dashboard');
+                    setIsMenuOpen(false);
+                  }}
+                  className={getMobileNavItemClass('employer-dashboard')}
+                >
+                  Employer Dashboard
+                </button>
+              )}
+              {!isAuthenticated && (
+                <button 
+                  onClick={() => {
+                    onNavigate?.('employer');
+                    setIsMenuOpen(false);
+                  }}
+                  className={getMobileNavItemClass('employer')}
+                >
+                  For Employers
                 </button>
               )}
               

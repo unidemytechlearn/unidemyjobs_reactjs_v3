@@ -47,7 +47,7 @@ export const getEmployerCompany = async (employerId: string) => {
       .from('companies')
       .select('*')
       .eq('created_by', employerId)
-      .single();
+      .maybeSingle();
 
     if (error && error.code !== 'PGRST116') throw error;
     return data;
