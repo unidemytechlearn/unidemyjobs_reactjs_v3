@@ -290,7 +290,7 @@ export const signInAsEmployer = async (email: string, password: string) => {
     await supabase.auth.signOut();
     throw error;
   }
-  
+};
 
 export const signOut = async () => {
   const { error } = await supabase.auth.signOut();
