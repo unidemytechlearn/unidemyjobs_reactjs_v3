@@ -49,13 +49,6 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   } | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [applicationsPage, setApplicationsPage] = useState(1);
-  const [savedJobsPage, setSavedJobsPage] = useState(1);
-  const [notificationsPage, setNotificationsPage] = useState(1);
-  const [hasMoreApplications, setHasMoreApplications] = useState(true);
-  const [hasMoreSavedJobs, setHasMoreSavedJobs] = useState(true);
-  const [hasMoreNotifications, setHasMoreNotifications] = useState(true);
-  const ITEMS_PER_PAGE = 10;
 
   // Don't render anything while loading
   if (loading) {
@@ -76,17 +69,16 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
       if (user && (activeTab === 'applications' || activeTab === 'overview')) {
         setLoadingApplications(true);
         try {
-          const [applicationsResult, analytics, notificationsData, unreadCountData] = await Promise.all([
-            getUserApplications(user.id, ITEMS_PER_PAGE, 0),
+          const [userApps, analytics, notificationsData, unreadCountData] = await Promise.all([
+            getUserApplications(user.id),
             getApplicationAnalytics(user.id),
             getUserNotifications(user.id, 10),
             getUnreadNotificationCount(user.id)
           ]);
-          setApplications(applicationsResult.data);
+          setApplications(userApps);
           setApplicationStats(analytics);
           setNotifications(notificationsData || []);
           setUnreadCount(unreadCountData || 0);
-          setHasMoreApplications(applicationsResult.count > ITEMS_PER_PAGE);
         } catch (error) {
           console.error('Error loading application data:', error);
         } finally {
@@ -103,10 +95,9 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     const loadSavedJobs = async () => {
       if (user && (activeTab === 'saved-jobs' || activeTab === 'overview')) {
         try {
-          const savedJobsResult = await getUserSavedJobs(user.id, ITEMS_PER_PAGE, 0);
-          setSavedJobs(savedJobsResult.data);
-          setSavedJobIds(new Set(savedJobsResult.data.map(savedJob => savedJob.job_id)));
-          setHasMoreSavedJobs(savedJobsResult.count > ITEMS_PER_PAGE);
+          const userSavedJobs = await getUserSavedJobs(user.id);
+          setSavedJobs(userSavedJobs);
+          setSavedJobIds(new Set(userSavedJobs.map(savedJob => savedJob.job_id)));
         } catch (error) {
           console.error('Error loading saved jobs:', error);
         }
@@ -146,64 +137,6 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
 
     loadJobs();
   }, []);
-
-  // Load more functions
-  const loadMoreApplications = async () => {
-    if (!user || !hasMoreApplications) return;
-    
-    try {
-      const offset = applicationsPage * ITEMS_PER_PAGE;
-      const result = await getUserApplications(user.id, ITEMS_PER_PAGE, offset);
-      
-      if (result.data.length > 0) {
-        setApplications(prev => [...prev, ...result.data]);
-        setApplicationsPage(prev => prev + 1);
-        setHasMoreApplications(result.data.length === ITEMS_PER_PAGE);
-      } else {
-        setHasMoreApplications(false);
-      }
-    } catch (error) {
-      console.error('Error loading more applications:', error);
-    }
-  };
-
-  const loadMoreSavedJobs = async () => {
-    if (!user || !hasMoreSavedJobs) return;
-    
-    try {
-      const offset = savedJobsPage * ITEMS_PER_PAGE;
-      const result = await getUserSavedJobs(user.id, ITEMS_PER_PAGE, offset);
-      
-      if (result.data.length > 0) {
-        setSavedJobs(prev => [...prev, ...result.data]);
-        setSavedJobsPage(prev => prev + 1);
-        setHasMoreSavedJobs(result.data.length === ITEMS_PER_PAGE);
-      } else {
-        setHasMoreSavedJobs(false);
-      }
-    } catch (error) {
-      console.error('Error loading more saved jobs:', error);
-    }
-  };
-
-  const loadMoreNotifications = async () => {
-    if (!user || !hasMoreNotifications) return;
-    
-    try {
-      const offset = notificationsPage * ITEMS_PER_PAGE;
-      const result = await getUserNotifications(user.id, ITEMS_PER_PAGE, offset);
-      
-      if (result.data.length > 0) {
-        setNotifications(prev => [...prev, ...result.data]);
-        setNotificationsPage(prev => prev + 1);
-        setHasMoreNotifications(result.data.length === ITEMS_PER_PAGE);
-      } else {
-        setHasMoreNotifications(false);
-      }
-    } catch (error) {
-      console.error('Error loading more notifications:', error);
-    }
-  };
 
   const formatSalary = (min?: number, max?: number, currency: string = 'USD') => {
     if (!min && !max) return 'Salary not specified';
@@ -1019,23 +952,10 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {savedJobs.map((savedJob) => (
-                      <JobCard key={savedJob.id} job={savedJob.job} showFullDetails />
-                    ))}
-                  </div>
-                  
-                  {hasMoreSavedJobs && (
-                    <div className="mt-6 text-center">
-                      <button
-                        onClick={loadMoreSavedJobs}
-                        className="text-blue-600 hover:text-blue-700 font-medium"
-                      >
-                        Load More Saved Jobs
-                      </button>
-                    </div>
-                  )}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {savedJobs.map((savedJob) => (
+                    <JobCard key={savedJob.id} job={savedJob.job} showFullDetails />
+                  ))}
                 </div>
               )}
             </div>
@@ -1128,129 +1048,116 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  <div className="space-y-4">
-                    {applications.map((application) => (
-                      <div key={application.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow group">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-start space-x-4">
-                            <img
-                              src={application.job?.company?.logo_url || 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=48&h=48&fit=crop'}
-                              alt={application.job?.company?.name}
-                              className="w-12 h-12 rounded-lg object-cover border border-gray-100"
-                            />
-                            <div>
-                              <h4 className="font-semibold text-gray-900 text-lg">{application.job?.title}</h4>
-                              <p className="text-gray-600 font-medium">{application.job?.company?.name}</p>
-                              <p className="text-sm text-gray-500 mt-1">
-                                Applied on {new Date(application.applied_at).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(application.status)}`}>
-                              {formatStatus(application.status)}
-                            </span>
-                            {['submitted', 'under_review', 'interview_scheduled'].includes(application.status) && (
-                              <button
-                                onClick={() => handleWithdrawApplication(application.id)}
-                                disabled={withdrawingApplicationId === application.id}
-                                className="px-3 py-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all text-sm font-medium disabled:opacity-50"
-                                title="Withdraw application"
-                              >
-                                {withdrawingApplicationId === application.id ? 'Withdrawing...' : 'Withdraw'}
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleViewApplicationDetails(application)}
-                              className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                              title="View details"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
+                <div className="space-y-4">
+                  {applications.map((application) => (
+                    <div key={application.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow group">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-start space-x-4">
+                          <img
+                            src={application.job?.company?.logo_url || 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=48&h=48&fit=crop'}
+                            alt={application.job?.company?.name}
+                            className="w-12 h-12 rounded-lg object-cover border border-gray-100"
+                          />
+                          <div>
+                            <h4 className="font-semibold text-gray-900 text-lg">{application.job?.title}</h4>
+                            <p className="text-gray-600 font-medium">{application.job?.company?.name}</p>
+                            <p className="text-sm text-gray-500 mt-1">
+                              Applied on {new Date(application.applied_at).toLocaleDateString()}
+                            </p>
                           </div>
                         </div>
-                        
-                        {application.job && (
-                          <div className="flex items-center space-x-6 text-sm text-gray-600 mb-4">
-                            <div className="flex items-center">
-                              <MapPin className="h-4 w-4 mr-1" />
-                              {application.job.location}
-                            </div>
-                            <div className="flex items-center">
-                              <Clock className="h-4 w-4 mr-1" />
-                              {application.job.job_type}
-                            </div>
-                            {application.expected_salary && (
-                              <div className="flex items-center">
-                                <DollarSign className="h-4 w-4 mr-1" />
-                                {application.expected_salary}
-                              </div>
-                            )}
+                        <div className="flex items-center space-x-3">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(application.status)}`}>
+                            {formatStatus(application.status)}
+                          </span>
+                          {['submitted', 'under_review', 'interview_scheduled'].includes(application.status) && (
+                            <button
+                              onClick={() => handleWithdrawApplication(application.id)}
+                              disabled={withdrawingApplicationId === application.id}
+                              className="px-3 py-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all text-sm font-medium disabled:opacity-50"
+                              title="Withdraw application"
+                            >
+                              {withdrawingApplicationId === application.id ? 'Withdrawing...' : 'Withdraw'}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleViewApplicationDetails(application)}
+                            className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                            title="View details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {application.job && (
+                        <div className="flex items-center space-x-6 text-sm text-gray-600 mb-4">
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 mr-1" />
+                            {application.job.location}
                           </div>
-                        )}
-
-                        {/* Application Timeline */}
-                        {application.status_history && application.status_history.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-gray-100">
-                            <h5 className="text-sm font-medium text-gray-900 mb-3">Application Timeline</h5>
-                            <div className="space-y-2">
-                              {application.status_history.slice(0, 3).map((history: any, index: number) => (
-                                <div key={history.id} className="flex items-center text-sm text-gray-600">
-                                  <div className="w-2 h-2 bg-blue-600 rounded-full mr-3"></div>
-                                  <span className="font-medium">{formatStatus(history.new_status)}</span>
-                                  <span className="mx-2">•</span>
-                                  <span>{new Date(history.created_at).toLocaleDateString()}</span>
-                                </div>
-                              ))}
-                            </div>
+                          <div className="flex items-center">
+                            <Clock className="h-4 w-4 mr-1" />
+                            {application.job.job_type}
                           </div>
-                        )}
+                          {application.expected_salary && (
+                            <div className="flex items-center">
+                              <DollarSign className="h-4 w-4 mr-1" />
+                              {application.expected_salary}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
-                        {/* Upcoming Interviews */}
-                        {application.interviews && application.interviews.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-gray-100">
-                            <h5 className="text-sm font-medium text-gray-900 mb-3">Upcoming Interviews</h5>
-                            {application.interviews.map((interview: any) => (
-                              <div key={interview.id} className="flex items-center justify-between bg-blue-50 p-3 rounded-lg">
-                                <div>
-                                  <p className="font-medium text-blue-900">{interview.interview_type} Interview</p>
-                                  <p className="text-sm text-blue-700">
-                                    {new Date(interview.scheduled_date).toLocaleDateString()} at{' '}
-                                    {new Date(interview.scheduled_date).toLocaleTimeString()}
-                                  </p>
-                                </div>
-                                <Calendar className="h-5 w-5 text-blue-600" />
+                      {/* Application Timeline */}
+                      {application.status_history && application.status_history.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                          <h5 className="text-sm font-medium text-gray-900 mb-3">Application Timeline</h5>
+                          <div className="space-y-2">
+                            {application.status_history.slice(0, 3).map((history: any, index: number) => (
+                              <div key={history.id} className="flex items-center text-sm text-gray-600">
+                                <div className="w-2 h-2 bg-blue-600 rounded-full mr-3"></div>
+                                <span className="font-medium">{formatStatus(history.new_status)}</span>
+                                <span className="mx-2">•</span>
+                                <span>{new Date(history.created_at).toLocaleDateString()}</span>
                               </div>
                             ))}
                           </div>
-                        )}
+                        </div>
+                      )}
 
-                        {/* Withdrawal Action */}
-                        {['submitted', 'under_review', 'interview_scheduled'].includes(application.status) && (
-                          <div className="mt-4 pt-4 border-t border-gray-100">
-                            <button
-                              onClick={() => handleWithdrawClick(application)}
-                              className="text-red-600 hover:text-red-700 text-sm font-medium hover:underline"
-                            >
-                              Withdraw Application
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {hasMoreApplications && (
-                    <div className="mt-6 text-center">
-                      <button
-                        onClick={loadMoreApplications}
-                        className="text-blue-600 hover:text-blue-700 font-medium"
-                      >
-                        Load More Applications
-                      </button>
+                      {/* Upcoming Interviews */}
+                      {application.interviews && application.interviews.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                          <h5 className="text-sm font-medium text-gray-900 mb-3">Upcoming Interviews</h5>
+                          {application.interviews.map((interview: any) => (
+                            <div key={interview.id} className="flex items-center justify-between bg-blue-50 p-3 rounded-lg">
+                              <div>
+                                <p className="font-medium text-blue-900">{interview.interview_type} Interview</p>
+                                <p className="text-sm text-blue-700">
+                                  {new Date(interview.scheduled_date).toLocaleDateString()} at{' '}
+                                  {new Date(interview.scheduled_date).toLocaleTimeString()}
+                                </p>
+                              </div>
+                              <Calendar className="h-5 w-5 text-blue-600" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Withdrawal Action */}
+                      {['submitted', 'under_review', 'interview_scheduled'].includes(application.status) && (
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                          <button
+                            onClick={() => handleWithdrawClick(application)}
+                            className="text-red-600 hover:text-red-700 text-sm font-medium hover:underline"
+                          >
+                            Withdraw Application
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  ))}
                 </div>
               )}
             </div>
@@ -1258,54 +1165,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
         )}
 
         {/* Notifications Tab */}
-        {activeTab === 'notifications' && (
-          <div className="space-y-6">
-            <div className="bg-white border border-gray-200 rounded-2xl p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-6">
-                Your Notifications ({notifications.length})
-              </h3>
-              {notifications.length === 0 ? (
-                <div className="text-center py-12">
-                  <Bell className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                  <h4 className="text-lg font-medium text-gray-900 mb-2">No notifications yet</h4>
-                  <p className="text-gray-600 mb-6">You'll see notifications about your applications here</p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  <div className="space-y-4">
-                    {notifications.map((notification) => (
-                      <div key={notification.id} className="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start space-x-3">
-                            <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
-                            <div>
-                              <h4 className="font-medium text-gray-900">{notification.title}</h4>
-                              <p className="text-gray-600 text-sm mt-1">{notification.message}</p>
-                              <p className="text-gray-500 text-xs mt-2">
-                                {new Date(notification.created_at).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {hasMoreNotifications && (
-                    <div className="mt-6 text-center">
-                      <button
-                        onClick={loadMoreNotifications}
-                        className="text-blue-600 hover:text-blue-700 font-medium"
-                      >
-                        Load More Notifications
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        {activeTab === 'notifications' && <NotificationCenter />}
       </div>
 
       {/* Apply Modal */}

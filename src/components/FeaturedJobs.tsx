@@ -22,7 +22,7 @@ const FeaturedJobs = ({ onViewAllJobs }: FeaturedJobsProps) => {
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-        const { data: fetchedJobs } = await getJobs({ limit: 6 });
+        const fetchedJobs = await getJobs({ limit: 6 });
         const jobsWithTypeColors = fetchedJobs.map(job => ({
           ...job,
           typeColor: getJobTypeColor(job.job_type),

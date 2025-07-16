@@ -21,41 +21,33 @@ export interface NotificationPreferences {
 
 // Get user notifications
 export async function getUserNotifications(userId: string, limit = 50): Promise<Notification[]> {
-}
-export async function getUserNotifications(userId: string, limit = 50, offset = 0): Promise<{ data: Notification[]; count: number }> => {
   try {
     // Check if we have a valid Supabase client
     if (!supabase) {
       console.error('Supabase client not initialized');
-      return { data: [], count: 0 };
+      return [];
     }
 
     // Check if user is authenticated
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       console.warn('User not authenticated, skipping notifications fetch');
-      return { data: [], count: 0 };
+      return [];
     }
 
-    let query = supabase
+    const { data, error } = await supabase
       .from('notifications')
-      .select('*', { count: 'exact' })
+      .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
-    if (offset > 0) {
-      query = query.range(offset, offset + limit - 1);
-    } else {
-      query = query.limit(limit);
-    }
-
-    const { data, error, count } = await query;
     if (error) throw error;
-    return { data: data || [], count: count || 0 };
+    return data || [];
   } catch (error) {
     console.error('Error fetching notifications:', error);
     // Return empty array instead of throwing to prevent UI crashes
-    return { data: [], count: 0 };
+    return [];
   }
 }
 
