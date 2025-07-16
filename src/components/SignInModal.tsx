@@ -118,8 +118,8 @@ const SignInModal = ({ isOpen, onClose, onSwitchToSignUp, onSuccess }: SignInMod
       }, 2000);
     } catch (err: any) {
       // Handle specific Supabase auth errors
-      if (err.message?.includes('Invalid login credentials') || err.message?.includes('invalid_credentials')) {
-        setError('Invalid email or password. Please check your credentials and try again.');
+      if (err.message?.includes('Invalid login credentials') || err.message?.includes('invalid_credentials') || err.code === 'invalid_credentials') {
+        setError('Invalid email or password. Please double-check your credentials and try again. If you forgot your password, use the "Forgot password?" link below.');
       } else if (err.message?.includes('User already registered')) {
         setError('This email is already registered. Please sign in instead.');
       } else if (err.message?.includes('Email not confirmed')) {

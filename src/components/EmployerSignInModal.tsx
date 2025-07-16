@@ -117,8 +117,8 @@ const EmployerSignInModal = ({ isOpen, onClose, onSwitchToSignUp, onSuccess }: E
         resetModal();
       }, 2000);
     } catch (err: any) {
-      if (err.message.includes('Invalid login credentials')) {
-        setError('Invalid email or password. Please check your credentials and try again.');
+      if (err.message?.includes('Invalid login credentials') || err.message?.includes('invalid_credentials') || err.code === 'invalid_credentials') {
+        setError('Invalid email or password. Please double-check your credentials and try again. If you forgot your password, use the "Forgot password?" link below.');
       } else if (err.message?.includes('User already registered')) {
         setError('This email is already registered. Please sign in instead.');
       } else {
