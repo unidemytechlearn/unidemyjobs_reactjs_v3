@@ -55,6 +55,10 @@ export interface Profile {
   updated_at: string;
   profile_picture_url?: string;
   profile_picture_uploaded_at?: string;
+  role: 'job_seeker' | 'employer' | 'admin';
+  company_name?: string;
+  company_position?: string;
+  company_size?: string;
 }
 
 export interface Company {
@@ -187,6 +191,10 @@ export const signUp = async (email: string, password: string, userData: Partial<
         linkedin_url: userData.linkedin_url,
         portfolio_url: userData.portfolio_url,
         email_notifications: userData.email_notifications,
+        role: userData.role || 'job_seeker',
+        company_name: userData.company_name,
+        company_position: userData.company_position,
+        company_size: userData.company_size,
       });
 
     if (profileError) throw profileError;

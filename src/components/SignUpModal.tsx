@@ -31,6 +31,10 @@ const SignUpModal = ({ isOpen, onClose, onSwitchToSignIn, onSuccess }: SignUpMod
     portfolio: '',
     notifications: true,
     terms: false,
+    role: 'job_seeker', // Default role
+    companyName: '',
+    companyPosition: '',
+    companySize: '',
   });
   const [uploadedResume, setUploadedResume] = useState<File | null>(null);
 
@@ -72,12 +76,20 @@ const SignUpModal = ({ isOpen, onClose, onSwitchToSignIn, onSuccess }: SignUpMod
       if (!formData.confirmPassword) newErrors.confirmPassword = 'Please confirm your password';
       else if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
       if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
+      if (!formData.role) newErrors.role = 'Please select account type';
     }
 
     if (step === 2) {
       if (!formData.location.trim()) newErrors.location = 'Location is required';
-      if (!formData.experience) newErrors.experience = 'Experience level is required';
-      if (!formData.jobTitle.trim()) newErrors.jobTitle = 'Job title is required';
+      
+      if (formData.role === 'job_seeker') {
+        if (!formData.experience) newErrors.experience = 'Experience level is required';
+        if (!formData.jobTitle.trim()) newErrors.jobTitle = 'Job title is required';
+      } else if (formData.role === 'employer') {
+        if (!formData.companyName.trim()) newErrors.companyName = 'Company name is required';
+        if (!formData.companyPosition.trim()) newErrors.companyPosition = 'Your position is required';
+        if (!formData.companySize) newErrors.companySize = 'Company size is required';
+      }
     }
 
     if (step === 3) {
@@ -112,6 +124,14 @@ const SignUpModal = ({ isOpen, onClose, onSwitchToSignIn, onSuccess }: SignUpMod
         linkedin_url: formData.linkedin,
         portfolio_url: formData.portfolio,
         email_notifications: formData.notifications,
+        role: formData.role,
+        company_name: formData.role === 'employer' ? formData.companyName : null,
+        company_position: formData.role === 'employer' ? formData.companyPosition : null,
+        company_size: formData.role === 'employer' ? formData.companySize : null,
+        role: 'job_seeker',
+        companyName: '',
+        companyPosition: '',
+        companySize: '',
       });
       
       setIsRegistered(true);
@@ -230,6 +250,62 @@ const SignUpModal = ({ isOpen, onClose, onSwitchToSignIn, onSuccess }: SignUpMod
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Details</h3>
                 
+                {/* Account Type Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    I am signing up as: *
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label className={`relative flex cursor-pointer rounded-xl border p-4 focus:outline-none ${
+                      formData.role === 'job_seeker' 
+                        ? 'border-blue-600 bg-blue-50' 
+                        : 'border-gray-300 bg-white hover:bg-gray-50'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="role"
+                        value="job_seeker"
+                        checked={formData.role === 'job_seeker'}
+                        onChange={handleInputChange}
+                        className="sr-only"
+                      />
+                      <div className="flex items-center">
+                        <div className="text-sm">
+                          <div className="font-medium text-gray-900">Job Seeker</div>
+                          <div className="text-gray-500">Looking for job opportunities</div>
+                        </div>
+                      </div>
+                      <div className={`absolute -inset-px rounded-xl border-2 pointer-events-none ${
+                        formData.role === 'job_seeker' ? 'border-blue-600' : 'border-transparent'
+                      }`} />
+                    </label>
+                    
+                    <label className={`relative flex cursor-pointer rounded-xl border p-4 focus:outline-none ${
+                      formData.role === 'employer' 
+                        ? 'border-blue-600 bg-blue-50' 
+                        : 'border-gray-300 bg-white hover:bg-gray-50'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="role"
+                        value="employer"
+                        checked={formData.role === 'employer'}
+                        onChange={handleInputChange}
+                        className="sr-only"
+                      />
+                      <div className="flex items-center">
+                        <div className="text-sm">
+                          <div className="font-medium text-gray-900">Employer</div>
+                          <div className="text-gray-500">Hiring talented professionals</div>
+                        </div>
+                      </div>
+                      <div className={`absolute -inset-px rounded-xl border-2 pointer-events-none ${
+                        formData.role === 'employer' ? 'border-blue-600' : 'border-transparent'
+                      }`} />
+                    </label>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -373,7 +449,9 @@ const SignUpModal = ({ isOpen, onClose, onSwitchToSignIn, onSuccess }: SignUpMod
             {/* Step 2: Professional Information */}
             {currentStep === 2 && (
               <div className="space-y-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Professional Information</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  {formData.role === 'employer' ? 'Company Information' : 'Professional Information'}
+                </h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -396,48 +474,93 @@ const SignUpModal = ({ isOpen, onClose, onSwitchToSignIn, onSuccess }: SignUpMod
                     {errors.location && <p className="text-red-600 text-sm mt-1">{errors.location}</p>}
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Years of Experience *
-                    </label>
-                    <select
-                      name="experience"
-                      value={formData.experience}
-                      onChange={handleInputChange}
-                      className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        errors.experience ? 'border-red-300' : 'border-gray-200'
-                      }`}
-                    >
-                      <option value="">Select experience</option>
-                      <option value="Entry-level">Entry-level</option>
-                      <option value="1-2 years">1-2 years</option>
-                      <option value="3-5 years">3-5 years</option>
-                      <option value="5+ years">5+ years</option>
-                      <option value="10+ years">10+ years</option>
-                    </select>
-                    {errors.experience && <p className="text-red-600 text-sm mt-1">{errors.experience}</p>}
-                  </div>
+                  {formData.role === 'job_seeker' ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Years of Experience *
+                      </label>
+                      <select
+                        name="experience"
+                        value={formData.experience}
+                        onChange={handleInputChange}
+                        className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          errors.experience ? 'border-red-300' : 'border-gray-200'
+                        }`}
+                      >
+                        <option value="">Select experience</option>
+                        <option value="Entry-level">Entry-level</option>
+                        <option value="1-2 years">1-2 years</option>
+                        <option value="3-5 years">3-5 years</option>
+                        <option value="5+ years">5+ years</option>
+                        <option value="10+ years">10+ years</option>
+                      </select>
+                      {errors.experience && <p className="text-red-600 text-sm mt-1">{errors.experience}</p>}
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Company Size *
+                      </label>
+                      <select
+                        name="companySize"
+                        value={formData.companySize}
+                        onChange={handleInputChange}
+                        className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          errors.companySize ? 'border-red-300' : 'border-gray-200'
+                        }`}
+                      >
+                        <option value="">Select company size</option>
+                        <option value="1-50">1-50 employees</option>
+                        <option value="50-200">50-200 employees</option>
+                        <option value="200-500">200-500 employees</option>
+                        <option value="500-1000">500-1000 employees</option>
+                        <option value="1000-5000">1000-5000 employees</option>
+                        <option value="5000+">5000+ employees</option>
+                      </select>
+                      {errors.companySize && <p className="text-red-600 text-sm mt-1">{errors.companySize}</p>}
+                    </div>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Current/Desired Job Title *
+                    {formData.role === 'employer' ? 'Company Name *' : 'Current/Desired Job Title *'}
                   </label>
                   <div className="relative">
                     <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                     <input
                       type="text"
-                      name="jobTitle"
-                      value={formData.jobTitle}
+                      name={formData.role === 'employer' ? 'companyName' : 'jobTitle'}
+                      value={formData.role === 'employer' ? formData.companyName : formData.jobTitle}
                       onChange={handleInputChange}
-                      placeholder="e.g., Frontend Developer, Product Manager"
+                      placeholder={formData.role === 'employer' ? 'e.g., Acme Corporation' : 'e.g., Frontend Developer, Product Manager'}
                       className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        errors.jobTitle ? 'border-red-300' : 'border-gray-200'
+                        (formData.role === 'employer' ? errors.companyName : errors.jobTitle) ? 'border-red-300' : 'border-gray-200'
                       }`}
                     />
                   </div>
-                  {errors.jobTitle && <p className="text-red-600 text-sm mt-1">{errors.jobTitle}</p>}
+                  {formData.role === 'employer' && errors.companyName && <p className="text-red-600 text-sm mt-1">{errors.companyName}</p>}
+                  {formData.role === 'job_seeker' && errors.jobTitle && <p className="text-red-600 text-sm mt-1">{errors.jobTitle}</p>}
                 </div>
+
+                {formData.role === 'employer' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Your Position *
+                    </label>
+                    <input
+                      type="text"
+                      name="companyPosition"
+                      value={formData.companyPosition}
+                      onChange={handleInputChange}
+                      placeholder="e.g., HR Manager, CEO, Recruiter"
+                      className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        errors.companyPosition ? 'border-red-300' : 'border-gray-200'
+                      }`}
+                    />
+                    {errors.companyPosition && <p className="text-red-600 text-sm mt-1">{errors.companyPosition}</p>}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
