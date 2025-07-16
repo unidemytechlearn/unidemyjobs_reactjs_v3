@@ -21,6 +21,7 @@ export interface NotificationPreferences {
 
 // Get user notifications
 export async function getUserNotifications(userId: string, limit = 50): Promise<Notification[]> {
+}
 export async function getUserNotifications(userId: string, limit = 50, offset = 0): Promise<{ data: Notification[]; count: number }> => {
   try {
     // Check if we have a valid Supabase client
