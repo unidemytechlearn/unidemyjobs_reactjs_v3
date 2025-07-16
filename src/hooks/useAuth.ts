@@ -8,6 +8,7 @@ export const useAuth = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
   const init = async () => {
@@ -18,6 +19,12 @@ export const useAuth = () => {
     if (user) {
       try {
         const profile = await getProfile(user.id);
+        
+        if (!profile) {
+          console.warn('User authenticated but no profile found:', user.id);
+          // We'll still set the user as authenticated but with no profile
+        }
+        
         setProfile(profile);
         
         // Create welcome notification for new users
@@ -38,6 +45,7 @@ export const useAuth = () => {
         }
       } catch (err) {
         console.error("Profile load error", err);
+        setAuthError("Failed to load user profile");
       }
     }
 
@@ -93,6 +101,7 @@ export const useAuth = () => {
   user,
   profile,
   loading,
+  authError,
   isAuthenticated: !!user,
   refreshProfile,
   signOut,

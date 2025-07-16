@@ -21,7 +21,7 @@ import { useAuthContext } from './components/AuthProvider';
 function AppContent() {
   const [currentPage, setCurrentPage] = useState<'home' | 'jobs' | 'companies' | 'about' | 'resume-builder' | 'dashboard' | 'job-details' | 'employer' | 'employer-dashboard'>('home');
   const [selectedJobId, setSelectedJobId] = useState<string>('');
-  const { isAuthenticated, user, profile } = useAuthContext();
+  const { isAuthenticated, user, profile, authError } = useAuthContext();
 
   const handleLogin = () => {
     // Navigate based on user role
@@ -64,6 +64,13 @@ function AppContent() {
           onLogin={handleLogin}
           onLogout={handleLogout}
         />
+        {authError && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 mt-16">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <p className="text-red-800 text-sm">{authError}</p>
+            </div>
+          </div>
+        )}
         <EmployerDashboard onNavigate={handleNavigateWithJobId} />
       </div>
     );
@@ -79,6 +86,13 @@ function AppContent() {
           onLogin={handleLogin}
           onLogout={handleLogout}
         />
+        {authError && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 mt-16">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <p className="text-red-800 text-sm">{authError}</p>
+            </div>
+          </div>
+        )}
         <Dashboard onNavigate={handleNavigateWithJobId} />
         <Footer />
       </div>

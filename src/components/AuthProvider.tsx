@@ -9,6 +9,7 @@ interface AuthContextType {
   loading: boolean;
   profileLoading: boolean;
   isAuthenticated: boolean;
+  authError: string | null;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 }

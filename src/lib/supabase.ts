@@ -210,6 +210,10 @@ export const signIn = async (email: string, password: string) => {
   });
 
   if (error) throw error;
+  
+  // Log successful authentication but not the credentials
+  console.log('User authenticated successfully:', data.user?.id);
+  
   return data;
 };
 
@@ -238,10 +242,15 @@ export const getProfile = async (userId: string): Promise<Profile | null> => {
   if (error) {
     if (error.code === 'PGRST116') {
       // No profile found, return null
+      console.warn(`No profile found for user ${userId}`);
       return null;
     }
     throw error;
   }
+  
+  // Log successful profile retrieval but not the sensitive data
+  console.log('Profile retrieved successfully for user:', userId);
+  
   return data;
 };
 
