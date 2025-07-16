@@ -113,6 +113,24 @@ const SignUpModal = ({ isOpen, onClose, onSwitchToSignIn, onSuccess }: SignUpMod
     
     setIsSubmitting(true);
     
+    // Helper function to map experience level to database values
+    const mapExperienceLevel = (experience: string): string => {
+      switch (experience) {
+        case 'Entry-level':
+          return 'Entry-level';
+        case '1-2 years':
+          return '1-2 years';
+        case '3-5 years':
+          return '3-5 years';
+        case '5+ years':
+          return '5+ years';
+        case '10+ years':
+          return '10+ years';
+        default:
+          return 'Entry-level'; // Default fallback
+      }
+    };
+
     try {
       await signUp(formData.email, formData.password, {
         first_name: formData.firstName,
@@ -120,7 +138,7 @@ const SignUpModal = ({ isOpen, onClose, onSwitchToSignIn, onSuccess }: SignUpMod
         phone: formData.phone,
         location: formData.location,
         job_title: formData.jobTitle,
-        experience_level: formData.experience,
+        experience_level: formData.role === 'job_seeker' ? mapExperienceLevel(formData.experience) : null,
         linkedin_url: formData.linkedin,
         portfolio_url: formData.portfolio,
         email_notifications: formData.notifications,
@@ -128,10 +146,6 @@ const SignUpModal = ({ isOpen, onClose, onSwitchToSignIn, onSuccess }: SignUpMod
         company_name: formData.role === 'employer' ? formData.companyName : null,
         company_position: formData.role === 'employer' ? formData.companyPosition : null,
         company_size: formData.role === 'employer' ? formData.companySize : null,
-        role: 'job_seeker',
-        companyName: '',
-        companyPosition: '',
-        companySize: '',
       });
       
       setIsRegistered(true);
