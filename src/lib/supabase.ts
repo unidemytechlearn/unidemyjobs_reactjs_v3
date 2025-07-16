@@ -152,29 +152,17 @@ export interface Notification {
   title: string;
   message: string;
   type: string;
-      `, { count: 'exact' })
+  is_read: boolean;
   action_url?: string;
   metadata?: any;
   created_at: string;
-    if (limit) {
-      if (offset) {
-        query = query.range(offset, offset + limit - 1);
-      } else {
-        query = query.limit(limit);
-      }
-    } else if (offset) {
-      query = query.range(offset, offset + 9); // Default limit of 10
-    }
-
-    const { data, error, count } = await query;
 }
 
-      return { data: [], count: 0 };
 export const getCurrentUser = async () => {
   const { data: { user } } = await supabase.auth.getUser();
   return user;
 };
-      (data || []).map(async (application) => {
+
 export const signUp = async (email: string, password: string, userData: Partial<Profile>) => {
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -216,16 +204,14 @@ export const signIn = async (email: string, password: string) => {
   return data;
 };
 
-    return { data: applicationsWithHistory, count: count || 0 };
+export const signOut = async () => {
   const { error } = await supabase.auth.signOut();
-  if (error) {
-    return { data: [], count: 0 };
-  }
+  if (error) throw error;
 };
 
 export const resetPassword = async (email: string) => {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/reset-password`,
+    redirectTo: \`${window.location.origin}/reset-password`,
   });
   if (error) throw error;
 };
@@ -269,7 +255,6 @@ export const getJobs = async (filters?: {
   is_remote?: boolean;
   limit?: number;
   offset?: number;
-}): Promise<Job[]> => {
 }): Promise<{ data: Job[]; count: number }> => {
   // Use publicSupabase to ensure anonymous access works
   let query = publicSupabase
@@ -342,7 +327,6 @@ export const getCompanies = async (filters?: {
   location?: string;
   limit?: number;
   offset?: number;
-}): Promise<Company[]> => {
 }): Promise<{ data: Company[]; count: number }> => {
   // Use publicSupabase to ensure anonymous access works
   let query = publicSupabase
@@ -407,7 +391,6 @@ export const getUserSkills = async (userId: string): Promise<UserSkill[]> => {
 };
 
 // Notifications functions
-export const getUserNotifications = async (userId: string): Promise<Notification[]> => {
 export const getUserNotifications = async (userId: string, limit?: number, offset?: number): Promise<{ data: Notification[]; count: number }> => {
   let query = supabase
     .from('notifications')
@@ -440,12 +423,10 @@ export const markNotificationAsRead = async (notificationId: string) => {
 };
 
 // Saved Jobs functions
-export const getUserSavedJobs = async (userId: string): Promise<SavedJob[]> => {
 export const getUserSavedJobs = async (userId: string, limit?: number, offset?: number): Promise<{ data: SavedJob[]; count: number }> => {
   let query = supabase
-export const getUserApplications = async (userId: string, limit?: number, offset?: number): Promise<{ data: any[]; count: number }> => {
     .from('saved_jobs')
-    let query = supabase
+    .select(`
       *,
       job:jobs(
         *,
@@ -468,6 +449,55 @@ export const getUserApplications = async (userId: string, limit?: number, offset
   const { data, error, count } = await query;
   if (error) throw error;
   return { data: data || [], count: count || 0 };
+};
+
+export const getUserApplications = async (userId: string, limit?: number, offset?: number): Promise<{ data: any[]; count: number }> => {
+  let query = supabase
+    .from('applications')
+    .select(`
+      *,
+      job:jobs(
+        *,
+        company:companies(*)
+      )
+    `, { count: 'exact' })
+    .eq('user_id', userId)
+    .order('applied_at', { ascending: false });
+
+  if (limit) {
+    if (offset) {
+      query = query.range(offset, offset + limit - 1);
+    } else {
+      query = query.limit(limit);
+    }
+  } else if (offset) {
+    query = query.range(offset, offset + 9); // Default limit of 10
+  }
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    console.error('Error fetching applications:', error);
+    return { data: [], count: 0 };
+  }
+
+  // Add application history for each application
+  const applicationsWithHistory = await Promise.all(
+    (data || []).map(async (application) => {
+      const { data: history } = await supabase
+        .from('application_history')
+        .select('*')
+        .eq('application_id', application.id)
+        .order('created_at', { ascending: false });
+
+      return {
+        ...application,
+        history: history || []
+      };
+    })
+  );
+
+  return { data: applicationsWithHistory, count: count || 0 };
 };
 
 export const saveJob = async (userId: string, jobId: string) => {
