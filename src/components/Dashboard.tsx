@@ -122,7 +122,10 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
       try {
         const fetchedJobs = await getJobs({ limit: 20 });
         const { data: fetchedNotifications } = await getUserNotifications(user.id, ITEMS_PER_PAGE);
-        const { data: fetchedNotifications } = await getUserNotifications(user.id, ITEMS_PER_PAGE, offset);
+        const offset = notificationsPage * ITEMS_PER_PAGE;
+        const { data: fetchedNotifications2 } = await getUserNotifications(user.id, ITEMS_PER_PAGE, offset);
+        const jobsWithMockData = fetchedJobs.map(job => ({
+          ...job,
           company: job.company?.name || 'Unknown Company',
           type: job.job_type,
           salary: formatSalary(job.salary_min, job.salary_max, job.salary_currency),
