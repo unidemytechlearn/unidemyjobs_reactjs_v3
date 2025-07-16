@@ -19,6 +19,11 @@ const NotificationCenter = () => {
   const [filteredNotifications, setFilteredNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalNotifications, setTotalNotifications] = useState(0);
+  const [hasMoreNotifications, setHasMoreNotifications] = useState(true);
+  const NOTIFICATIONS_PER_PAGE = 20;
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'unread' | 'job_alert' | 'application_update' | 'profile_view' | 'system'>('all');
   const [selectedNotifications, setSelectedNotifications] = useState<string[]>([]);
@@ -30,19 +35,49 @@ const NotificationCenter = () => {
     setLoading(true);
     try {
       const [notificationsData, unreadCountData] = await Promise.all([
-        getUserNotifications(user.id, 100), // Load more for the full page
+        getUserNotifications(user.id, NOTIFICATIONS_PER_PAGE, 0),
         getUnreadNotificationCount(user.id)
       ]);
       
-      setNotifications(notificationsData);
+      setNotifications(notificationsData.data);
+      setTotalNotifications(notificationsData.count);
+      setHasMoreNotifications(notificationsData.count > NOTIFICATIONS_PER_PAGE);
       setUnreadCount(unreadCountData);
+      setCurrentPage(1);
     } catch (error) {
       console.error('Error loading notifications:', error);
+      setNotifications([]);
+      setTotalNotifications(0);
+      setHasMoreNotifications(false);
     } finally {
       setLoading(false);
     }
   };
 
+  // Load more notifications
+  const loadMoreNotifications = async () => {
+    if (!user || loadingMore || !hasMoreNotifications) return;
+    
+    try {
+      setLoadingMore(true);
+      const offset = currentPage * NOTIFICATIONS_PER_PAGE;
+      
+      const notificationsData = await getUserNotifications(user.id, NOTIFICATIONS_PER_PAGE, offset);
+      
+      if (notificationsData.data && notificationsData.data.length > 0) {
+        setNotifications(prev => [...prev, ...notificationsData.data]);
+        setCurrentPage(prev => prev + 1);
+        setHasMoreNotifications(notificationsData.data.length === NOTIFICATIONS_PER_PAGE);
+      } else {
+        setHasMoreNotifications(false);
+      }
+    } catch (error) {
+      console.error('Error loading more notifications:', error);
+      setHasMoreNotifications(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
   // Load notifications on mount
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -329,6 +364,29 @@ const NotificationCenter = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Load More Button */}
+              {!loading && filteredNotifications.length > 0 && hasMoreNotifications && (
+                <div className="p-6 border-t border-gray-200 bg-gray-50">
+                  <button
+                    onClick={loadMoreNotifications}
+                    disabled={loadingMore}
+                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                  >
+                    {loadingMore ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Loading More...</span>
+                      </>
+                    ) : (
+                      <span>Load More Notifications</span>
+                    )}
+                  </button>
+                  <p className="text-center text-gray-500 text-sm mt-2">
+                    Showing {notifications.length} of {totalNotifications} notifications
+                  </p>
                 </div>
               )}
             </div>

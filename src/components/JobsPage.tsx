@@ -21,12 +21,12 @@ const locations = ['All Locations', 'Remote', 'San Francisco, CA', 'New York, NY
 const JobsPage = () => {
   const { isAuthenticated } = useAuthContext();
   const [allJobs, setAllJobs] = useState<any[]>([]);
-  const [displayedJobs, setDisplayedJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMoreJobs, setHasMoreJobs] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const JOBS_PER_PAGE = 6;
+  const [totalJobs, setTotalJobs] = useState(0);
+  const [hasMoreJobs, setHasMoreJobs] = useState(true);
+  const JOBS_PER_PAGE = 12;
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedJobTypes, setSelectedJobTypes] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
@@ -172,15 +172,20 @@ const JobsPage = () => {
         setError('');
         console.log('Starting to fetch jobs...');
         
-        const fetchedJobs = await getJobs({ limit: 100 });
+        const { data: fetchedJobs, count } = await getJobs({ 
+          limit: JOBS_PER_PAGE,
+          offset: 0
+        });
         console.log('Fetched jobs:', fetchedJobs);
-        console.log('Total jobs fetched:', fetchedJobs.length);
+        console.log('Total jobs available:', count);
+        
+        setTotalJobs(count);
+        setHasMoreJobs(count > JOBS_PER_PAGE);
         
         if (!fetchedJobs || fetchedJobs.length === 0) {
           console.log('No jobs found in database - this might be normal for a new installation');
           // Don't set error for empty results, just show empty state
           setAllJobs([]);
-          setDisplayedJobs([]);
           return;
         }
         
@@ -201,12 +206,13 @@ const JobsPage = () => {
         
         console.log('Processed jobs:', jobsWithMockData.length);
         setAllJobs(jobsWithMockData);
-        setDisplayedJobs(jobsWithMockData);
+        setCurrentPage(1);
       } catch (error) {
         console.error('Error loading jobs:', error);
         setError('Failed to load jobs. This might be a temporary issue. Please try refreshing the page.');
         setAllJobs([]);
-        setDisplayedJobs([]);
+        setTotalJobs(0);
+        setHasMoreJobs(false);
       } finally {
         setLoading(false);
       }
@@ -215,6 +221,48 @@ const JobsPage = () => {
     loadJobs();
   }, []);
 
+  // Load more jobs function
+  const loadMoreJobs = async () => {
+    if (loadingMore || !hasMoreJobs) return;
+    
+    try {
+      setLoadingMore(true);
+      const offset = currentPage * JOBS_PER_PAGE;
+      
+      const { data: fetchedJobs } = await getJobs({ 
+        limit: JOBS_PER_PAGE,
+        offset: offset
+      });
+      
+      if (fetchedJobs && fetchedJobs.length > 0) {
+        const jobsWithMockData = fetchedJobs.map(job => ({
+          ...job,
+          company: job.company?.name || 'Unknown Company',
+          type: job.job_type || 'Full Time',
+          salary: formatSalary(job.salary_min, job.salary_max, job.salary_currency),
+          logo: job.company?.logo_url || 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop',
+          featured: job.is_featured || false,
+          typeColor: getJobTypeColor(job.job_type || 'Full Time'),
+          category: getCategoryFromJobType(job.job_type || 'Full Time'),
+          experience: job.experience_level || 'Mid-level',
+          remote: job.is_remote || false,
+          postedDate: getRelativeDate(job.created_at),
+          description: job.description || 'No description available',
+        }));
+        
+        setAllJobs(prev => [...prev, ...jobsWithMockData]);
+        setCurrentPage(prev => prev + 1);
+        setHasMoreJobs(fetchedJobs.length === JOBS_PER_PAGE);
+      } else {
+        setHasMoreJobs(false);
+      }
+    } catch (error) {
+      console.error('Error loading more jobs:', error);
+      setHasMoreJobs(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
   // Check for job type filter from navigation
   useEffect(() => {
     const jobTypeFilter = localStorage.getItem('jobTypeFilter');
@@ -280,10 +328,10 @@ const JobsPage = () => {
   // Debug: Log when jobs change
   useEffect(() => {
     console.log('All jobs count:', allJobs.length);
-    console.log('Displayed jobs count:', displayedJobs.length);
+    console.log('Total jobs available:', totalJobs);
     console.log('Filtered jobs count:', filteredJobs.length);
     console.log('Has more jobs:', hasMoreJobs);
-  }, [allJobs, displayedJobs, filteredJobs, hasMoreJobs]);
+  }, [allJobs, totalJobs, filteredJobs, hasMoreJobs]);
 
   const handleApplyClick = (job: typeof allJobs[0]) => {
     if (isAuthenticated) {
@@ -481,8 +529,8 @@ const JobsPage = () => {
                 <p className="text-red-600 mt-2">{error}</p>
               ) : (
                 <p className="text-gray-600 mt-2">
-                  Showing {filteredJobs.length} of {allJobs.length} jobs
-                  {allJobs.length > 0 && ` • Total : ${allJobs.length}`}
+                  Showing {Math.min(allJobs.length, filteredJobs.length)} of {totalJobs} jobs
+                  {totalJobs > 0 && ` • Total available: ${totalJobs}`}
                 </p>
               )}
             </div>
@@ -860,6 +908,29 @@ const JobsPage = () => {
             {filteredJobs.map((job) => (
               <JobCard key={job.id} job={job} isListView={viewMode === 'list'} />
             ))}
+          </div>
+        )}
+
+        {/* Load More Button */}
+        {!loading && filteredJobs.length > 0 && hasMoreJobs && (
+          <div className="text-center mt-12">
+            <button
+              onClick={loadMoreJobs}
+              disabled={loadingMore}
+              className="bg-blue-600 text-white px-8 py-4 rounded-xl hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 mx-auto"
+            >
+              {loadingMore ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Loading More Jobs...</span>
+                </>
+              ) : (
+                <span>Load More Jobs</span>
+              )}
+            </button>
+            <p className="text-gray-500 text-sm mt-3">
+              Showing {allJobs.length} of {totalJobs} jobs
+            </p>
           </div>
         )}
       </div>

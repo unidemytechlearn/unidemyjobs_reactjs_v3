@@ -14,6 +14,11 @@ const companySizes = ['All Sizes', '1-50', '50-200', '200-500', '500-1000', '100
 const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCompanies, setTotalCompanies] = useState(0);
+  const [hasMoreCompanies, setHasMoreCompanies] = useState(true);
+  const COMPANIES_PER_PAGE = 12;
   const [locations, setLocations] = useState<string[]>(['All Locations']);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIndustry, setSelectedIndustry] = useState('All Industries');
@@ -28,7 +33,13 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
     const loadCompanies = async () => {
       try {
         setLoading(true);
-        const fetchedCompanies = await getCompanies({ limit: 100 });
+        const { data: fetchedCompanies, count } = await getCompanies({ 
+          limit: COMPANIES_PER_PAGE,
+          offset: 0
+        });
+        
+        setTotalCompanies(count);
+        setHasMoreCompanies(count > COMPANIES_PER_PAGE);
         
         // Transform the data to match the expected format
         const transformedCompanies = fetchedCompanies.map(company => ({
@@ -52,6 +63,7 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
         
         console.log('Transformed companies:', transformedCompanies);
         setCompanies(transformedCompanies);
+        setCurrentPage(1);
         
         // Extract unique locations for filter
         const uniqueLocations = ['All Locations', ...new Set(transformedCompanies.map(c => c.location).filter(Boolean))];
@@ -61,6 +73,8 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
         console.error('Error loading companies:', error);
         // Just set empty array on error, let the empty state handle it
         setCompanies([]);
+        setTotalCompanies(0);
+        setHasMoreCompanies(false);
       } finally {
         setLoading(false);
       }
@@ -69,6 +83,52 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
     loadCompanies();
   }, []);
 
+  // Load more companies function
+  const loadMoreCompanies = async () => {
+    if (loadingMore || !hasMoreCompanies) return;
+    
+    try {
+      setLoadingMore(true);
+      const offset = currentPage * COMPANIES_PER_PAGE;
+      
+      const { data: fetchedCompanies } = await getCompanies({ 
+        limit: COMPANIES_PER_PAGE,
+        offset: offset
+      });
+      
+      if (fetchedCompanies && fetchedCompanies.length > 0) {
+        const transformedCompanies = fetchedCompanies.map(company => ({
+          id: company.id,
+          name: company.name,
+          logo: company.logo_url || 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop',
+          industry: company.industry || 'Technology',
+          size: company.size_range || '50-200',
+          location: company.location || 'Remote',
+          rating: company.rating || 4.5,
+          reviewCount: company.review_count || 0,
+          description: company.description || 'No description available.',
+          openJobs: 0,
+          website: company.website_url || '#',
+          founded: company.founded_year || new Date().getFullYear(),
+          specialties: company.specialties || [],
+          benefits: company.benefits || [],
+          culture: company.culture_description || 'Great company culture.',
+          featured: company.is_featured || false,
+        }));
+        
+        setCompanies(prev => [...prev, ...transformedCompanies]);
+        setCurrentPage(prev => prev + 1);
+        setHasMoreCompanies(fetchedCompanies.length === COMPANIES_PER_PAGE);
+      } else {
+        setHasMoreCompanies(false);
+      }
+    } catch (error) {
+      console.error('Error loading more companies:', error);
+      setHasMoreCompanies(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
   // Load job counts for companies
   useEffect(() => {
     const loadJobCounts = async () => {
@@ -383,7 +443,7 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-6">
           <p className="text-gray-600">
-            {loading ? 'Loading companies...' : `Showing ${filteredCompanies.length} of ${companies.length} companies`}
+            {loading ? 'Loading companies...' : `Showing ${Math.min(companies.length, filteredCompanies.length)} of ${totalCompanies} companies`}
           </p>
         </div>
 
@@ -448,12 +508,26 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
           </div>
         )}
 
-        {/* Load More */}
-        {!loading && filteredCompanies.length > 0 && (
+        {/* Load More Companies */}
+        {!loading && filteredCompanies.length > 0 && hasMoreCompanies && (
           <div className="text-center mt-12">
-            <button className="bg-gray-900 text-white px-8 py-4 rounded-xl hover:bg-gray-800 transition-colors font-semibold">
-              Load More Companies
+            <button
+              onClick={loadMoreCompanies}
+              disabled={loadingMore}
+              className="bg-blue-600 text-white px-8 py-4 rounded-xl hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 mx-auto"
+            >
+              {loadingMore ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Loading More Companies...</span>
+                </>
+              ) : (
+                <span>Load More Companies</span>
+              )}
             </button>
+            <p className="text-gray-500 text-sm mt-3">
+              Showing {companies.length} of {totalCompanies} companies
+            </p>
           </div>
         )}
       </div>
@@ -473,7 +547,7 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
               <div className="bg-white/10 w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <Building className="h-8 w-8" />
               </div>
-              <div className="text-3xl font-bold mb-2">{loading ? '...' : `${companies.length}+`}</div>
+              <div className="text-3xl font-bold mb-2">{loading ? '...' : `${totalCompanies}+`}</div>
               <div className="text-blue-100">Partner Companies</div>
             </div>
             <div className="text-center">
@@ -494,7 +568,7 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
               <div className="bg-white/10 w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <Award className="h-8 w-8" />
               </div>
-              <div className="text-3xl font-bold mb-2">{loading ? '...' : (companies.reduce((sum, c) => sum + c.rating, 0) / companies.length || 0).toFixed(1)}</div>
+              <div className="text-3xl font-bold mb-2">{loading ? '...' : totalCompanies > 0 ? (companies.reduce((sum, c) => sum + c.rating, 0) / companies.length || 0).toFixed(1) : '0'}</div>
               <div className="text-blue-100">Average Rating</div>
             </div>
           </div>

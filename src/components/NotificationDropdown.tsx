@@ -39,11 +39,11 @@ const NotificationDropdown = ({ onNavigate }: NotificationDropdownProps) => {
     try {
       setLoading(true);
       const [notificationsData, unreadCountData] = await Promise.all([
-        getUserNotifications(user.id),
+        getUserNotifications(user.id, 10, 0), // Load first 10 notifications
         getUnreadNotificationCount(user.id)
       ]);
       
-      setNotifications(notificationsData);
+      setNotifications(notificationsData.data);
       setUnreadCount(unreadCountData);
     } catch (error) {
       console.error('Error loading notifications:', error);
