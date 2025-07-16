@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Mail, Lock, Eye, EyeOff, CheckCircle, AlertCircle, Building } from 'lucide-react';
-import { signIn, getProfile } from '../lib/supabase';
+import { signInAsEmployer } from '../lib/supabase';
 import ForgotPasswordModal from './ForgotPasswordModal';
 
 interface EmployerSignInModalProps {
@@ -58,59 +58,9 @@ const EmployerSignInModal = ({ isOpen, onClose, onSwitchToSignUp, onSuccess }: E
     
     try {
       // Authenticate the user
-      const { data, error: signInError } = await signIn(formData.email, formData.password);
+      await signInAsEmployer(formData.email, formData.password);
       
-      if (signInError) {
-        throw signInError;
-      }
-      
-      if (!data.user) {
-        throw new Error('Authentication failed');
-      }
-      
-      // Wait a moment for the session to be fully established
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Fetch the user's profile to check their role - with retry
-      let profile = null;
-      let retries = 3;
-      
-      while (retries > 0 && !profile) {
-        try {
-          profile = await getProfile(data.user.id);
-          if (!profile) {
-            // Wait before retry
-            await new Promise(resolve => setTimeout(resolve, 500));
-            retries--;
-          }
-        } catch (err) {
-          console.error('Error fetching profile, retrying:', err);
-          await new Promise(resolve => setTimeout(resolve, 500));
-          retries--;
-        }
-      }
-        
-      // If no profile exists yet, this might be a new user
-      if (!profile) {
-        console.warn('No profile found after authentication');
-        // We'll allow login but warn about incomplete profile
-        setIsSignedIn(true);
-        setTimeout(() => {
-          onSuccess?.();
-          resetModal();
-        }, 2000);
-        return;
-      }
-        
-      // Validate that this is an employer account
-      if (profile.role !== 'employer') {
-        // Sign out the user since they're using the wrong login
-        await supabase.auth.signOut();
-        setError('This account is registered as a job seeker. Please use the regular login instead.');
-        return;
-      }
-        
-      // Continue with employer login
+      // If we get here, the login was successful and the role is correct
       setIsSignedIn(true);
       setTimeout(() => {
         onSuccess?.();

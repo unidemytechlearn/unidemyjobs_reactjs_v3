@@ -204,18 +204,93 @@ export const signUp = async (email: string, password: string, userData: Partial<
 };
 
 export const signIn = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
-  if (error) throw error;
+  if (authError) throw authError;
   
   // Log successful authentication but not the credentials
-  console.log('User authenticated successfully:', data.user?.id);
+  console.log('User authenticated successfully:', authData.user?.id);
   
-  return data;
+  return authData;
 };
+
+// Role-specific sign in functions
+export const signInAsJobSeeker = async (email: string, password: string) => {
+  try {
+    // First authenticate the user
+    const authData = await signIn(email, password);
+    
+    if (!authData.user) {
+      throw new Error('Authentication failed');
+    }
+    
+    // Then check if they have the correct role
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', authData.user.id)
+      .single();
+    
+    if (profileError) {
+      // If we can't fetch the profile, sign out and throw an error
+      await supabase.auth.signOut();
+      throw new Error('Failed to verify user role');
+    }
+    
+    if (profileData.role === 'employer') {
+      // If they're an employer, sign out and throw an error
+      await supabase.auth.signOut();
+      throw new Error('This account is registered as an employer. Please use the employer login instead.');
+    }
+    
+    // Return the auth data if everything is fine
+    return authData;
+  } catch (error) {
+    // Make sure user is signed out if there's any error
+    await supabase.auth.signOut();
+    throw error;
+  }
+};
+
+export const signInAsEmployer = async (email: string, password: string) => {
+  try {
+    // First authenticate the user
+    const authData = await signIn(email, password);
+    
+    if (!authData.user) {
+      throw new Error('Authentication failed');
+    }
+    
+    // Then check if they have the correct role
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', authData.user.id)
+      .single();
+    
+    if (profileError) {
+      // If we can't fetch the profile, sign out and throw an error
+      await supabase.auth.signOut();
+      throw new Error('Failed to verify user role');
+    }
+    
+    if (profileData.role !== 'employer') {
+      // If they're not an employer, sign out and throw an error
+      await supabase.auth.signOut();
+      throw new Error('This account is registered as a job seeker. Please use the regular login instead.');
+    }
+    
+    // Return the auth data if everything is fine
+    return authData;
+  } catch (error) {
+    // Make sure user is signed out if there's any error
+    await supabase.auth.signOut();
+    throw error;
+  }
+  
 
 export const signOut = async () => {
   const { error } = await supabase.auth.signOut();
