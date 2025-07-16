@@ -84,13 +84,27 @@ export const getEmployerCompany = async (employerId: string) => {
 // Create or update company
 export const upsertCompany = async (companyData: any, employerId: string) => {
   try {
+    // Check if company already exists
+    const { data: existingCompany } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('created_by', employerId)
+      .maybeSingle();
+    
+    let payload = {
+      ...companyData,
+      created_by: employerId,
+      updated_at: new Date().toISOString()
+    };
+    
+    // If company exists, include its ID
+    if (existingCompany) {
+      payload.id = existingCompany.id;
+    }
+    
     const { data, error } = await supabase
       .from('companies')
-      .upsert({
-        ...companyData,
-        created_by: employerId,
-        updated_at: new Date().toISOString()
-      })
+      .upsert(payload)
       .select()
       .single();
 
@@ -159,16 +173,22 @@ export const createJob = async (jobData: any, employerId: string) => {
       throw new Error('Please create a company profile first');
     }
 
+    // Format the job data
+    const formattedJobData = {
+      ...jobData,
+      company_id: company.id,
+      created_by: employerId,
+      is_active: true,
+      view_count: 0,
+      application_count: 0,
+      salary_currency: 'USD', // Default currency
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
     const { data, error } = await supabase
       .from('jobs')
-      .insert({
-        ...jobData,
-        company_id: company.id,
-        created_by: employerId,
-        is_active: true,
-        view_count: 0,
-        application_count: 0
-      })
+      .insert(formattedJobData)
       .select()
       .single();
 
@@ -183,12 +203,22 @@ export const createJob = async (jobData: any, employerId: string) => {
 // Update job
 export const updateJob = async (jobId: string, updates: any, employerId: string) => {
   try {
+    // Format the updates
+    const formattedUpdates = {
+      ...updates,
+      updated_at: new Date().toISOString()
+    };
+    
+    // Remove any properties that shouldn't be updated
+    delete formattedUpdates.id;
+    delete formattedUpdates.created_by;
+    delete formattedUpdates.created_at;
+    delete formattedUpdates.company;
+    delete formattedUpdates.applications;
+
     const { data, error } = await supabase
       .from('jobs')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
+      .update(formattedUpdates)
       .eq('id', jobId)
       .eq('created_by', employerId)
       .select()

@@ -22,7 +22,11 @@ import {
   Settings,
   Bell,
   Download,
-  ExternalLink
+  ExternalLink,
+  X,
+  Linkedin,
+  Github,
+  Globe
 } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
 import { 
@@ -32,8 +36,12 @@ import {
   getEmployerApplications,
   updateApplicationStatus,
   toggleJobStatus,
-  deleteJob
+  deleteJob,
+  createJob,
+  updateJob,
+  upsertCompany
 } from '../lib/employer';
+import { getApplicationStatusTimeline } from '../lib/applications';
 
 interface EmployerDashboardProps {
   onNavigate?: (page: string, jobId?: string) => void;
@@ -52,6 +60,40 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedJob, setSelectedJob] = useState<string>('all');
+  const [isNewJobModalOpen, setIsNewJobModalOpen] = useState(false);
+  const [isEditJobModalOpen, setIsEditJobModalOpen] = useState(false);
+  const [isEditCompanyModalOpen, setIsEditCompanyModalOpen] = useState(false);
+  const [isViewApplicationModalOpen, setIsViewApplicationModalOpen] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<any>(null);
+  const [selectedJobForEdit, setSelectedJobForEdit] = useState<any>(null);
+  const [newJobData, setNewJobData] = useState({
+    title: '',
+    description: '',
+    location: '',
+    job_type: 'Full Time',
+    experience_level: 'Mid-level',
+    salary_min: '',
+    salary_max: '',
+    is_remote: false,
+    application_deadline: '',
+    requirements: [''],
+    benefits: [''],
+    skills_required: ['']
+  });
+  const [companyData, setCompanyData] = useState({
+    name: '',
+    description: '',
+    industry: '',
+    size_range: '',
+    location: '',
+    website_url: '',
+    founded_year: '',
+    specialties: [''],
+    benefits: [''],
+    culture_description: ''
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   // Load employer data
   useEffect(() => {
@@ -69,6 +111,22 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
           companyData = await getEmployerCompany(user.id);
         } catch (error) {
           console.error('Error loading company data:', error);
+        }
+
+        // If company data exists, update the form state
+        if (companyData) {
+          setCompanyData({
+            name: companyData.name || '',
+            description: companyData.description || '',
+            industry: companyData.industry || '',
+            size_range: companyData.size_range || '',
+            location: companyData.location || '',
+            website_url: companyData.website_url || '',
+            founded_year: companyData.founded_year?.toString() || '',
+            specialties: companyData.specialties || [''],
+            benefits: companyData.benefits || [''],
+            culture_description: companyData.culture_description || ''
+          });
         }
 
         try {
@@ -137,6 +195,17 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
     loadApplications();
   }, [user, activeTab, statusFilter, selectedJob]);
 
+  // Clear error and success messages after 5 seconds
+  useEffect(() => {
+    if (error || success) {
+      const timer = setTimeout(() => {
+        setError(null);
+        setSuccess(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, success]);
+
   const handleStatusUpdate = async (applicationId: string, newStatus: string) => {
     if (!user) return;
     
@@ -184,6 +253,150 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
       console.error('Error deleting job:', error);
       alert('Failed to delete job');
     }
+  };
+
+  const handleCreateJob = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    
+    try {
+      // Format the data
+      const jobData = {
+        ...newJobData,
+        salary_min: newJobData.salary_min ? parseInt(newJobData.salary_min as string) : null,
+        salary_max: newJobData.salary_max ? parseInt(newJobData.salary_max as string) : null,
+        requirements: newJobData.requirements.filter(req => req.trim() !== ''),
+        benefits: newJobData.benefits.filter(benefit => benefit.trim() !== ''),
+        skills_required: newJobData.skills_required.filter(skill => skill.trim() !== '')
+      };
+      
+      await createJob(jobData, user.id);
+      
+      // Refresh jobs
+      const jobsData = await getEmployerJobs(user.id, { limit: 10 });
+      setJobs(jobsData);
+      
+      // Reset form and close modal
+      setNewJobData({
+        title: '',
+        description: '',
+        location: '',
+        job_type: 'Full Time',
+        experience_level: 'Mid-level',
+        salary_min: '',
+        salary_max: '',
+        is_remote: false,
+        application_deadline: '',
+        requirements: [''],
+        benefits: [''],
+        skills_required: ['']
+      });
+      setIsNewJobModalOpen(false);
+      setSuccess('Job created successfully!');
+    } catch (error) {
+      console.error('Error creating job:', error);
+      setError('Failed to create job. Please make sure you have a company profile set up.');
+    }
+  };
+
+  const handleUpdateJob = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !selectedJobForEdit) return;
+    
+    try {
+      // Format the data
+      const jobData = {
+        ...selectedJobForEdit,
+        salary_min: selectedJobForEdit.salary_min ? parseInt(selectedJobForEdit.salary_min as string) : null,
+        salary_max: selectedJobForEdit.salary_max ? parseInt(selectedJobForEdit.salary_max as string) : null,
+        requirements: selectedJobForEdit.requirements.filter((req: string) => req.trim() !== ''),
+        benefits: selectedJobForEdit.benefits.filter((benefit: string) => benefit.trim() !== ''),
+        skills_required: selectedJobForEdit.skills_required.filter((skill: string) => skill.trim() !== '')
+      };
+      
+      await updateJob(selectedJobForEdit.id, jobData, user.id);
+      
+      // Refresh jobs
+      const jobsData = await getEmployerJobs(user.id, { limit: 10 });
+      setJobs(jobsData);
+      
+      // Close modal
+      setIsEditJobModalOpen(false);
+      setSelectedJobForEdit(null);
+      setSuccess('Job updated successfully!');
+    } catch (error) {
+      console.error('Error updating job:', error);
+      setError('Failed to update job.');
+    }
+  };
+
+  const handleUpdateCompany = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    
+    try {
+      // Format the data
+      const formattedData = {
+        ...companyData,
+        founded_year: companyData.founded_year ? parseInt(companyData.founded_year) : null,
+        specialties: companyData.specialties.filter(spec => spec.trim() !== ''),
+        benefits: companyData.benefits.filter(benefit => benefit.trim() !== '')
+      };
+      
+      await upsertCompany(formattedData, user.id);
+      
+      // Refresh company data
+      const updatedCompany = await getEmployerCompany(user.id);
+      setCompany(updatedCompany);
+      
+      // Close modal
+      setIsEditCompanyModalOpen(false);
+      setSuccess('Company profile updated successfully!');
+    } catch (error) {
+      console.error('Error updating company:', error);
+      setError('Failed to update company profile.');
+    }
+  };
+
+  const handleViewApplication = async (application: any) => {
+    setSelectedApplication(application);
+    setIsViewApplicationModalOpen(true);
+  };
+
+  const handleEditJob = (job: any) => {
+    setSelectedJobForEdit({
+      ...job,
+      salary_min: job.salary_min?.toString() || '',
+      salary_max: job.salary_max?.toString() || '',
+      requirements: job.requirements || [''],
+      benefits: job.benefits || [''],
+      skills_required: job.skills_required || ['']
+    });
+    setIsEditJobModalOpen(true);
+  };
+
+  // Helper functions for form arrays
+  const addFormArrayItem = (formState: any, setFormState: React.Dispatch<React.SetStateAction<any>>, field: string) => {
+    setFormState({
+      ...formState,
+      [field]: [...formState[field], '']
+    });
+  };
+
+  const removeFormArrayItem = (formState: any, setFormState: React.Dispatch<React.SetStateAction<any>>, field: string, index: number) => {
+    setFormState({
+      ...formState,
+      [field]: formState[field].filter((_: any, i: number) => i !== index)
+    });
+  };
+
+  const updateFormArrayItem = (formState: any, setFormState: React.Dispatch<React.SetStateAction<any>>, field: string, index: number, value: string) => {
+    const newArray = [...formState[field]];
+    newArray[index] = value;
+    setFormState({
+      ...formState,
+      [field]: newArray
+    });
   };
 
   const getStatusColor = (status: string) => {
@@ -238,6 +451,21 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Error and Success Messages */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 flex items-start">
+            <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 mr-2 flex-shrink-0" />
+            <p>{error}</p>
+          </div>
+        )}
+        
+        {success && (
+          <div className="mb-6 bg-green-50 border border-green-200 text-green-800 rounded-xl p-4 flex items-start">
+            <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
+            <p>{success}</p>
+          </div>
+        )}
+        
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
@@ -391,11 +619,17 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
                 <div className="space-y-3">
-                  <button className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center space-x-2">
+                  <button 
+                    onClick={() => setIsNewJobModalOpen(true)}
+                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center space-x-2"
+                  >
                     <Plus className="h-4 w-4" />
                     <span>Post New Job</span>
                   </button>
-                  <button className="w-full border border-gray-300 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors font-medium flex items-center justify-center space-x-2">
+                  <button 
+                    onClick={() => setIsEditCompanyModalOpen(true)}
+                    className="w-full border border-gray-300 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors font-medium flex items-center justify-center space-x-2"
+                  >
                     <Building className="h-4 w-4" />
                     <span>Update Company Profile</span>
                   </button>
@@ -444,7 +678,10 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
                 <h3 className="text-lg font-semibold text-gray-900">Manage Jobs</h3>
                 <p className="text-gray-600">Create, edit, and manage your job postings</p>
               </div>
-              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2">
+              <button 
+                onClick={() => setIsNewJobModalOpen(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2"
+              >
                 <Plus className="h-4 w-4" />
                 <span>Post New Job</span>
               </button>
@@ -531,10 +768,16 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
                         >
                           {job.is_active ? 'Deactivate' : 'Activate'}
                         </button>
-                        <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                        <button 
+                          onClick={() => window.open(`/jobs/${job.id}`, '_blank')}
+                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
                           <Eye className="h-4 w-4" />
                         </button>
-                        <button className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
+                        <button 
+                          onClick={() => handleEditJob(job)}
+                          className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                        >
                           <Edit className="h-4 w-4" />
                         </button>
                         <button 
@@ -684,7 +927,10 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
                             <option value="rejected">Rejected</option>
                           </select>
                           
-                          <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                          <button 
+                            onClick={() => handleViewApplication(application)}
+                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          >
                             <Eye className="h-4 w-4" />
                           </button>
                           
@@ -709,43 +955,107 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
         {activeTab === 'company' && (
           <div className="max-w-4xl">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-6">Company Profile</h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Company Profile</h3>
+                {company && (
+                  <button 
+                    onClick={() => setIsEditCompanyModalOpen(true)}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2"
+                  >
+                    <Edit className="h-4 w-4" />
+                    <span>Edit Profile</span>
+                  </button>
+                )}
+              </div>
               
               {company ? (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
-                      <input
-                        type="text"
-                        value={company.name}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Industry</label>
-                      <input
-                        type="text"
-                        value={company.industry || ''}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
+                  <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                    <h4 className="font-semibold text-gray-900 mb-4">Company Information</h4>
+                    <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                      <div>
+                        <dt className="text-sm text-gray-500">Company Name</dt>
+                        <dd className="text-gray-900 font-medium">{company.name}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm text-gray-500">Industry</dt>
+                        <dd className="text-gray-900 font-medium">{company.industry || 'Not specified'}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm text-gray-500">Size</dt>
+                        <dd className="text-gray-900 font-medium">{company.size_range || 'Not specified'}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm text-gray-500">Location</dt>
+                        <dd className="text-gray-900 font-medium">{company.location || 'Not specified'}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm text-gray-500">Founded</dt>
+                        <dd className="text-gray-900 font-medium">{company.founded_year || 'Not specified'}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm text-gray-500">Website</dt>
+                        <dd className="text-gray-900 font-medium">
+                          {company.website_url ? (
+                            <a href={company.website_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center">
+                              {company.website_url} <ExternalLink className="h-3 w-3 ml-1" />
+                            </a>
+                          ) : (
+                            'Not specified'
+                          )}
+                        </dd>
+                      </div>
+                    </dl>
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                    <textarea
-                      rows={4}
-                      value={company.description || ''}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                    />
+                  <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                    <h4 className="font-semibold text-gray-900 mb-4">Company Description</h4>
+                    <p className="text-gray-700 whitespace-pre-wrap">{company.description || 'No description available.'}</p>
                   </div>
                   
-                  <div className="flex justify-end">
-                    <button className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                      Save Changes
-                    </button>
+                  {company.specialties && company.specialties.length > 0 && (
+                    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                      <h4 className="font-semibold text-gray-900 mb-4">Specialties</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {company.specialties.map((specialty, index) => (
+                          <span key={index} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+                            {specialty}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {company.benefits && company.benefits.length > 0 && (
+                    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                      <h4 className="font-semibold text-gray-900 mb-4">Benefits</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {company.benefits.map((benefit, index) => (
+                          <span key={index} className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
+                            {benefit}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {company.culture_description && (
+                    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                      <h4 className="font-semibold text-gray-900 mb-4">Company Culture</h4>
+                      <p className="text-gray-700 whitespace-pre-wrap">{company.culture_description}</p>
+                    </div>
+                  )}
+                  
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                    <div className="flex items-start space-x-3">
+                      <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                      <div>
+                        <h4 className="font-medium text-blue-900 mb-1">Company Profile Visibility</h4>
+                        <p className="text-blue-700 text-sm">
+                          Your company profile is visible to job seekers. A complete profile helps attract better candidates.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -753,7 +1063,10 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
                   <Building className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                   <h4 className="text-lg font-medium text-gray-900 mb-2">No Company Profile</h4>
                   <p className="text-gray-600 mb-6">Create your company profile to start posting jobs.</p>
-                  <button className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                  <button 
+                    onClick={() => setIsEditCompanyModalOpen(true)}
+                    className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  >
                     Create Company Profile
                   </button>
                 </div>
@@ -768,6 +1081,1048 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
               <BarChart3 className="h-16 w-16 text-gray-300 mx-auto mb-4" />
               <h4 className="text-lg font-medium text-gray-900 mb-2">Analytics Coming Soon</h4>
               <p className="text-gray-600">Detailed analytics and insights will be available here.</p>
+            </div>
+          </div>
+        )}
+        
+        {/* New Job Modal */}
+        {isNewJobModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 className="text-2xl font-bold text-gray-900">Post New Job</h2>
+                <button
+                  onClick={() => setIsNewJobModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto max-h-[70vh]">
+                <form onSubmit={handleCreateJob} className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Job Title *
+                    </label>
+                    <input
+                      type="text"
+                      value={newJobData.title}
+                      onChange={(e) => setNewJobData({...newJobData, title: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g., Senior Frontend Developer"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Location *
+                      </label>
+                      <input
+                        type="text"
+                        value={newJobData.location}
+                        onChange={(e) => setNewJobData({...newJobData, location: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="e.g., San Francisco, CA"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Job Type *
+                      </label>
+                      <select
+                        value={newJobData.job_type}
+                        onChange={(e) => setNewJobData({...newJobData, job_type: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      >
+                        <option value="Full Time">Full Time</option>
+                        <option value="Part Time">Part Time</option>
+                        <option value="Contract">Contract</option>
+                        <option value="Internship">Internship</option>
+                        <option value="Freelancing">Freelancing</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Experience Level
+                      </label>
+                      <select
+                        value={newJobData.experience_level}
+                        onChange={(e) => setNewJobData({...newJobData, experience_level: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="Entry-level">Entry-level</option>
+                        <option value="Mid-level">Mid-level</option>
+                        <option value="Senior">Senior</option>
+                        <option value="Executive">Executive</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Application Deadline
+                      </label>
+                      <input
+                        type="date"
+                        value={newJobData.application_deadline}
+                        onChange={(e) => setNewJobData({...newJobData, application_deadline: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Minimum Salary
+                      </label>
+                      <input
+                        type="number"
+                        value={newJobData.salary_min}
+                        onChange={(e) => setNewJobData({...newJobData, salary_min: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="e.g., 80000"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Maximum Salary
+                      </label>
+                      <input
+                        type="number"
+                        value={newJobData.salary_max}
+                        onChange={(e) => setNewJobData({...newJobData, salary_max: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="e.g., 120000"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <input
+                        type="checkbox"
+                        id="is_remote"
+                        checked={newJobData.is_remote}
+                        onChange={(e) => setNewJobData({...newJobData, is_remote: e.target.checked})}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="is_remote" className="ml-2 text-sm text-gray-700">
+                        This is a remote position
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Job Description *
+                    </label>
+                    <textarea
+                      value={newJobData.description}
+                      onChange={(e) => setNewJobData({...newJobData, description: e.target.value})}
+                      rows={6}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      placeholder="Describe the role, responsibilities, and ideal candidate..."
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Requirements
+                    </label>
+                    <div className="space-y-2">
+                      {newJobData.requirements.map((req, index) => (
+                        <div key={index} className="flex items-center space-x-2">
+                          <input
+                            type="text"
+                            value={req}
+                            onChange={(e) => updateFormArrayItem(newJobData, setNewJobData, 'requirements', index, e.target.value)}
+                            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="e.g., 3+ years of React experience"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeFormArrayItem(newJobData, setNewJobData, 'requirements', index)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => addFormArrayItem(newJobData, setNewJobData, 'requirements')}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        + Add Requirement
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Benefits
+                    </label>
+                    <div className="space-y-2">
+                      {newJobData.benefits.map((benefit, index) => (
+                        <div key={index} className="flex items-center space-x-2">
+                          <input
+                            type="text"
+                            value={benefit}
+                            onChange={(e) => updateFormArrayItem(newJobData, setNewJobData, 'benefits', index, e.target.value)}
+                            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="e.g., Health insurance"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeFormArrayItem(newJobData, setNewJobData, 'benefits', index)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => addFormArrayItem(newJobData, setNewJobData, 'benefits')}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        + Add Benefit
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Required Skills
+                    </label>
+                    <div className="space-y-2">
+                      {newJobData.skills_required.map((skill, index) => (
+                        <div key={index} className="flex items-center space-x-2">
+                          <input
+                            type="text"
+                            value={skill}
+                            onChange={(e) => updateFormArrayItem(newJobData, setNewJobData, 'skills_required', index, e.target.value)}
+                            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="e.g., React"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeFormArrayItem(newJobData, setNewJobData, 'skills_required', index)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => addFormArrayItem(newJobData, setNewJobData, 'skills_required')}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        + Add Skill
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-end space-x-4 pt-4 border-t border-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => setIsNewJobModalOpen(false)}
+                      className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
+                    >
+                      Post Job
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Edit Job Modal */}
+        {isEditJobModalOpen && selectedJobForEdit && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 className="text-2xl font-bold text-gray-900">Edit Job</h2>
+                <button
+                  onClick={() => {
+                    setIsEditJobModalOpen(false);
+                    setSelectedJobForEdit(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto max-h-[70vh]">
+                <form onSubmit={handleUpdateJob} className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Job Title *
+                    </label>
+                    <input
+                      type="text"
+                      value={selectedJobForEdit.title}
+                      onChange={(e) => setSelectedJobForEdit({...selectedJobForEdit, title: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g., Senior Frontend Developer"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Location *
+                      </label>
+                      <input
+                        type="text"
+                        value={selectedJobForEdit.location}
+                        onChange={(e) => setSelectedJobForEdit({...selectedJobForEdit, location: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="e.g., San Francisco, CA"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Job Type *
+                      </label>
+                      <select
+                        value={selectedJobForEdit.job_type}
+                        onChange={(e) => setSelectedJobForEdit({...selectedJobForEdit, job_type: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      >
+                        <option value="Full Time">Full Time</option>
+                        <option value="Part Time">Part Time</option>
+                        <option value="Contract">Contract</option>
+                        <option value="Internship">Internship</option>
+                        <option value="Freelancing">Freelancing</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Experience Level
+                      </label>
+                      <select
+                        value={selectedJobForEdit.experience_level}
+                        onChange={(e) => setSelectedJobForEdit({...selectedJobForEdit, experience_level: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="Entry-level">Entry-level</option>
+                        <option value="Mid-level">Mid-level</option>
+                        <option value="Senior">Senior</option>
+                        <option value="Executive">Executive</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Application Deadline
+                      </label>
+                      <input
+                        type="date"
+                        value={selectedJobForEdit.application_deadline?.split('T')[0] || ''}
+                        onChange={(e) => setSelectedJobForEdit({...selectedJobForEdit, application_deadline: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Minimum Salary
+                      </label>
+                      <input
+                        type="number"
+                        value={selectedJobForEdit.salary_min}
+                        onChange={(e) => setSelectedJobForEdit({...selectedJobForEdit, salary_min: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="e.g., 80000"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Maximum Salary
+                      </label>
+                      <input
+                        type="number"
+                        value={selectedJobForEdit.salary_max}
+                        onChange={(e) => setSelectedJobForEdit({...selectedJobForEdit, salary_max: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="e.g., 120000"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <input
+                        type="checkbox"
+                        id="edit_is_remote"
+                        checked={selectedJobForEdit.is_remote}
+                        onChange={(e) => setSelectedJobForEdit({...selectedJobForEdit, is_remote: e.target.checked})}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="edit_is_remote" className="ml-2 text-sm text-gray-700">
+                        This is a remote position
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Job Description *
+                    </label>
+                    <textarea
+                      value={selectedJobForEdit.description}
+                      onChange={(e) => setSelectedJobForEdit({...selectedJobForEdit, description: e.target.value})}
+                      rows={6}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      placeholder="Describe the role, responsibilities, and ideal candidate..."
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Requirements
+                    </label>
+                    <div className="space-y-2">
+                      {selectedJobForEdit.requirements?.map((req: string, index: number) => (
+                        <div key={index} className="flex items-center space-x-2">
+                          <input
+                            type="text"
+                            value={req}
+                            onChange={(e) => updateFormArrayItem(selectedJobForEdit, setSelectedJobForEdit, 'requirements', index, e.target.value)}
+                            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="e.g., 3+ years of React experience"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeFormArrayItem(selectedJobForEdit, setSelectedJobForEdit, 'requirements', index)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => addFormArrayItem(selectedJobForEdit, setSelectedJobForEdit, 'requirements')}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        + Add Requirement
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Benefits
+                    </label>
+                    <div className="space-y-2">
+                      {selectedJobForEdit.benefits?.map((benefit: string, index: number) => (
+                        <div key={index} className="flex items-center space-x-2">
+                          <input
+                            type="text"
+                            value={benefit}
+                            onChange={(e) => updateFormArrayItem(selectedJobForEdit, setSelectedJobForEdit, 'benefits', index, e.target.value)}
+                            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="e.g., Health insurance"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeFormArrayItem(selectedJobForEdit, setSelectedJobForEdit, 'benefits', index)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => addFormArrayItem(selectedJobForEdit, setSelectedJobForEdit, 'benefits')}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        + Add Benefit
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Required Skills
+                    </label>
+                    <div className="space-y-2">
+                      {selectedJobForEdit.skills_required?.map((skill: string, index: number) => (
+                        <div key={index} className="flex items-center space-x-2">
+                          <input
+                            type="text"
+                            value={skill}
+                            onChange={(e) => updateFormArrayItem(selectedJobForEdit, setSelectedJobForEdit, 'skills_required', index, e.target.value)}
+                            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="e.g., React"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeFormArrayItem(selectedJobForEdit, setSelectedJobForEdit, 'skills_required', index)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => addFormArrayItem(selectedJobForEdit, setSelectedJobForEdit, 'skills_required')}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        + Add Skill
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-end space-x-4 pt-4 border-t border-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditJobModalOpen(false);
+                        setSelectedJobForEdit(null);
+                      }}
+                      className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
+                    >
+                      Update Job
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Edit Company Modal */}
+        {isEditCompanyModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {company ? 'Edit Company Profile' : 'Create Company Profile'}
+                </h2>
+                <button
+                  onClick={() => setIsEditCompanyModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto max-h-[70vh]">
+                <form onSubmit={handleUpdateCompany} className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Company Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={companyData.name}
+                      onChange={(e) => setCompanyData({...companyData, name: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g., Acme Corporation"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Industry *
+                      </label>
+                      <select
+                        value={companyData.industry}
+                        onChange={(e) => setCompanyData({...companyData, industry: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      >
+                        <option value="">Select industry</option>
+                        <option value="Technology">Technology</option>
+                        <option value="Healthcare">Healthcare</option>
+                        <option value="Finance">Finance</option>
+                        <option value="Education">Education</option>
+                        <option value="Manufacturing">Manufacturing</option>
+                        <option value="Retail">Retail</option>
+                        <option value="Consulting">Consulting</option>
+                        <option value="Real Estate">Real Estate</option>
+                        <option value="Media & Entertainment">Media & Entertainment</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Company Size *
+                      </label>
+                      <select
+                        value={companyData.size_range}
+                        onChange={(e) => setCompanyData({...companyData, size_range: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      >
+                        <option value="">Select company size</option>
+                        <option value="1-50">1-50 employees</option>
+                        <option value="50-200">50-200 employees</option>
+                        <option value="200-500">200-500 employees</option>
+                        <option value="500-1000">500-1000 employees</option>
+                        <option value="1000-5000">1000-5000 employees</option>
+                        <option value="5000+">5000+ employees</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Location *
+                      </label>
+                      <input
+                        type="text"
+                        value={companyData.location}
+                        onChange={(e) => setCompanyData({...companyData, location: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="e.g., San Francisco, CA"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Founded Year
+                      </label>
+                      <input
+                        type="number"
+                        value={companyData.founded_year}
+                        onChange={(e) => setCompanyData({...companyData, founded_year: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="e.g., 2010"
+                        min="1900"
+                        max={new Date().getFullYear()}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Website URL
+                    </label>
+                    <input
+                      type="url"
+                      value={companyData.website_url}
+                      onChange={(e) => setCompanyData({...companyData, website_url: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g., https://example.com"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Company Description *
+                    </label>
+                    <textarea
+                      value={companyData.description}
+                      onChange={(e) => setCompanyData({...companyData, description: e.target.value})}
+                      rows={6}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      placeholder="Describe your company, mission, and values..."
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Company Culture
+                    </label>
+                    <textarea
+                      value={companyData.culture_description}
+                      onChange={(e) => setCompanyData({...companyData, culture_description: e.target.value})}
+                      rows={4}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      placeholder="Describe your company culture and work environment..."
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Specialties
+                    </label>
+                    <div className="space-y-2">
+                      {companyData.specialties.map((specialty, index) => (
+                        <div key={index} className="flex items-center space-x-2">
+                          <input
+                            type="text"
+                            value={specialty}
+                            onChange={(e) => updateFormArrayItem(companyData, setCompanyData, 'specialties', index, e.target.value)}
+                            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="e.g., Machine Learning"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeFormArrayItem(companyData, setCompanyData, 'specialties', index)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => addFormArrayItem(companyData, setCompanyData, 'specialties')}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        + Add Specialty
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Benefits
+                    </label>
+                    <div className="space-y-2">
+                      {companyData.benefits.map((benefit, index) => (
+                        <div key={index} className="flex items-center space-x-2">
+                          <input
+                            type="text"
+                            value={benefit}
+                            onChange={(e) => updateFormArrayItem(companyData, setCompanyData, 'benefits', index, e.target.value)}
+                            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="e.g., Health insurance"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeFormArrayItem(companyData, setCompanyData, 'benefits', index)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => addFormArrayItem(companyData, setCompanyData, 'benefits')}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        + Add Benefit
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-end space-x-4 pt-4 border-t border-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditCompanyModalOpen(false)}
+                      className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
+                    >
+                      {company ? 'Update Company Profile' : 'Create Company Profile'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* View Application Modal */}
+        {isViewApplicationModalOpen && selectedApplication && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Application Details</h2>
+                  <p className="text-gray-600">
+                    {selectedApplication.first_name} {selectedApplication.last_name} - {selectedApplication.job?.title}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsViewApplicationModalOpen(false);
+                    setSelectedApplication(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto max-h-[70vh]">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Main Content */}
+                  <div className="lg:col-span-2 space-y-6">
+                    {/* Applicant Information */}
+                    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                      <h3 className="font-semibold text-gray-900 mb-4">Applicant Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-500">Full Name</p>
+                          <p className="font-medium text-gray-900">
+                            {selectedApplication.first_name} {selectedApplication.last_name}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Email</p>
+                          <p className="font-medium text-gray-900">{selectedApplication.email}</p>
+                        </div>
+                        {selectedApplication.phone && (
+                          <div>
+                            <p className="text-sm text-gray-500">Phone</p>
+                            <p className="font-medium text-gray-900">{selectedApplication.phone}</p>
+                          </div>
+                        )}
+                        {selectedApplication.years_experience && (
+                          <div>
+                            <p className="text-sm text-gray-500">Experience</p>
+                            <p className="font-medium text-gray-900">{selectedApplication.years_experience}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Cover Letter */}
+                    {selectedApplication.cover_letter && (
+                      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                        <h3 className="font-semibold text-gray-900 mb-4">Cover Letter</h3>
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <p className="text-gray-700 whitespace-pre-wrap">{selectedApplication.cover_letter}</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Skills */}
+                    {selectedApplication.skills && selectedApplication.skills.length > 0 && (
+                      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                        <h3 className="font-semibold text-gray-900 mb-4">Skills</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedApplication.skills.map((skill: string, index: number) => (
+                            <span key={index} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Additional Information */}
+                    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                      <h3 className="font-semibold text-gray-900 mb-4">Additional Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {selectedApplication.expected_salary && (
+                          <div>
+                            <p className="text-sm text-gray-500">Expected Salary</p>
+                            <p className="font-medium text-gray-900">{selectedApplication.expected_salary}</p>
+                          </div>
+                        )}
+                        {selectedApplication.current_salary && (
+                          <div>
+                            <p className="text-sm text-gray-500">Current Salary</p>
+                            <p className="font-medium text-gray-900">{selectedApplication.current_salary}</p>
+                          </div>
+                        )}
+                        {selectedApplication.notice_period && (
+                          <div>
+                            <p className="text-sm text-gray-500">Notice Period</p>
+                            <p className="font-medium text-gray-900">{selectedApplication.notice_period}</p>
+                          </div>
+                        )}
+                        {selectedApplication.availability_date && (
+                          <div>
+                            <p className="text-sm text-gray-500">Available From</p>
+                            <p className="font-medium text-gray-900">
+                              {new Date(selectedApplication.availability_date).toLocaleDateString()}
+                            </p>
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm text-gray-500">Remote Preferred</p>
+                          <p className="font-medium text-gray-900">
+                            {selectedApplication.is_remote_preferred ? 'Yes' : 'No'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Willing to Relocate</p>
+                          <p className="font-medium text-gray-900">
+                            {selectedApplication.willing_to_relocate ? 'Yes' : 'No'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Sidebar */}
+                  <div className="space-y-6">
+                    {/* Status */}
+                    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                      <h3 className="font-semibold text-gray-900 mb-4">Application Status</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-sm text-gray-500 mb-2">Current Status</p>
+                          <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedApplication.status)}`}>
+                            {formatStatus(selectedApplication.status)}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <p className="text-sm text-gray-500 mb-2">Update Status</p>
+                          <select
+                            value={selectedApplication.status}
+                            onChange={(e) => handleStatusUpdate(selectedApplication.id, e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="submitted">Submitted</option>
+                            <option value="under_review">Under Review</option>
+                            <option value="interview_scheduled">Interview Scheduled</option>
+                            <option value="interview_completed">Interview Completed</option>
+                            <option value="offer_made">Offer Made</option>
+                            <option value="accepted">Accepted</option>
+                            <option value="rejected">Rejected</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Links */}
+                    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                      <h3 className="font-semibold text-gray-900 mb-4">Links & Documents</h3>
+                      <div className="space-y-3">
+                        {selectedApplication.resume_url && (
+                          <a
+                            href={selectedApplication.resume_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center space-x-2 text-blue-600 hover:text-blue-700"
+                          >
+                            <FileText className="h-4 w-4" />
+                            <span>View Resume</span>
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                        
+                        {selectedApplication.linkedin_url && (
+                          <a
+                            href={selectedApplication.linkedin_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center space-x-2 text-blue-600 hover:text-blue-700"
+                          >
+                            <Linkedin className="h-4 w-4" />
+                            <span>LinkedIn Profile</span>
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                        
+                        {selectedApplication.github_url && (
+                          <a
+                            href={selectedApplication.github_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center space-x-2 text-gray-600 hover:text-gray-700"
+                          >
+                            <Github className="h-4 w-4" />
+                            <span>GitHub Profile</span>
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                        
+                        {selectedApplication.portfolio_url && (
+                          <a
+                            href={selectedApplication.portfolio_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center space-x-2 text-purple-600 hover:text-purple-700"
+                          >
+                            <Globe className="h-4 w-4" />
+                            <span>Portfolio</span>
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Application Info */}
+                    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                      <h3 className="font-semibold text-gray-900 mb-4">Application Info</h3>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-sm text-gray-500">Applied On</p>
+                          <p className="font-medium text-gray-900">
+                            {new Date(selectedApplication.applied_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Last Updated</p>
+                          <p className="font-medium text-gray-900">
+                            {new Date(selectedApplication.updated_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Source</p>
+                          <p className="font-medium text-gray-900 capitalize">
+                            {selectedApplication.application_source || 'Website'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-end p-6 border-t border-gray-200 bg-gray-50">
+                <button
+                  onClick={() => {
+                    setIsViewApplicationModalOpen(false);
+                    setSelectedApplication(null);
+                  }}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         )}
