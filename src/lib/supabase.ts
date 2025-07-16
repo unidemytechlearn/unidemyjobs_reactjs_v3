@@ -235,7 +235,7 @@ export const resetPassword = async (email: string) => {
 export const getProfile = async (userId: string): Promise<Profile | null> => {
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select()
     .eq('id', userId)
     .single();
 
@@ -245,7 +245,8 @@ export const getProfile = async (userId: string): Promise<Profile | null> => {
       console.warn(`No profile found for user ${userId}`);
       return null;
     }
-    throw error;
+    console.error('Error fetching profile:', error);
+    return null;
   }
   
   // Log successful profile retrieval but not the sensitive data

@@ -57,25 +57,56 @@ const SignInModal = ({ isOpen, onClose, onSwitchToSignUp, onSuccess }: SignInMod
     setError('');
     
     try {
-      // First authenticate the user
-      const authResponse = await signIn(formData.email, formData.password);
-      const user = authResponse.data.user;
+      // Authenticate the user
+      const { data, error: signInError } = await signIn(formData.email, formData.password);
       
-      if (!user) {
+      if (signInError) {
+        throw signInError;
+      }
+      
+      if (!data.user) {
         throw new Error('Authentication failed');
       }
       
-      // Fetch the user's profile to check their role
-      const profile = await getProfile(user.id);
+      // Wait a moment for the session to be fully established
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Fetch the user's profile to check their role - with retry
+      let profile = null;
+      let retries = 3;
+      
+      while (retries > 0 && !profile) {
+        try {
+          profile = await getProfile(data.user.id);
+          if (!profile) {
+            // Wait before retry
+            await new Promise(resolve => setTimeout(resolve, 500));
+            retries--;
+          }
+        } catch (err) {
+          console.error('Error fetching profile, retrying:', err);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          retries--;
+        }
+      }
         
       // If no profile exists yet, this might be a new user
       if (!profile) {
-        throw new Error('User profile not found. Please complete your registration.');
+        console.warn('No profile found after authentication');
+        // We'll allow login but warn about incomplete profile
+        setIsSignedIn(true);
+        setTimeout(() => {
+          onSuccess?.();
+          resetModal();
+        }, 2000);
+        return;
       }
         
       // Validate that this is a job seeker account
       if (profile.role === 'employer') {
-        setError('This account is registered as an employer. Please use the employer login.');
+        // Sign out the user since they're using the wrong login
+        await supabase.auth.signOut();
+        setError('This account is registered as an employer. Please use the employer login instead.');
         return;
       }
         
@@ -89,6 +120,8 @@ const SignInModal = ({ isOpen, onClose, onSwitchToSignUp, onSuccess }: SignInMod
       // Handle specific Supabase auth errors
       if (err.message?.includes('Invalid login credentials') || err.message?.includes('invalid_credentials')) {
         setError('Invalid email or password. Please check your credentials and try again.');
+      } else if (err.message?.includes('User already registered')) {
+        setError('This email is already registered. Please sign in instead.');
       } else if (err.message?.includes('Email not confirmed')) {
         setError('Please check your email and click the confirmation link before signing in.');
       } else if (err.message?.includes('Too many requests')) {
