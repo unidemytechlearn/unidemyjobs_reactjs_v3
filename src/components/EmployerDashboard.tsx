@@ -60,17 +60,52 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
       
       setLoading(true);
       try {
-        const [statsData, companyData, jobsData] = await Promise.all([
-          getEmployerStats(user.id),
-          getEmployerCompany(user.id),
-          getEmployerJobs(user.id, { limit: 10 })
-        ]);
+        // Load data sequentially to handle potential errors better
+        let statsData = null;
+        let companyData = null;
+        let jobsData = [];
+
+        try {
+          companyData = await getEmployerCompany(user.id);
+        } catch (error) {
+          console.error('Error loading company data:', error);
+        }
+
+        try {
+          jobsData = await getEmployerJobs(user.id, { limit: 10 });
+        } catch (error) {
+          console.error('Error loading jobs data:', error);
+        }
+
+        try {
+          statsData = await getEmployerStats(user.id);
+        } catch (error) {
+          console.error('Error loading stats data:', error);
+          // Provide fallback stats if the main query fails
+          statsData = {
+            total_jobs: jobsData.length,
+            active_jobs: jobsData.filter(job => job.is_active).length,
+            total_applications: 0,
+            pending_applications: 0,
+            company_id: companyData?.id || ''
+          };
+        }
         
         setStats(statsData);
         setCompany(companyData);
         setJobs(jobsData);
       } catch (error) {
-        console.error('Error loading employer data:', error);
+        console.error('Error in loadEmployerData:', error);
+        // Set fallback data to prevent complete failure
+        setStats({
+          total_jobs: 0,
+          active_jobs: 0,
+          total_applications: 0,
+          pending_applications: 0,
+          company_id: ''
+        });
+        setCompany(null);
+        setJobs([]);
       } finally {
         setLoading(false);
       }

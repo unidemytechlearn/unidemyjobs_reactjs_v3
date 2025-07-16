@@ -29,11 +29,35 @@ export interface JobWithApplications {
 // Get employer statistics
 export const getEmployerStats = async (employerId: string): Promise<EmployerStats | null> => {
   try {
-    const { data, error } = await supabase
-      .rpc('get_employer_stats', { employer_id: employerId });
+    // Instead of using RPC, let's manually calculate the stats to avoid SQL ambiguity
+    const [jobsResult, applicationsResult] = await Promise.all([
+      supabase
+        .from('jobs')
+        .select('id, is_active, application_count')
+        .eq('created_by', employerId),
+      supabase
+        .from('applications')
+        .select('id, status, job:jobs!inner(created_by)')
+        .eq('job.created_by', employerId)
+    ]);
 
-    if (error) throw error;
-    return data?.[0] || null;
+    if (jobsResult.error) throw jobsResult.error;
+    if (applicationsResult.error) throw applicationsResult.error;
+
+    const jobs = jobsResult.data || [];
+    const applications = applicationsResult.data || [];
+
+    const stats: EmployerStats = {
+      total_jobs: jobs.length,
+      active_jobs: jobs.filter(job => job.is_active).length,
+      total_applications: applications.length,
+      pending_applications: applications.filter(app => 
+        app.status === 'submitted' || app.status === 'under_review'
+      ).length,
+      company_id: '' // This will be set by the company query if needed
+    };
+
+    return stats;
   } catch (error) {
     console.error('Error fetching employer stats:', error);
     throw error;

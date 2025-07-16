@@ -116,7 +116,15 @@ const EmployerSignUpModal = ({ isOpen, onClose, onSwitchToSignIn, onSuccess }: E
         resetModal();
       }, 2000);
     } catch (err: any) {
-      setErrors({ submit: err.message || 'Something went wrong. Please try again.' });
+      let errorMessage = 'Something went wrong. Please try again.';
+      
+      if (err.message && err.message.includes('User already registered')) {
+        errorMessage = 'This email is already registered. Please sign in instead or use a different email address.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setErrors({ submit: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
