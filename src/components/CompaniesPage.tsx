@@ -139,7 +139,7 @@ const CompaniesPage = ({ onNavigate }: CompaniesPageProps) => {
         const { getJobs } = await import('../lib/supabase');
         
         // Get all jobs to count by company
-        const { data: allJobs } = await getJobs();
+        const allJobs = await getJobs();
         
         // Count jobs per company
         const jobCounts = companies.reduce((acc, company) => {

@@ -121,9 +121,6 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     const loadJobs = async () => {
       try {
         const fetchedJobs = await getJobs({ limit: 20 });
-        const { data: fetchedNotifications } = await getUserNotifications(user.id, ITEMS_PER_PAGE);
-        const offset = notificationsPage * ITEMS_PER_PAGE;
-        const { data: fetchedNotifications2 } = await getUserNotifications(user.id, ITEMS_PER_PAGE, offset);
         const jobsWithMockData = fetchedJobs.map(job => ({
           ...job,
           company: job.company?.name || 'Unknown Company',
