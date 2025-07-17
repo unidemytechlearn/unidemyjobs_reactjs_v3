@@ -48,6 +48,7 @@ import {
 import { getApplicationStatusTimeline } from '../lib/applications';
 import InterviewsTab from './InterviewsTab';
 import InterviewScheduleModal from './InterviewScheduleModal';
+import { getApplicationById } from '../lib/interviews';
 
 interface EmployerDashboardProps {
   onNavigate?: (page: string, jobId?: string) => void;
@@ -74,6 +75,7 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [selectedJobForEdit, setSelectedJobForEdit] = useState<any>(null);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [loadingApplication, setLoadingApplication] = useState(false);
   const [newJobData, setNewJobData] = useState({
     title: '',
     description: '',
@@ -388,6 +390,36 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
       skills_required: job.skills_required || ['']
     });
     setIsEditJobModalOpen(true);
+  };
+
+  const handleScheduleInterview = async (applicationId: string) => {
+    if (!user) return;
+    
+    setLoadingApplication(true);
+    try {
+      console.log('Fetching application details for interview scheduling, ID:', applicationId);
+      const application = await getApplicationById(applicationId);
+      
+      if (application) {
+        console.log("Setting selected application for interview:", application);
+        setSelectedApplication(application);
+        setIsScheduleModalOpen(true);
+      } else {
+        console.error('Application not found for ID:', applicationId);
+        alert('Could not find application details');
+      }
+    } catch (err) {
+      console.error('Error fetching application for interview:', err);
+      alert('Failed to load application details');
+    } finally {
+      setLoadingApplication(false);
+    }
+  };
+
+  const handleInterviewScheduled = () => {
+    // Refresh data after interview is scheduled
+    loadData();
+    setIsScheduleModalOpen(false);
   };
 
   // Helper functions for form arrays
@@ -2216,14 +2248,13 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
         )}
       </div>
       
-      {selectedApplication && (
-        <InterviewScheduleModal
-          isOpen={isScheduleModalOpen}
-          onClose={() => setIsScheduleModalOpen(false)}
-          application={selectedApplication}
-          onSuccess={() => {}}
-        />
-      )}
+      {/* Interview Schedule Modal */}
+      <InterviewScheduleModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+        application={selectedApplication}
+        onSuccess={handleInterviewScheduled}
+      />
     </div>
   );
 };

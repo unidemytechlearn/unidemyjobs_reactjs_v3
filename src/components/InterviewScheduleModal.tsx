@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, MapPin, Video, Users, MessageSquare, Check, AlertCircle, Mail } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
-import { scheduleInterview, getInterviewTypes, debug } from '../lib/interviews';
+import { scheduleInterview, getInterviewTypes } from '../lib/interviews';
 
 interface InterviewScheduleModalProps {
   isOpen: boolean;
@@ -31,11 +31,7 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
 
   // Load interview types
   useEffect(() => {
-    console.log("InterviewScheduleModal useEffect triggered with isOpen:", isOpen);
-    if (!isOpen) {
-      console.log("Modal not open, skipping load");
-      return;
-    }
+    if (!isOpen) return;
     
     // Set default date to tomorrow
     const tomorrow = new Date();
@@ -44,15 +40,12 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
     
     const loadInterviewTypes = async () => {
       try {
-        console.log("Starting to load interview types");
         setLoading(true);
-        console.log("Loading interview types for modal...");
         const types = await getInterviewTypes();
-        console.log("Loaded interview types:", types);
         setInterviewTypes(types);
         // Set default interview type
         if (types.length > 0) {
-          setFormData(prev => ({ 
+          setFormData(prev => ({
             ...prev, 
             interviewType: types[0].id,
             scheduledDate: tomorrowStr,
@@ -122,22 +115,19 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm() || !application) {
-      console.log("Form validation failed or missing application data");
+    if (!validateForm()) {
       if (!application) {
         setError("No application selected. Please try again.");
       }
       return;
     }
     
-    if (!application || !application.id) {
-      console.log("Missing application data or ID:", application);
+    if (!application?.id) {
       setError("Application data is missing. Please try again.");
       return;
     }
     
-    if (!user || !application) {
-      console.log("Missing user or application data", { user, application });
+    if (!user) {
       setError("Missing user or application data. Please try again.");
       return;
     }
@@ -147,9 +137,7 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
     
     try {
       // Combine date and time
-      console.log("Submitting interview with form data:", formData, "for application:", application.id);
       const scheduledDateTime = new Date(`${formData.scheduledDate}T${formData.scheduledTime}`);
-      console.log("Scheduled date time:", scheduledDateTime.toISOString());
       
       // Create interview schedule
       const interviewData = {
@@ -165,10 +153,8 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
         send_notification: formData.sendNotification
       };
       
-      console.log("Scheduling interview with data:", interviewData);
       await scheduleInterview(interviewData);
 
-      console.log("Interview scheduled successfully");
       setIsScheduled(true);
       setTimeout(() => {
         onSuccess?.();
@@ -198,6 +184,7 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
   };
 
   if (!isOpen) {
+    console.log("Modal is not open, returning null");
     return null;
   }
 
@@ -450,13 +437,14 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                       <div className="w-6 h-6 rounded-full flex items-center justify-center" 
                            style={{ backgroundColor: selectedInterviewType?.color || '#3B82F6' }}>
                         <div className="flex items-center justify-center h-full">
-                          {selectedInterviewType?.id === 'phone' ? <Phone className="h-3 w-3 text-white" /> :
-                           selectedInterviewType?.id === 'video' ? <Video className="h-3 w-3 text-white" /> :
-                           selectedInterviewType?.id === 'technical' ? <Code className="h-3 w-3 text-white" /> :
-                           selectedInterviewType?.id === 'panel' ? <Users className="h-3 w-3 text-white" /> :
-                           selectedInterviewType?.id === 'in_person' ? <Building className="h-3 w-3 text-white" /> :
-                           selectedInterviewType?.id === 'final' ? <CheckCircle className="h-3 w-3 text-white" /> :
-                           <Calendar className="h-3 w-3 text-white" />}
+                          {selectedInterviewType?.id === 'phone' ? <Phone className="h-3 w-3 text-white" /> : 
+                           selectedInterviewType?.id === 'video' ? <Video className="h-3 w-3 text-white" /> : 
+                           selectedInterviewType?.id === 'technical' ? <Code className="h-3 w-3 text-white" /> : 
+                           selectedInterviewType?.id === 'panel' ? <Users className="h-3 w-3 text-white" /> : 
+                           selectedInterviewType?.id === 'in_person' ? <Building className="h-3 w-3 text-white" /> : 
+                           selectedInterviewType?.id === 'final' ? <CheckCircle className="h-3 w-3 text-white" /> : 
+                           <Calendar className="h-3 w-3 text-white" />
+                          }
                         </div>
                       </div>
                       <span className="font-medium">{selectedInterviewType?.name || 'Interview'}</span>

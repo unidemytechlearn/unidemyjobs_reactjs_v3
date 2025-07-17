@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, Video, Users, Building, Phone, CheckCircle, AlertTriangle, MoreHorizontal, Plus, Search, Filter, ChevronDown, ChevronUp, Star, MessageSquare, CheckSquare, XSquare } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
-import { getEmployerInterviews, getInterviewTypes, getCandidateInterviews, getApplicationById, debug } from '../lib/interviews';
+import { getEmployerInterviews, getInterviewTypes, getCandidateInterviews, getApplicationById } from '../lib/interviews';
 import InterviewScheduleModal from './InterviewScheduleModal';
 import InterviewFeedbackModal from './InterviewFeedbackModal';
 
@@ -152,25 +152,26 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
   const handleScheduleButtonClick = async () => {
     if (!applicationId) {
       setError('Please select an application first to schedule an interview');
-      console.log('No application ID provided for interview scheduling:', applicationId);
+      console.error('No application ID provided for interview scheduling:', applicationId);
       return;
     }
     
     setLoadingApplication(true);
     try {
       // Fetch the application details first
-      console.log('Fetching application details for interview scheduling, ID:', applicationId);
+      console.log(`Fetching application details for ID: ${applicationId}`);
       const application = await getApplicationById(applicationId);
-      console.log("Application data received:", application);
+      
       if (application) {
-        console.log("Fetched application for interview:", application);
-        handleScheduleInterview(application);
+        console.log("Application found, opening schedule modal");
+        setSelectedApplication(application);
+        setIsScheduleModalOpen(true);
       } else {
-        console.log('Application not found for ID:', applicationId);
+        console.error('Application not found for ID:', applicationId);
         setError('Could not find application details');
       }
     } catch (err) {
-      console.log('Error fetching application for interview:', err);
+      console.error('Error fetching application for interview:', err);
       setError('Failed to load application details');
     } finally {
       setLoadingApplication(false);
