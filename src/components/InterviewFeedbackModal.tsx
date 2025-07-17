@@ -57,8 +57,7 @@ const InterviewFeedbackModal = ({ isOpen, onClose, interview, onSuccess }: Inter
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
-    if (!user || !interview) return;
+    if (!validateForm() || !user || !interview) return;
     
     setIsSubmitting(true);
     setError('');
@@ -67,9 +66,9 @@ const InterviewFeedbackModal = ({ isOpen, onClose, interview, onSuccess }: Inter
       await submitInterviewFeedback({
         interview_id: interview.id,
         rating: formData.rating,
-        strengths: formData.strengths,
-        weaknesses: formData.weaknesses,
-        notes: formData.notes,
+        strengths: formData.strengths || '',
+        weaknesses: formData.weaknesses || '',
+        notes: formData.notes || '',
         recommendation: formData.recommendation,
         created_by: user.id
       });

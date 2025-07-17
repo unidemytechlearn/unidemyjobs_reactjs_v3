@@ -688,18 +688,19 @@ const JobApplicationDetailsModal = ({
                             <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white ${
                               interview.interview_type === 'phone' ? 'bg-blue-500' :
                               interview.interview_type === 'video' ? 'bg-purple-500' :
-                              interview.interview_type === 'technical' ? 'bg-green-500' :
-                              interview.interview_type === 'panel' ? 'bg-yellow-500' :
+                              interview.interview_type === 'technical' ? 'bg-emerald-500' :
+                              interview.interview_type === 'panel' ? 'bg-amber-500' :
                               interview.interview_type === 'in_person' ? 'bg-pink-500' :
                               interview.interview_type === 'final' ? 'bg-red-500' :
                               'bg-gray-500'
                             }`}>
-                              {interview.interview_type === 'phone' && <Phone className="h-5 w-5" />}
-                              {interview.interview_type === 'video' && <Video className="h-5 w-5" />}
-                              {interview.interview_type === 'technical' && <Code className="h-5 w-5" />}
-                              {interview.interview_type === 'panel' && <Users className="h-5 w-5" />} 
-                              {interview.interview_type === 'in_person' && <Building className="h-5 w-5" />}
-                              {interview.interview_type === 'final' && <CheckCircle className="h-5 w-5" />}
+                              {interview.interview_type === 'phone' ? <Phone className="h-5 w-5" /> :
+                               interview.interview_type === 'video' ? <Video className="h-5 w-5" /> :
+                               interview.interview_type === 'technical' ? <Code className="h-5 w-5" /> :
+                               interview.interview_type === 'panel' ? <Users className="h-5 w-5" /> :
+                               interview.interview_type === 'in_person' ? <Building className="h-5 w-5" /> :
+                               interview.interview_type === 'final' ? <CheckCircle className="h-5 w-5" /> :
+                               <Calendar className="h-5 w-5" />}
                             </div>
                             <div>
                               <h4 className="font-semibold text-gray-900">
@@ -755,14 +756,14 @@ const JobApplicationDetailsModal = ({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                           {interview.location && (
                             <div className="flex items-center text-gray-600">
-                              <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
+                              <MapPin className="h-4 w-4 mr-2 flex-shrink-0 text-gray-400" />
                               <span>{interview.location}</span>
                             </div>
                           )}
                           
                           {interview.meeting_link && (
                             <div className="flex items-center text-gray-600">
-                              <Video className="h-4 w-4 mr-2 flex-shrink-0" />
+                              <Video className="h-4 w-4 mr-2 flex-shrink-0 text-gray-400" />
                               <a
                                 href={interview.meeting_link}
                                 target="_blank"
@@ -786,33 +787,35 @@ const JobApplicationDetailsModal = ({
                           <div className="mt-4 border-t border-gray-100 pt-4">
                             <div className="flex items-center justify-between">
                               <h4 className="font-medium text-gray-900">Feedback</h4>
-                              <div className="flex items-center">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <Star
-                                    key={star}
-                                    className="h-4 w-4"
-                                    fill={interview.feedback[0].rating >= star ? '#FBBF24' : 'none'}
-                                    stroke={interview.feedback[0].rating >= star ? '#FBBF24' : '#D1D5DB'}
-                                  />
-                                ))}
-                              </div>
+                              {interview.feedback && interview.feedback.length > 0 && (
+                                <div className="flex items-center">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star
+                                      key={star}
+                                      className="h-4 w-4"
+                                      fill={interview.feedback[0]?.rating >= star ? '#FBBF24' : 'none'}
+                                      stroke={interview.feedback[0]?.rating >= star ? '#FBBF24' : '#D1D5DB'}
+                                    />
+                                  ))}
+                                </div>
+                              )}
                             </div>
                             
-                            {interview.feedback[0].recommendation && (
+                            {interview.feedback && interview.feedback.length > 0 && interview.feedback[0]?.recommendation && (
                               <div className="mt-2 text-sm">
                                 <span className="font-medium text-gray-700">Recommendation: </span>
                                 <span className={`
-                                  ${interview.feedback[0].recommendation === 'strong_yes' ? 'text-green-600' : ''}
-                                  ${interview.feedback[0].recommendation === 'yes' ? 'text-green-600' : ''}
-                                  ${interview.feedback[0].recommendation === 'maybe' ? 'text-yellow-600' : ''}
-                                  ${interview.feedback[0].recommendation === 'no' ? 'text-red-600' : ''} 
-                                  ${interview.feedback[0].recommendation === 'strong_no' ? 'text-red-600' : ''}
+                                  ${interview.feedback[0]?.recommendation === 'strong_yes' ? 'text-green-600' : ''}
+                                  ${interview.feedback[0]?.recommendation === 'yes' ? 'text-green-600' : ''}
+                                  ${interview.feedback[0]?.recommendation === 'maybe' ? 'text-yellow-600' : ''}
+                                  ${interview.feedback[0]?.recommendation === 'no' ? 'text-red-600' : ''} 
+                                  ${interview.feedback[0]?.recommendation === 'strong_no' ? 'text-red-600' : ''}
                                 `}>
-                                  {interview.feedback[0].recommendation === 'strong_yes' && 'Strong Yes'}
-                                  {interview.feedback[0].recommendation === 'yes' && 'Yes'}
-                                  {interview.feedback[0].recommendation === 'maybe' && 'Maybe'}
-                                  {interview.feedback[0].recommendation === 'no' && 'No'}
-                                  {interview.feedback[0].recommendation === 'strong_no' && 'Strong No'}
+                                  {interview.feedback[0]?.recommendation === 'strong_yes' && 'Strong Yes'}
+                                  {interview.feedback[0]?.recommendation === 'yes' && 'Yes'}
+                                  {interview.feedback[0]?.recommendation === 'maybe' && 'Maybe'}
+                                  {interview.feedback[0]?.recommendation === 'no' && 'No'}
+                                  {interview.feedback[0]?.recommendation === 'strong_no' && 'Strong No'}
                                 </span>
                               </div>
                             )}
