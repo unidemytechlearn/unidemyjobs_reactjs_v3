@@ -404,12 +404,14 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                         <div className="flex items-center justify-center h-full text-white">
                           {selectedInterviewType.id === 'phone' && <Phone className="h-3 w-3" />}
                           {selectedInterviewType.id === 'video' && <Video className="h-3 w-3" />}
-                        {selectedInterviewType?.id === 'phone' && <Phone className="h-3 w-3" />}
-                        {selectedInterviewType?.id === 'video' && <Video className="h-3 w-3" />}
-                        {selectedInterviewType?.id === 'technical' && <Code className="h-3 w-3" />}
-                        {selectedInterviewType?.id === 'panel' && <Users className="h-3 w-3" />}
-                        {selectedInterviewType?.id === 'in_person' && <Building className="h-3 w-3" />}
-                        {selectedInterviewType?.id === 'final' && <CheckCircle className="h-3 w-3" />}
+                          {selectedInterviewType?.id === 'phone' && <Phone className="h-3 w-3" />}
+                          {selectedInterviewType?.id === 'video' && <Video className="h-3 w-3" />}
+                          {selectedInterviewType?.id === 'technical' && <Code className="h-3 w-3" />}
+                          {selectedInterviewType?.id === 'panel' && <Users className="h-3 w-3" />}
+                          {selectedInterviewType?.id === 'in_person' && <Building className="h-3 w-3" />}
+                          {selectedInterviewType?.id === 'final' && <CheckCircle className="h-3 w-3" />}
+                        </div>
+                      </div>
                       <span className="font-medium">{selectedInterviewType.name}</span>
                     </div>
                     {formData.scheduledDate && formData.scheduledTime && (
@@ -448,6 +450,7 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                         <Mail className="h-4 w-4 inline mr-2" />
                         Candidate will be notified
                       </p>
+                    )}
                     <span className="font-medium">{selectedInterviewType?.name || 'Interview'}</span>
                   </div>
                 </div>
