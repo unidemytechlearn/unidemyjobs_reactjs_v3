@@ -569,14 +569,14 @@ export async function getEmployerInterviews(employerId: string, filters: {
 }
 
 // Get interviews for a candidate
-export async function getCandidateInterviews(userId: string, filters = {
+export async function getCandidateInterviews(userId: string, filters: {
     applicationId?: string;
     jobId?: string;
     status?: string;
     upcoming?: boolean;
     limit?: number;
     offset?: number;
-  }
+  } = {}
 ): Promise<any[]> {
   try {
     if (!supabase) {
