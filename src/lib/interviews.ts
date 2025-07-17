@@ -411,7 +411,7 @@ export const getInterviewsForCandidate = async (
       `)
       .eq('user_id', userId)
       .eq('role', 'candidate')
-      .order('interview.scheduled_at', { ascending: true });
+      .order('scheduled_at', { foreignTable: 'interviews', ascending: true });
 
     if (error) throw error;
     
@@ -457,7 +457,7 @@ export const getInterviewsForInterviewer = async (
       `)
       .eq('user_id', userId)
       .eq('role', 'interviewer')
-      .order('interview.scheduled_at', { ascending: true });
+      .order('scheduled_at', { foreignTable: 'interviews', ascending: true });
 
     if (error) throw error;
     
