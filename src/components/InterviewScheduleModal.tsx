@@ -12,6 +12,7 @@ interface InterviewScheduleModalProps {
 
 const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: InterviewScheduleModalProps) => {
   const { user } = useAuthContext();
+  console.log("InterviewScheduleModal rendered with isOpen:", isOpen, "application:", application);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isScheduled, setIsScheduled] = useState(false);
   const [error, setError] = useState('');
@@ -31,9 +32,9 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
 
   // Load interview types
   useEffect(() => {
-    interviewsDebug("InterviewScheduleModal opened with application:", application);
-    if (!isOpen || !application) {
-      interviewsDebug("Modal not open or no application data, skipping load");
+    console.log("InterviewScheduleModal useEffect triggered with isOpen:", isOpen, "application:", application);
+    if (!isOpen) {
+      console.log("Modal not open, skipping load");
       return;
     }
     
@@ -44,10 +45,11 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
     
     const loadInterviewTypes = async () => {
       try {
+        console.log("Starting to load interview types");
         setLoading(true);
-        interviewsDebug("Loading interview types for modal...");
+        console.log("Loading interview types for modal...");
         const types = await getInterviewTypes();
-        interviewsDebug("Loaded interview types:", types);
+        console.log("Loaded interview types:", types);
         setInterviewTypes(types);
         // Set default interview type
         if (types.length > 0) {
@@ -66,7 +68,7 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
       }
     };
 
-    if (isOpen && application) {
+    if (isOpen) {
       loadInterviewTypes();
     }
   }, [isOpen]);
@@ -121,19 +123,22 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) {
-      interviewsDebug("Form validation failed or missing application data");
+    if (!validateForm() || !application) {
+      console.log("Form validation failed or missing application data");
+      if (!application) {
+        setError("No application selected. Please try again.");
+      }
       return;
     }
     
     if (!application || !application.id) {
-      interviewsDebug("Missing application data or ID:", application);
+      console.log("Missing application data or ID:", application);
       setError("Application data is missing. Please try again.");
       return;
     }
     
     if (!user || !application) {
-      interviewsDebug("Missing user or application data", { user, application });
+      console.log("Missing user or application data", { user, application });
       setError("Missing user or application data. Please try again.");
       return;
     }
@@ -143,9 +148,9 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
     
     try {
       // Combine date and time
-      interviewsDebug("Submitting interview with form data:", formData, "for application:", application.id);
+      console.log("Submitting interview with form data:", formData, "for application:", application.id);
       const scheduledDateTime = new Date(`${formData.scheduledDate}T${formData.scheduledTime}`);
-      interviewsDebug("Scheduled date time:", scheduledDateTime.toISOString());
+      console.log("Scheduled date time:", scheduledDateTime.toISOString());
       
       // Create interview schedule
       const interviewData = {
@@ -161,10 +166,10 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
         send_notification: formData.sendNotification
       };
       
-      interviewsDebug("Scheduling interview with data:", interviewData);
+      console.log("Scheduling interview with data:", interviewData);
       await scheduleInterview(interviewData);
 
-      interviewsDebug("Interview scheduled successfully");
+      console.log("Interview scheduled successfully");
       setIsScheduled(true);
       setTimeout(() => {
         onSuccess?.();
@@ -193,7 +198,12 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
     onClose();
   };
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    console.log("Modal is not open, returning null");
+    return null;
+  }
+  
+  console.log("Rendering interview schedule modal, application:", application);
 
   // Get current date in YYYY-MM-DD format for min date
   const today = new Date().toISOString().split('T')[0];
@@ -268,8 +278,9 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                       key={type.id || index}
                       className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all 
                         ${formData.interviewType === type.id
-                          ? 'border-2 border-blue-500 bg-blue-50' 
-                          : 'border-gray-200 hover:border-gray-300'}`}
+                          ? 'border-2 border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                        }`}
                     >
                       <input
                         type="radio"
@@ -283,15 +294,15 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                         <div
                           className="w-10 h-10 rounded-lg flex items-center justify-center text-white"
                           style={{ backgroundColor: type.color || '#3B82F6' }}
-                        > 
-                          {type.id === 'phone' && <Phone className="h-5 w-5" />}
-                          {type.id === 'video' && <Video className="h-5 w-5" />}
-                          {type.id === 'technical' && <Code className="h-5 w-5" />}
-                          {type.id === 'panel' && <Users className="h-5 w-5" />}
-                          {type.id === 'in_person' && <Building className="h-5 w-5" />}
-                          {type.id === 'final' && <CheckCircle className="h-5 w-5" />}
+                        >
+                          {type.id === 'phone' && <Phone className="h-5 w-5 text-white" />}
+                          {type.id === 'video' && <Video className="h-5 w-5 text-white" />}
+                          {type.id === 'technical' && <Code className="h-5 w-5 text-white" />}
+                          {type.id === 'panel' && <Users className="h-5 w-5 text-white" />}
+                          {type.id === 'in_person' && <Building className="h-5 w-5 text-white" />}
+                          {type.id === 'final' && <CheckCircle className="h-5 w-5 text-white" />}
                           {!['phone', 'video', 'technical', 'panel', 'in_person', 'final'].includes(type.id) && 
-                            <Calendar className="h-5 w-5" />
+                            <Calendar className="h-5 w-5 text-white" />
                           }
                         </div>
                         <div>

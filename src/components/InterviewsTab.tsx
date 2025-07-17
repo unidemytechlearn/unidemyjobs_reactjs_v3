@@ -142,33 +142,35 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
     });
 
   const handleScheduleInterview = (application: any) => {
+    console.log("Setting selected application:", application);
     setSelectedApplication(application);
+    console.log("Opening schedule modal");
     setIsScheduleModalOpen(true);
-    console.log("Opening schedule modal with application:", application);
+    console.log("Modal should be open now:", isScheduleModalOpen);
   };
 
   const handleScheduleButtonClick = async () => {
     if (!applicationId) {
       setError('Please select an application first to schedule an interview');
-      interviewsDebug('No application ID provided for interview scheduling:', applicationId);
+      console.log('No application ID provided for interview scheduling:', applicationId);
       return;
     }
     
     setLoadingApplication(true);
     try {
       // Fetch the application details first
-      interviewsDebug('Fetching application details for interview scheduling, ID:', applicationId);
+      console.log('Fetching application details for interview scheduling, ID:', applicationId);
       const application = await getApplicationById(applicationId);
-      interviewsDebug("Application data received:", application);
+      console.log("Application data received:", application);
       if (application) {
-        interviewsDebug("Fetched application for interview:", application);
+        console.log("Fetched application for interview:", application);
         handleScheduleInterview(application);
       } else {
-        interviewsDebug('Application not found for ID:', applicationId);
+        console.log('Application not found for ID:', applicationId);
         setError('Could not find application details');
       }
     } catch (err) {
-      interviewsDebug('Error fetching application for interview:', err);
+      console.log('Error fetching application for interview:', err);
       setError('Failed to load application details');
     } finally {
       setLoadingApplication(false);
@@ -357,11 +359,11 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
             <button
               onClick={() => {
                 if (applicationId) {
-                  interviewsDebug("Schedule button clicked with applicationId:", applicationId);
+                  console.log("Schedule button clicked with applicationId:", applicationId);
                   handleScheduleButtonClick();
                 } else {
                   setError('Please select an application first to schedule an interview');
-                  interviewsDebug("Schedule button clicked without applicationId");
+                  console.log("Schedule button clicked without applicationId");
                 }
               }}
               className={`flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors ${
@@ -671,14 +673,12 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
       )}
 
       {/* Modals */}
-      {selectedApplication && (
-        <InterviewScheduleModal
-          isOpen={isScheduleModalOpen}
-          onClose={() => setIsScheduleModalOpen(false)}
-          application={selectedApplication}
-          onSuccess={handleInterviewSuccess}
-        />
-      )}
+      <InterviewScheduleModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+        application={selectedApplication}
+        onSuccess={handleInterviewSuccess}
+      />
       
       {selectedInterview && (
         <InterviewFeedbackModal
