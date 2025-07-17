@@ -5,11 +5,11 @@ import { createNotification, NotificationTemplates } from './notifications';
 const DEBUG = true; 
 
 // Debug logger
-export const debug = (...args: any[]) => {
+export function debug(...args: any[]) {
   if (DEBUG) {
     console.log('[Interviews]', ...args);
   }
-};
+}
 
 // Get application by ID
 export async function getApplicationById(applicationId: string) {
@@ -450,9 +450,7 @@ export async function submitInterviewFeedback(feedbackData: InterviewFeedbackDat
 }
 
 // Get interviews for an employer
-export async function getEmployerInterviews(
-  employerId: string,
-  filters: {
+export async function getEmployerInterviews(employerId: string, filters: {
     applicationId?: string;
     jobId?: string;
     status?: string;
@@ -571,16 +569,14 @@ export async function getEmployerInterviews(
 }
 
 // Get interviews for a candidate
-export async function getCandidateInterviews(
-  userId: string,
-  filters: {
+export async function getCandidateInterviews(userId: string, filters = {
     applicationId?: string;
     jobId?: string;
     status?: string;
     upcoming?: boolean;
     limit?: number;
     offset?: number;
-  } = {}
+  }
 ): Promise<any[]> {
   try {
     if (!supabase) {
