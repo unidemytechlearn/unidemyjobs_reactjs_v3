@@ -11,10 +11,10 @@ export interface EmployerStats {
 export interface CompanyData {
   id?: string;
   name: string;
-  description: string;
-  industry: string;
-  size_range: string;
-  location: string;
+  description?: string;
+  industry?: string;
+  size_range?: string;
+  location?: string;
   website_url?: string;
   logo_url?: string;
   founded_year?: number;
@@ -101,13 +101,6 @@ export const getEmployerCompany = async (employerId: string) => {
 // Create or update company
 export const upsertCompany = async (companyData: CompanyData, employerId: string) => {
   try {
-    // Validate required fields
-    if (!companyData.name.trim()) throw new Error('Company name is required');
-    if (!companyData.description.trim()) throw new Error('Company description is required');
-    if (!companyData.industry) throw new Error('Industry is required');
-    if (!companyData.size_range) throw new Error('Company size is required');
-    if (!companyData.location.trim()) throw new Error('Location is required');
-
     // Check if company already exists
     const { data: existingCompany } = await supabase
       .from('companies')
@@ -121,9 +114,6 @@ export const upsertCompany = async (companyData: CompanyData, employerId: string
       updated_at: new Date().toISOString()
     };
     
-    // Ensure founded_year is a number if provided
-    if (payload.founded_year) payload.founded_year = Number(payload.founded_year);
-    
     // If company exists, include its ID
     if (existingCompany) {
       payload.id = existingCompany.id;
@@ -131,11 +121,11 @@ export const upsertCompany = async (companyData: CompanyData, employerId: string
     
     // Ensure arrays are properly formatted
     if (typeof payload.specialties === 'string') {
-      payload.specialties = (payload.specialties as string).split(',').map(s => s.trim()).filter(s => s.length > 0);
+      payload.specialties = (payload.specialties as string).split(',').map(s => s.trim()).filter(Boolean);
     }
     
     if (typeof payload.benefits === 'string') {
-      payload.benefits = (payload.benefits as string).split(',').map(b => b.trim()).filter(b => b.length > 0);
+      payload.benefits = (payload.benefits as string).split(',').map(b => b.trim()).filter(Boolean);
     }
     
     const { data, error } = await supabase
