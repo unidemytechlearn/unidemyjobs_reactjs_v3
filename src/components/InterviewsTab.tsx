@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, Video, Users, Building, Phone, CheckCircle, AlertTriangle, MoreHorizontal, Plus, Search, Filter, ChevronDown, ChevronUp, Star, MessageSquare, CheckSquare, XSquare } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
-import { getEmployerInterviews, getInterviewTypes, getCandidateInterviews, getApplicationById } from '../lib/interviews';
+import { getEmployerInterviews, getInterviewTypes, getCandidateInterviews } from '../lib/interviews';
 import InterviewScheduleModal from './InterviewScheduleModal';
 import InterviewFeedbackModal from './InterviewFeedbackModal';
 
@@ -28,6 +28,9 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [loadingApplication, setLoadingApplication] = useState(false);
+
+  // Create a direct reference to an application for scheduling
+  const [directApplication, setDirectApplication] = useState<any>(null);
 
   // Load interviews
   useEffect(() => {
@@ -142,40 +145,14 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
     });
 
   const handleScheduleInterview = (application: any) => {
-    console.log("Setting selected application:", application);
-    setSelectedApplication(application);
-    console.log("Opening schedule modal");
+    console.log("Setting direct application for scheduling:", application);
+    setDirectApplication(application);
     setIsScheduleModalOpen(true);
-    console.log("Modal should be open now:", isScheduleModalOpen);
   };
 
   const handleScheduleButtonClick = async () => {
-    if (!applicationId) {
-      setError('Please select an application first to schedule an interview');
-      console.error('No application ID provided for interview scheduling:', applicationId);
-      return;
-    }
-    
-    setLoadingApplication(true);
-    try {
-      // Fetch the application details first
-      console.log(`Fetching application details for ID: ${applicationId}`);
-      const application = await getApplicationById(applicationId);
-      
-      if (application) {
-        console.log("Application found, opening schedule modal");
-        setSelectedApplication(application);
-        setIsScheduleModalOpen(true);
-      } else {
-        console.error('Application not found for ID:', applicationId);
-        setError('Could not find application details');
-      }
-    } catch (err) {
-      console.error('Error fetching application for interview:', err);
-      setError('Failed to load application details');
-    } finally {
-      setLoadingApplication(false);
-    }
+    // Open the modal directly - we'll handle application selection in the modal
+    setIsScheduleModalOpen(true);
   };
 
   const handleAddFeedback = (interview: any) => {
@@ -349,40 +326,18 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h2 className="text-xl font-bold text-gray-900">
           {applicationId 
-            ? 'Interviews for This Application' 
-            : jobId 
-              ? 'Interviews for This Job' 
-              : 'All Interviews'}
+            ? 'Interviews for This Application' : 
+            jobId ? 'Interviews for This Job' : 'All Interviews'}
         </h2>
         
         <div className="flex items-center space-x-2">
           {profile?.role === 'employer' && (
             <button
-              onClick={() => {
-                if (applicationId) {
-                  console.log("Schedule button clicked with applicationId:", applicationId);
-                  handleScheduleButtonClick();
-                } else {
-                  setError('Please select an application first to schedule an interview');
-                  console.log("Schedule button clicked without applicationId");
-                }
-              }}
-              className={`flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors ${
-                loadingApplication ? 'opacity-75 cursor-wait' : ''
-              }`}
-              disabled={!applicationId || loadingApplication}
+              onClick={handleScheduleButtonClick}
+              className="flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              {loadingApplication ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Loading...</span>
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4" />
-                  <span>Schedule Interview</span>
-                </>
-              )}
+              <Plus className="h-4 w-4" />
+              <span>Schedule Interview</span>
             </button>
           )}
           
@@ -676,8 +631,13 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
       {/* Modals */}
       <InterviewScheduleModal
         isOpen={isScheduleModalOpen}
-        onClose={() => setIsScheduleModalOpen(false)}
-        application={selectedApplication}
+        onClose={() => {
+          setIsScheduleModalOpen(false);
+          setDirectApplication(null);
+        }}
+        application={directApplication}
+        applicationId={applicationId}
+        jobId={jobId}
         onSuccess={handleInterviewSuccess}
       />
       
@@ -695,7 +655,6 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
 
 export default InterviewsTab;
 
-// Import these components from lucide-react
 function Code(props: any) {
   return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white" {...props}><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>;
 }

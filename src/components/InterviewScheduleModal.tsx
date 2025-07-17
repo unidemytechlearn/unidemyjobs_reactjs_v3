@@ -1,22 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, MapPin, Video, Users, MessageSquare, Check, AlertCircle, Mail } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
-import { scheduleInterview, getInterviewTypes } from '../lib/interviews';
+import { scheduleInterview, getInterviewTypes, getApplicationById } from '../lib/interviews';
+import { getJobs } from '../lib/supabase';
 
 interface InterviewScheduleModalProps {
   isOpen: boolean;
   onClose: () => void;
-  application: any;
+  application?: any;
+  applicationId?: string;
+  jobId?: string;
   onSuccess?: () => void;
 }
 
-const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: InterviewScheduleModalProps) => {
+const InterviewScheduleModal = ({ isOpen, onClose, application, applicationId, jobId, onSuccess }: InterviewScheduleModalProps) => {
   const { user } = useAuthContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isScheduled, setIsScheduled] = useState(false);
   const [error, setError] = useState('');
   const [interviewTypes, setInterviewTypes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [applications, setApplications] = useState<any[]>([]);
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string>('');
+  const [loadingApplications, setLoadingApplications] = useState(false);
   
   const [formData, setFormData] = useState({
     interviewType: '',
@@ -28,6 +34,65 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
     notes: '',
     sendNotification: true,
   });
+
+  // Load applications for selection if no specific application is provided
+  useEffect(() => {
+    const loadApplications = async () => {
+      if (!user || !isOpen) return;
+      
+      // If we already have a specific application, no need to load others
+      if (application || applicationId) {
+        if (applicationId) {
+          setSelectedApplicationId(applicationId);
+        }
+        return;
+      }
+      
+      try {
+        setLoadingApplications(true);
+        
+        // Import dynamically to avoid circular dependencies
+        const { getEmployerApplications } = await import('../lib/employer');
+        
+        // Get applications for this employer
+        const filters: any = {};
+        if (jobId) filters.jobId = jobId;
+        
+        const applicationsData = await getEmployerApplications(user.id, filters);
+        setApplications(applicationsData);
+        
+        // Set the first application as selected if available
+        if (applicationsData.length > 0) {
+          setSelectedApplicationId(applicationsData[0].id);
+        }
+      } catch (error) {
+        console.error('Error loading applications:', error);
+        setError('Failed to load applications. Please try again.');
+      } finally {
+        setLoadingApplications(false);
+      }
+    };
+    
+    loadApplications();
+  }, [isOpen, user, application, applicationId, jobId]);
+
+  // Load application details when selectedApplicationId changes
+  useEffect(() => {
+    const loadApplicationDetails = async () => {
+      if (!selectedApplicationId || !isOpen) return;
+      
+      try {
+        const appDetails = await getApplicationById(selectedApplicationId);
+        if (appDetails) {
+          console.log("Loaded application details:", appDetails);
+        }
+      } catch (error) {
+        console.error('Error loading application details:', error);
+      }
+    };
+    
+    loadApplicationDetails();
+  }, [selectedApplicationId, isOpen]);
 
   // Load interview types
   useEffect(() => {
@@ -76,7 +141,16 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
     if (error) setError('');
   };
 
+  const handleApplicationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedApplicationId(e.target.value);
+  };
+
   const validateForm = () => {
+    if (!selectedApplicationId && !application?.id) {
+      setError('Please select an application');
+      return false;
+    }
+    
     if (!formData.interviewType) {
       setError('Please select an interview type');
       return false;
@@ -134,6 +208,15 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
     
     setIsSubmitting(true);
     setError('');
+
+    // Determine which application ID to use
+    const appId = application?.id || selectedApplicationId;
+    
+    if (!appId) {
+      setError('No application selected');
+      setIsSubmitting(false);
+      return;
+    }
     
     try {
       // Combine date and time
@@ -141,7 +224,7 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
       
       // Create interview schedule
       const interviewData = {
-        application_id: application.id,
+        application_id: appId,
         interview_type: formData.interviewType,
         scheduled_date: scheduledDateTime.toISOString(),
         duration_minutes: formData.duration,
@@ -217,12 +300,7 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
       <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Schedule Interview</h2>
-            <p className="text-gray-600">
-              {application?.job?.title} - {application?.first_name} {application?.last_name}
-            </p>
-          </div>
+          <h2 className="text-2xl font-bold text-gray-900">Schedule Interview</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -244,12 +322,45 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
         {/* Form */}
         <div className="p-6 overflow-y-auto max-h-[60vh]">
           {loading ? (
-            <div className="text-center py-8">
+            <div className="text-center py-12">
               <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
               <p className="text-gray-600">Loading interview options...</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Application Selection - only show if no specific application is provided */}
+              {!application && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Candidate/Application *
+                  </label>
+                  {loadingApplications ? (
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      <span>Loading applications...</span>
+                    </div>
+                  ) : applications.length === 0 ? (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800">
+                      <p>No applications available. Please create a job and receive applications first.</p>
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedApplicationId}
+                      onChange={handleApplicationChange}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="">Select an application</option>
+                      {applications.map((app) => (
+                        <option key={app.id} value={app.id}>
+                          {app.first_name} {app.last_name} - {app.job?.title || 'Unknown Job'}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+
               {/* Interview Type */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -524,7 +635,6 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
 
 export default InterviewScheduleModal;
 
-// Import these components from lucide-react
 function Phone(props: any) {
   return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white" {...props}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>;
 }

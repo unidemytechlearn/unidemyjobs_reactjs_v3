@@ -4,6 +4,61 @@ import { createNotification, NotificationTemplates } from './notifications';
 // Get application by ID
 export async function getApplicationById(applicationId: string) {
   try {
+    if (!supabase || !applicationId) {
+      console.error('Supabase client not initialized or invalid applicationId');
+      return null;
+    }
+
+    // First check if the application exists
+    const { data: checkData, error: checkError } = await supabase
+      .from('applications')
+      .select('id')
+      .eq('id', applicationId)
+      .single();
+      
+    if (checkError) {
+      console.error('Error checking if application exists:', checkError);
+      return null;
+    }
+    
+    if (!checkData) {
+      console.log('Application not found with ID:', applicationId);
+      return null;
+    }
+    
+    // Then fetch the full application data
+    const { data, error } = await supabase
+      .from('applications')
+      .select(`
+        *,
+        job:jobs(
+          id,
+          title,
+          company:companies(
+            id,
+            name,
+            logo_url
+          )
+        )
+      `)
+      .eq('id', applicationId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching application:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error fetching application by ID:', error);
+    throw error;
+  }
+}
+
+// Get application by ID
+export async function getApplicationById(applicationId: string) {
+  try {
     console.log('[Interviews] getApplicationById called with ID:', applicationId);
     
     if (!supabase || !applicationId) {
