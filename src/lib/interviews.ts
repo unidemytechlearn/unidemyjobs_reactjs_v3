@@ -29,30 +29,48 @@ export interface InterviewFeedbackData {
 // Get interview types from the database
 export async function getInterviewTypes() {
   try {
+    if (!supabase) {
+      console.error('Supabase client not initialized');
+      return getDefaultInterviewTypes();
+    }
+
     const { data, error } = await supabase
       .from('interview_types')
       .select('*')
       .order('order_index', { ascending: true });
 
-    if (error) throw error;
-    return data || [];
+    if (error) {
+      console.error('Error fetching interview types:', error);
+      return getDefaultInterviewTypes();
+    }
+    
+    return data && data.length > 0 ? data : getDefaultInterviewTypes();
   } catch (error) {
     console.error('Error fetching interview types:', error);
-    // Return default interview types if database query fails
-    return [
-      { id: 'phone', name: 'Phone Interview', description: 'Initial screening call', color: '#3B82F6', order_index: 1 },
-      { id: 'video', name: 'Video Interview', description: 'Remote video interview', color: '#8B5CF6', order_index: 2 },
-      { id: 'technical', name: 'Technical Interview', description: 'Technical assessment', color: '#10B981', order_index: 3 },
-      { id: 'panel', name: 'Panel Interview', description: 'Interview with multiple team members', color: '#F59E0B', order_index: 4 },
-      { id: 'in_person', name: 'In-Person Interview', description: 'On-site interview', color: '#EC4899', order_index: 5 },
-      { id: 'final', name: 'Final Interview', description: 'Final decision round', color: '#EF4444', order_index: 6 }
-    ];
+    return getDefaultInterviewTypes();
   }
+}
+
+// Default interview types as fallback
+function getDefaultInterviewTypes() {
+  return [
+    { id: 'phone', name: 'Phone Interview', description: 'Initial screening call', color: '#3B82F6', order_index: 1 },
+    { id: 'video', name: 'Video Interview', description: 'Remote video interview', color: '#8B5CF6', order_index: 2 },
+    { id: 'technical', name: 'Technical Interview', description: 'Technical assessment', color: '#10B981', order_index: 3 },
+    { id: 'panel', name: 'Panel Interview', description: 'Interview with multiple team members', color: '#F59E0B', order_index: 4 },
+    { id: 'in_person', name: 'In-Person Interview', description: 'On-site interview', color: '#EC4899', order_index: 5 },
+    { id: 'final', name: 'Final Interview', description: 'Final decision round', color: '#EF4444', order_index: 6 }
+  ];
 }
 
 // Schedule an interview
 export async function scheduleInterview(interviewData: InterviewScheduleData) {
   try {
+    if (!supabase) {
+      console.error('Supabase client not initialized');
+      throw new Error('Database connection not available');
+    }
+
     // Insert interview schedule
     const { data, error } = await supabase
       .from('interview_schedules')
@@ -267,6 +285,11 @@ export async function cancelInterview(
 // Submit interview feedback
 export async function submitInterviewFeedback(feedbackData: InterviewFeedbackData) {
   try {
+    if (!supabase) {
+      console.error('Supabase client not initialized');
+      throw new Error('Database connection not available');
+    }
+
     // Check if feedback already exists
     const { data: existingFeedback, error: checkError } = await supabase
       .from('interview_feedback')
@@ -336,16 +359,21 @@ export async function submitInterviewFeedback(feedbackData: InterviewFeedbackDat
 // Get interviews for an employer
 export async function getEmployerInterviews(
   employerId: string,
-  filters?: {
+  filters: {
     applicationId?: string;
     jobId?: string;
     status?: string;
     upcoming?: boolean;
     limit?: number;
     offset?: number;
-  }
+  } = {}
 ) {
   try {
+    if (!supabase) {
+      console.error('Supabase client not initialized');
+      return [];
+    }
+
     let query = supabase
       .from('interview_schedules')
       .select(`
@@ -353,10 +381,10 @@ export async function getEmployerInterviews(
         application:applications (
           id,
           user_id,
-          first_name,
-          last_name,
-          email,
-          phone,
+          first_name, 
+          last_name, 
+          email, 
+          phone, 
           job:jobs (
             id,
             title,
@@ -369,7 +397,7 @@ export async function getEmployerInterviews(
             )
           )
         ),
-        feedback:interview_feedback (*)
+        feedback:interview_feedback!left(*)
       `)
       .order('scheduled_date', { ascending: true });
 
@@ -413,16 +441,21 @@ export async function getEmployerInterviews(
 // Get interviews for a candidate
 export async function getCandidateInterviews(
   userId: string,
-  filters?: {
+  filters: {
     applicationId?: string;
     jobId?: string;
     status?: string;
     upcoming?: boolean;
     limit?: number;
     offset?: number;
-  }
+  } = {}
 ) {
   try {
+    if (!supabase) {
+      console.error('Supabase client not initialized');
+      return [];
+    }
+
     let query = supabase
       .from('interview_schedules')
       .select(`
@@ -430,10 +463,10 @@ export async function getCandidateInterviews(
         application:applications!inner (
           id,
           user_id,
-          job:jobs (
+          job:jobs!left (
             id,
             title,
-            company:companies (
+            company:companies!left (
               id,
               name,
               logo_url
@@ -483,15 +516,20 @@ export async function getCandidateInterviews(
 // Get interview details
 export async function getInterviewDetails(interviewId: string) {
   try {
+    if (!supabase) {
+      console.error('Supabase client not initialized');
+      return null;
+    }
+
     const { data, error } = await supabase
       .from('interview_schedules')
       .select(`
         *,
-        application:applications (
+        application:applications!left (
           *,
-          job:jobs (*)
+          job:jobs!left (*)
         ),
-        feedback:interview_feedback (*)
+        feedback:interview_feedback!left (*)
       `)
       .eq('id', interviewId)
       .single();
@@ -507,6 +545,11 @@ export async function getInterviewDetails(interviewId: string) {
 // Get upcoming interviews
 export async function getUpcomingInterviews(userId: string, role: 'employer' | 'job_seeker', limit: number = 5) {
   try {
+    if (!supabase) {
+      console.error('Supabase client not initialized');
+      return [];
+    }
+
     const now = new Date().toISOString();
     
     if (role === 'employer') {
@@ -516,7 +559,7 @@ export async function getUpcomingInterviews(userId: string, role: 'employer' | '
           *,
           application:applications (
             *,
-            job:jobs!inner (*)
+            job:jobs (*)
           )
         `)
         .eq('application.job.created_by', userId)
@@ -534,7 +577,7 @@ export async function getUpcomingInterviews(userId: string, role: 'employer' | '
           *,
           application:applications!inner (
             *,
-            job:jobs (*)
+            job:jobs!left (*)
           )
         `)
         .eq('application.user_id', userId)
@@ -555,24 +598,33 @@ export async function getUpcomingInterviews(userId: string, role: 'employer' | '
 // Get interview statistics
 export async function getInterviewStatistics(employerId: string) {
   try {
+    if (!supabase) {
+      console.error('Supabase client not initialized');
+      return { total: 0, upcoming: 0, completed: 0, cancelled: 0, today: 0 };
+    }
+
     const now = new Date().toISOString();
     
     const { data, error } = await supabase
       .from('interview_schedules')
       .select(`
         *,
-        application:applications (job:jobs!inner(*))
+        application:applications!left (job:jobs(*))
       `)
       .eq('application.job.created_by', employerId);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching interview statistics:', error);
+      return { total: 0, upcoming: 0, completed: 0, cancelled: 0, today: 0 };
+    }
 
     const stats = {
       total: data.length,
-      upcoming: data.filter(i => i.status === 'scheduled' && new Date(i.scheduled_date) > new Date()).length,
+      upcoming: data.filter(i => i?.status === 'scheduled' && new Date(i.scheduled_date) > new Date()).length,
       completed: data.filter(i => i.status === 'completed').length || 0,
       cancelled: data.filter(i => i.status === 'cancelled').length || 0,
       today: data.filter(i => {
+        if (!i.scheduled_date) return false;
         const interviewDate = new Date(i.scheduled_date);
         const today = new Date();
         return (
