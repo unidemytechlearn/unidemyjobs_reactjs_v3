@@ -402,14 +402,13 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                     <div className="flex items-center space-x-2">
                       <div className="w-6 h-6 rounded-full" style={{ backgroundColor: selectedInterviewType.color }}>
                         <div className="flex items-center justify-center h-full text-white">
-                          {selectedInterviewType.id === 'phone' && <Phone className="h-3 w-3" />}
-                          {selectedInterviewType.id === 'video' && <Video className="h-3 w-3" />}
-                          {selectedInterviewType?.id === 'phone' && <Phone className="h-3 w-3" />}
-                          {selectedInterviewType?.id === 'video' && <Video className="h-3 w-3" />}
-                          {selectedInterviewType?.id === 'technical' && <Code className="h-3 w-3" />}
-                          {selectedInterviewType?.id === 'panel' && <Users className="h-3 w-3" />}
-                          {selectedInterviewType?.id === 'in_person' && <Building className="h-3 w-3" />}
-                          {selectedInterviewType?.id === 'final' && <CheckCircle className="h-3 w-3" />}
+                          {selectedInterviewType?.id === 'phone' ? <Phone className="h-3 w-3" /> :
+                           selectedInterviewType?.id === 'video' ? <Video className="h-3 w-3" /> :
+                           selectedInterviewType?.id === 'technical' ? <Code className="h-3 w-3" /> :
+                           selectedInterviewType?.id === 'panel' ? <Users className="h-3 w-3" /> :
+                           selectedInterviewType?.id === 'in_person' ? <Building className="h-3 w-3" /> :
+                           selectedInterviewType?.id === 'final' ? <CheckCircle className="h-3 w-3" /> :
+                           <Calendar className="h-3 w-3" />}
                         </div>
                       </div>
                       <span className="font-medium">{selectedInterviewType.name}</span>
@@ -451,7 +450,6 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                         Candidate will be notified
                       </p>
                     )}
-                    <span className="font-medium">{selectedInterviewType?.name || 'Interview'}</span>
                   </div>
                 </div>
               )}

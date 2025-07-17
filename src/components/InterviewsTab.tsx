@@ -168,7 +168,7 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
   const getInterviewTypeDetails = (typeId: string) => {
     return interviewTypes.find(type => type.id === typeId) || {
       name: 'Interview',
-      color: '#6B7280', // Default gray color
+      color: '#6B7280',
       icon: 'calendar'
     };
   };
