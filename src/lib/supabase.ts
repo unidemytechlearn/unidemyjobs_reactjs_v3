@@ -232,12 +232,18 @@ export const signInAsJobSeeker = async (email: string, password: string) => {
       .from('profiles')
       .select('role')
       .eq('id', authData.user.id)
-      .single();
+      .maybeSingle();
     
     if (profileError) {
       // If we can't fetch the profile, sign out and throw an error
       await supabase.auth.signOut();
       throw new Error('Failed to verify user role');
+    }
+    
+    if (!profileData) {
+      // If no profile exists, sign out and throw an error
+      await supabase.auth.signOut();
+      throw new Error('User profile not found. Please contact support.');
     }
     
     if (profileData.role === 'employer') {
@@ -269,12 +275,18 @@ export const signInAsEmployer = async (email: string, password: string) => {
       .from('profiles')
       .select('role')
       .eq('id', authData.user.id)
-      .single();
+      .maybeSingle();
     
     if (profileError) {
       // If we can't fetch the profile, sign out and throw an error
       await supabase.auth.signOut();
       throw new Error('Failed to verify user role');
+    }
+    
+    if (!profileData) {
+      // If no profile exists, sign out and throw an error
+      await supabase.auth.signOut();
+      throw new Error('User profile not found. Please contact support.');
     }
     
     if (profileData.role !== 'employer') {
