@@ -1,14 +1,25 @@
 import { supabase } from './supabase';
 import { createNotification, NotificationTemplates } from './notifications';
 
+// Debug flag for logging
+const DEBUG = true;
+
+// Debug logger
+const debug = (...args: any[]) => {
+  if (DEBUG) {
+    console.log('[Interviews]', ...args);
+  }
+};
+
 // Get application by ID
 export async function getApplicationById(applicationId: string) {
   try {
     if (!supabase) {
-      console.error('Supabase client not initialized');
+      debug('Supabase client not initialized');
       return null;
     }
 
+    debug('Fetching application with ID:', applicationId);
     const { data, error } = await supabase
       .from('applications')
       .select(`
@@ -27,13 +38,14 @@ export async function getApplicationById(applicationId: string) {
       .single();
 
     if (error) {
-      console.error('Error fetching application:', error);
+      debug('Error fetching application:', error);
       throw error;
     }
 
+    debug('Successfully fetched application:', data?.id);
     return data;
   } catch (error) {
-    console.error('Error fetching application by ID:', error);
+    debug('Error fetching application by ID:', error);
     throw error;
   }
 }
@@ -66,8 +78,10 @@ export interface InterviewFeedbackData {
 // Get interview types from the database
 export async function getInterviewTypes() {
   try {
+    debug('Fetching interview types');
     if (!supabase) {
-      console.error('Supabase client not initialized');
+      debug('Supabase client not initialized');
+      debug('Returning default interview types');
       return getDefaultInterviewTypes();
     }
 
@@ -77,13 +91,15 @@ export async function getInterviewTypes() {
       .order('order_index', { ascending: true });
 
     if (error) {
-      console.error('Error fetching interview types:', error);
+      debug('Error fetching interview types:', error);
+      debug('Returning default interview types due to error');
       return getDefaultInterviewTypes();
     }
     
+    debug('Successfully fetched interview types:', data?.length || 0);
     return data && data.length > 0 ? data : getDefaultInterviewTypes();
   } catch (error) {
-    console.error('Error fetching interview types:', error);
+    debug('Error fetching interview types:', error);
     return getDefaultInterviewTypes();
   }
 }
@@ -103,12 +119,13 @@ function getDefaultInterviewTypes() {
 // Schedule an interview
 export async function scheduleInterview(interviewData: InterviewScheduleData) {
   try {
-    console.log("Scheduling interview with data:", interviewData);
+    debug("Scheduling interview with data:", interviewData);
     if (!supabase) {
-      console.error('Supabase client not initialized');
+      debug('Supabase client not initialized');
       throw new Error('Database connection not available');
     }
 
+    debug("Inserting interview schedule into database");
     // Insert interview schedule
     const { data, error } = await supabase
       .from('interview_schedules')
@@ -145,7 +162,7 @@ export async function scheduleInterview(interviewData: InterviewScheduleData) {
       .single();
 
     if (error) throw error;
-    console.log("Interview scheduled successfully:", data);
+    debug("Interview scheduled successfully:", data);
 
     // Send notification if requested
     if (interviewData.send_notification && data.application) {
@@ -175,7 +192,7 @@ export async function scheduleInterview(interviewData: InterviewScheduleData) {
           `/dashboard/applications/${data.application_id}`
         );
       } catch (notificationError) {
-        console.error('Error creating interview notification:', notificationError);
+        debug('Error creating interview notification:', notificationError);
         // Don't fail the interview scheduling if notification fails
       }
     }
@@ -409,7 +426,7 @@ export async function submitInterviewFeedback(feedbackData: InterviewFeedbackDat
 // Get interviews for an employer
 export async function getEmployerInterviews(
   employerId: string,
-  filters: {
+  filters?: {
     applicationId?: string;
     jobId?: string;
     status?: string;
@@ -417,14 +434,14 @@ export async function getEmployerInterviews(
     limit?: number;
     offset?: number;
   } = {}
-) {
+): Promise<any[]> {
   try {
     if (!supabase) {
-      console.error('Supabase client not initialized');
+      debug('Supabase client not initialized');
       return [];
     }
 
-    console.log('Getting employer interviews for:', employerId, 'with filters:', filters);
+    debug('Getting employer interviews for:', employerId, 'with filters:', filters);
     
     // First get the interviews without the feedback to avoid relationship errors
     let query = supabase.from('interview_schedules')
@@ -454,50 +471,50 @@ export async function getEmployerInterviews(
 
     // Apply filters
     if (filters?.applicationId) {
-      console.log('Filtering by application ID:', filters.applicationId);
+      debug('Filtering by application ID:', filters.applicationId);
       query = query.eq('application_id', filters.applicationId);
     } else if (filters?.jobId) {
-      console.log('Filtering by job ID:', filters.jobId);
+      debug('Filtering by job ID:', filters.jobId);
       query = query.eq('application.job_id', filters.jobId);
     } else {
       // Only filter by employer if not filtering by specific application or job
-      console.log('Filtering by employer ID:', employerId);
+      debug('Filtering by employer ID:', employerId);
       query = query.eq('application.job.created_by', employerId);
     }
 
     if (filters?.status) {
-      console.log('Filtering by status:', filters.status);
+      debug('Filtering by status:', filters.status);
       query = query.eq('status', filters.status);
     }
 
     if (filters?.upcoming) {
       const now = new Date().toISOString();
-      console.log('Filtering for upcoming interviews after:', now);
+      debug('Filtering for upcoming interviews after:', now);
       query = query.gt('scheduled_date', now);
     }
 
     if (filters?.limit) {
-      console.log('Limiting results to:', filters.limit);
+      debug('Limiting results to:', filters.limit);
       query = query.limit(filters.limit);
     }
 
     if (filters?.offset) {
-      console.log('Setting offset to:', filters.offset);
+      debug('Setting offset to:', filters.offset);
       query = query.range(filters.offset, filters.offset + (filters.limit || 10) - 1);
     }
 
-    console.log('Executing interview query...');
+    debug('Executing interview query...');
     const { data: interviews, error } = await query;
 
     if (error) throw error;
     
-    console.log('Got interviews:', interviews?.length || 0);
+    debug('Got interviews:', interviews?.length || 0);
     
     // Now get feedback separately for each interview
     if (interviews && interviews.length > 0) {
       try {
         const interviewIds = interviews.map(interview => interview.id);
-        console.log('Getting feedback for interviews:', interviewIds);
+        debug('Getting feedback for interviews:', interviewIds);
         
         const { data: feedbackData, error: feedbackError } = await supabase
           .from('interview_feedback')
@@ -505,9 +522,9 @@ export async function getEmployerInterviews(
           .in('interview_id', interviewIds);
           
         if (feedbackError) {
-          console.error('Error fetching feedback:', feedbackError);
+          debug('Error fetching feedback:', feedbackError);
         } else if (feedbackData) {
-          console.log('Got feedback data:', feedbackData.length);
+          debug('Got feedback data:', feedbackData.length);
           
           // Attach feedback to the corresponding interviews
           return interviews.map(interview => ({
@@ -516,13 +533,13 @@ export async function getEmployerInterviews(
           }));
         }
       } catch (feedbackError) {
-        console.error('Error processing feedback:', feedbackError);
+        debug('Error processing feedback:', feedbackError);
       }
     }
     
     return interviews || [];
   } catch (error) {
-    console.error('Error fetching employer interviews:', error);
+    debug('Error fetching employer interviews:', error);
     return []; // Return empty array instead of throwing to prevent UI crashes
   }
 }
@@ -530,7 +547,7 @@ export async function getEmployerInterviews(
 // Get interviews for a candidate
 export async function getCandidateInterviews(
   userId: string,
-  filters: {
+  filters?: {
     applicationId?: string;
     jobId?: string;
     status?: string;
@@ -538,13 +555,14 @@ export async function getCandidateInterviews(
     limit?: number;
     offset?: number;
   } = {}
-) {
+): Promise<any[]> {
   try {
     if (!supabase) {
-      console.error('Supabase client not initialized');
+      debug('Supabase client not initialized');
       return [];
     }
 
+    debug('Getting candidate interviews for:', userId, 'with filters:', filters);
     let query = supabase
       .from('interview_schedules')
       .select(`
@@ -595,10 +613,11 @@ export async function getCandidateInterviews(
     const { data, error } = await query;
 
     if (error) throw error;
+    debug('Successfully fetched candidate interviews:', data?.length || 0);
     return data || [];
   } catch (error) {
-    console.error('Error fetching candidate interviews:', error);
-    throw error;
+    debug('Error fetching candidate interviews:', error);
+    return []; // Return empty array instead of throwing to prevent UI crashes
   }
 }
 

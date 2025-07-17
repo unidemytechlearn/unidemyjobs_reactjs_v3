@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, Video, Users, Building, Phone, CheckCircle, AlertTriangle, MoreHorizontal, Plus, Search, Filter, ChevronDown, ChevronUp, Star, MessageSquare, CheckSquare, XSquare } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
-import { getEmployerInterviews, getInterviewTypes, getCandidateInterviews, getApplicationById } from '../lib/interviews';
+import { getEmployerInterviews, getInterviewTypes, getCandidateInterviews, getApplicationById, debug } from '../lib/interviews';
 import InterviewScheduleModal from './InterviewScheduleModal';
 import InterviewFeedbackModal from './InterviewFeedbackModal';
 
@@ -32,22 +32,22 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
   // Load interviews
   useEffect(() => {
     const loadData = async () => {
-      if (!user) return;
+      if (!user) {
+        console.log('No user found, skipping interview data load');
+        return;
+      }
       
       try {
         setLoading(true);
         setError('');
 
-        // Load interview types first
-        try {
-          console.log('Loading interview types...');
-          const types = await getInterviewTypes();
-          console.log('Interview types loaded:', types);
-          setInterviewTypes(types);
-        } catch (typeError) {
-          console.error('Error loading interview types:', typeError);
-          // Continue with default types from the function
-        }
+        console.log('Loading interview data for user:', user.id);
+        
+        // Load interview types
+        console.log('Loading interview types...');
+        const types = await getInterviewTypes();
+        console.log('Interview types loaded:', types.length);
+        setInterviewTypes(types);
 
         // Then load interviews based on user role
         if (profile?.role === 'employer') {
@@ -56,18 +56,16 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
           if (applicationId) filters.applicationId = applicationId;
           if (jobId) filters.jobId = jobId;
           
-          try {
-            const interviewsData = await getEmployerInterviews(user.id, filters);
-            console.log('Employer interviews loaded:', interviewsData);
-            setInterviews(interviewsData);
-          } catch (interviewError) {
-            console.error('Error loading employer interviews:', interviewError);
-            setInterviews([]);
-            setError('Failed to load interviews. Please try refreshing the page.');
-          }
+          console.log('Fetching employer interviews with filters:', filters);
+          const interviewsData = await getEmployerInterviews(user.id, filters);
+          console.log('Employer interviews loaded:', interviewsData.length);
+          setInterviews(interviewsData);
         } else {
           // For job seekers
           console.log('Loading candidate interviews...');
+          if (!user.id) {
+            throw new Error('User ID is missing');
+          }
           const filters: any = {};
           if (applicationId) filters.applicationId = applicationId;
           if (jobId) filters.jobId = jobId;
@@ -75,7 +73,7 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
           try {
             const interviewsData = await getCandidateInterviews(user.id, filters);
             console.log('Candidate interviews loaded:', interviewsData);
-            setInterviews(interviewsData);
+            setInterviews(interviewsData || []);
           } catch (interviewError) {
             console.error('Error loading candidate interviews:', interviewError);
             setInterviews([]);
@@ -152,14 +150,14 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
   const handleScheduleButtonClick = async () => {
     if (!applicationId) {
       setError('Please select an application first to schedule an interview');
-      console.log('No application ID provided for interview scheduling');
+      console.error('No application ID provided for interview scheduling');
       return;
     }
     
     setLoadingApplication(true);
     try {
       // Fetch the application details first
-      console.log('Fetching application details for ID:', applicationId);
+      console.log('Fetching application details for interview scheduling, ID:', applicationId);
       const application = await getApplicationById(applicationId);
       if (application) {
         console.log("Fetched application for interview:", application);
@@ -169,7 +167,7 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
         setError('Could not find application details');
       }
     } catch (err) {
-      console.error('Error fetching application:', err);
+      console.error('Error fetching application for interview:', err);
       setError('Failed to load application details');
     } finally {
       setLoadingApplication(false);
@@ -262,19 +260,19 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
   const getInterviewTypeIcon = (typeId: string) => {
     switch (typeId) {
       case 'phone':
-        return <Phone className="h-5 w-5" />; 
+        return <Phone className="h-5 w-5 text-white" />; 
       case 'video':
-        return <Video className="h-5 w-5" />;
+        return <Video className="h-5 w-5 text-white" />;
       case 'technical':
-        return <Code className="h-5 w-5" />;
+        return <Code className="h-5 w-5 text-white" />;
       case 'panel':
-        return <Users className="h-5 w-5" />;
+        return <Users className="h-5 w-5 text-white" />;
       case 'in_person':
-        return <Building className="h-5 w-5" />;
+        return <Building className="h-5 w-5 text-white" />;
       case 'final':
-        return <CheckCircle className="h-5 w-5" />;
+        return <CheckCircle className="h-5 w-5 text-white" />;
       default:
-        return <Calendar className="h-5 w-5" />;
+        return <Calendar className="h-5 w-5 text-white" />;
     }
   };
 
