@@ -245,6 +245,12 @@ export const NotificationTemplates = {
     message: `Congratulations! You've received an offer for ${jobTitle} at ${companyName}.`,
     type: 'application_update' as const
   }),
+  
+  INTERVIEW_SCHEDULED: (jobTitle: string, companyName: string, interviewDate: string) => ({
+    title: 'Interview Scheduled',
+    message: `Interview scheduled for ${jobTitle} at ${companyName} on ${interviewDate}.`,
+    type: 'application_update' as const
+  }),
 
   WELCOME: () => ({
     title: 'Welcome to Unidemy Jobs!',
