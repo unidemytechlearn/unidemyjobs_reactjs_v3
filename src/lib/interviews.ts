@@ -14,12 +14,35 @@ const debug = (...args: any[]) => {
 // Get application by ID
 export async function getApplicationById(applicationId: string) {
   try {
-    if (!supabase) {
-      debug('Supabase client not initialized');
+    console.log('getApplicationById called with ID:', applicationId);
+    
+    if (!supabase || !applicationId) {
+      console.error('Supabase client not initialized or invalid applicationId:', { supabase: !!supabase, applicationId });
       return null;
     }
 
     debug('Fetching application with ID:', applicationId);
+    
+    // First check if the application exists
+    const { data: checkData, error: checkError } = await supabase
+      .from('applications')
+      .select('id')
+      .eq('id', applicationId)
+      .single();
+      
+    if (checkError) {
+      console.error('Error checking if application exists:', checkError);
+      return null;
+    }
+    
+    if (!checkData) {
+      console.error('Application not found with ID:', applicationId);
+      return null;
+    }
+    
+    console.log('Application exists, fetching details...');
+    
+    // Then fetch the full application data
     const { data, error } = await supabase
       .from('applications')
       .select(`
@@ -38,14 +61,14 @@ export async function getApplicationById(applicationId: string) {
       .single();
 
     if (error) {
-      debug('Error fetching application:', error);
+      console.error('Error fetching application:', error);
       throw error;
     }
 
-    debug('Successfully fetched application:', data?.id);
+    console.log('Successfully fetched application:', data?.id);
     return data;
   } catch (error) {
-    debug('Error fetching application by ID:', error);
+    console.error('Error fetching application by ID:', error);
     throw error;
   }
 }
@@ -119,13 +142,16 @@ function getDefaultInterviewTypes() {
 // Schedule an interview
 export async function scheduleInterview(interviewData: InterviewScheduleData) {
   try {
-    debug("Scheduling interview with data:", interviewData);
-    if (!supabase) {
-      debug('Supabase client not initialized');
+    console.log("Scheduling interview with data:", interviewData);
+    
+    if (!supabase || !interviewData.application_id) {
+      console.error('Supabase client not initialized or missing application_id:', 
+        { supabase: !!supabase, applicationId: interviewData.application_id });
       throw new Error('Database connection not available');
     }
 
-    debug("Inserting interview schedule into database");
+    console.log("Inserting interview schedule into database for application:", interviewData.application_id);
+    
     // Insert interview schedule
     const { data, error } = await supabase
       .from('interview_schedules')
@@ -162,7 +188,7 @@ export async function scheduleInterview(interviewData: InterviewScheduleData) {
       .single();
 
     if (error) throw error;
-    debug("Interview scheduled successfully:", data);
+    console.log("Interview scheduled successfully:", data);
 
     // Send notification if requested
     if (interviewData.send_notification && data.application) {

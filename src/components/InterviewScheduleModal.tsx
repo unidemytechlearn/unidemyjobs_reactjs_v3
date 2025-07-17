@@ -32,7 +32,10 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
   // Load interview types
   useEffect(() => {
     console.log("InterviewScheduleModal opened with application:", application);
-    if (!isOpen) return;
+    if (!isOpen || !application) {
+      console.log("Modal not open or no application data, skipping load");
+      return;
+    }
     
     // Set default date to tomorrow
     const tomorrow = new Date();
@@ -118,8 +121,14 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm() || !application) {
-      console.log("Form validation failed");
+    if (!validateForm()) {
+      console.log("Form validation failed or missing application data");
+      return;
+    }
+    
+    if (!application || !application.id) {
+      console.error("Missing application data or ID:", application);
+      setError("Application data is missing. Please try again.");
       return;
     }
     
@@ -258,7 +267,7 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                     <label
                       key={type.id || index}
                       className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all 
-                        ${formData.interviewType === type.id 
+                        ${formData.interviewType === type.id
                           ? 'border-2 border-blue-500 bg-blue-50' 
                           : 'border-gray-200 hover:border-gray-300'}`}
                     >
@@ -274,12 +283,12 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                         <div
                           className="w-10 h-10 rounded-lg flex items-center justify-center text-white"
                           style={{ backgroundColor: type.color || '#3B82F6' }}
-                        >
-                          {type.id === 'phone' && <Phone className="h-5 w-5" />}
-                          {type.id === 'video' && <Video className="h-5 w-5" />}
-                          {type.id === 'technical' && <Code className="h-5 w-5" />}
-                          {type.id === 'panel' && <Users className="h-5 w-5" />}
-                          {type.id === 'in_person' && <Building className="h-5 w-5" />}
+                        > 
+                          {type.id === 'phone' && <Phone className="h-5 w-5 text-white" />}
+                          {type.id === 'video' && <Video className="h-5 w-5 text-white" />}
+                          {type.id === 'technical' && <Code className="h-5 w-5 text-white" />}
+                          {type.id === 'panel' && <Users className="h-5 w-5 text-white" />}
+                          {type.id === 'in_person' && <Building className="h-5 w-5 text-white" />}
                           {type.id === 'final' && <CheckCircle className="h-5 w-5" />}
                           {!['phone', 'video', 'technical', 'panel', 'in_person', 'final'].includes(type.id) && 
                             <Calendar className="h-5 w-5" />

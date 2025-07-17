@@ -150,7 +150,7 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
   const handleScheduleButtonClick = async () => {
     if (!applicationId) {
       setError('Please select an application first to schedule an interview');
-      console.error('No application ID provided for interview scheduling');
+      console.error('No application ID provided for interview scheduling:', applicationId);
       return;
     }
     
@@ -159,6 +159,7 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
       // Fetch the application details first
       console.log('Fetching application details for interview scheduling, ID:', applicationId);
       const application = await getApplicationById(applicationId);
+      console.log("Application data received:", application);
       if (application) {
         console.log("Fetched application for interview:", application);
         handleScheduleInterview(application);
@@ -357,8 +358,10 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
               onClick={() => {
                 if (applicationId) {
                   handleScheduleButtonClick();
+                  console.log("Schedule button clicked with applicationId:", applicationId);
                 } else {
                   setError('Please select an application first to schedule an interview');
+                  console.log("Schedule button clicked without applicationId");
                 }
               }}
               className={`flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors ${
