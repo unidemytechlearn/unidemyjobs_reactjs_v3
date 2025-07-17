@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, Video, Users, Building, Phone, CheckCircle, AlertTriangle, MoreHorizontal, Plus, Search, Filter, ChevronDown, ChevronUp, Star, MessageSquare, CheckSquare, XSquare } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
-import { getEmployerInterviews, getInterviewTypes, getCandidateInterviews, getApplicationById, debug as interviewsDebug } from '../lib/interviews';
+import { getEmployerInterviews, getInterviewTypes, getCandidateInterviews, getApplicationById, debug } from '../lib/interviews';
 import InterviewScheduleModal from './InterviewScheduleModal';
 import InterviewFeedbackModal from './InterviewFeedbackModal';
 
@@ -89,7 +89,7 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
     };
     
     loadData();
-  }, [user, applicationId, jobId]);
+  }, [user, applicationId, jobId, profile?.role]);
 
   // Filter and sort interviews
   const filteredInterviews = interviews
@@ -696,5 +696,5 @@ export default InterviewsTab;
 
 // Import these components from lucide-react
 function Code(props: any) {
-  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>;
+  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white" {...props}><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>;
 }

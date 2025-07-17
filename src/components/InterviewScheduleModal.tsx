@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, MapPin, Video, Users, MessageSquare, Check, AlertCircle, Mail } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
-import { scheduleInterview, getInterviewTypes, debug as interviewsDebug } from '../lib/interviews';
+import { scheduleInterview, getInterviewTypes, debug } from '../lib/interviews';
 
 interface InterviewScheduleModalProps {
   isOpen: boolean;
@@ -12,7 +12,6 @@ interface InterviewScheduleModalProps {
 
 const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: InterviewScheduleModalProps) => {
   const { user } = useAuthContext();
-  console.log("InterviewScheduleModal rendered with isOpen:", isOpen, "application:", application);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isScheduled, setIsScheduled] = useState(false);
   const [error, setError] = useState('');
@@ -32,7 +31,7 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
 
   // Load interview types
   useEffect(() => {
-    console.log("InterviewScheduleModal useEffect triggered with isOpen:", isOpen, "application:", application);
+    console.log("InterviewScheduleModal useEffect triggered with isOpen:", isOpen);
     if (!isOpen) {
       console.log("Modal not open, skipping load");
       return;
@@ -199,11 +198,8 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
   };
 
   if (!isOpen) {
-    console.log("Modal is not open, returning null");
     return null;
   }
-  
-  console.log("Rendering interview schedule modal, application:", application);
 
   // Get current date in YYYY-MM-DD format for min date
   const today = new Date().toISOString().split('T')[0];
@@ -275,7 +271,7 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {interviewTypes.map((type) => (
                     <label
-                      key={type.id || index}
+                      key={type.id}
                       className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all 
                         ${formData.interviewType === type.id
                           ? 'border-2 border-blue-500 bg-blue-50'
@@ -295,14 +291,14 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                           className="w-10 h-10 rounded-lg flex items-center justify-center text-white"
                           style={{ backgroundColor: type.color || '#3B82F6' }}
                         >
-                          {type.id === 'phone' && <Phone className="h-5 w-5 text-white" />}
-                          {type.id === 'video' && <Video className="h-5 w-5 text-white" />}
-                          {type.id === 'technical' && <Code className="h-5 w-5 text-white" />}
-                          {type.id === 'panel' && <Users className="h-5 w-5 text-white" />}
-                          {type.id === 'in_person' && <Building className="h-5 w-5 text-white" />}
-                          {type.id === 'final' && <CheckCircle className="h-5 w-5 text-white" />}
+                          {type.id === 'phone' && <Phone className="h-5 w-5" />}
+                          {type.id === 'video' && <Video className="h-5 w-5" />}
+                          {type.id === 'technical' && <Code className="h-5 w-5" />}
+                          {type.id === 'panel' && <Users className="h-5 w-5" />}
+                          {type.id === 'in_person' && <Building className="h-5 w-5" />}
+                          {type.id === 'final' && <CheckCircle className="h-5 w-5" />}
                           {!['phone', 'video', 'technical', 'panel', 'in_person', 'final'].includes(type.id) && 
-                            <Calendar className="h-5 w-5 text-white" />
+                            <Calendar className="h-5 w-5" />
                           }
                         </div>
                         <div>
@@ -453,14 +449,14 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                     <div className="flex items-center space-x-2">
                       <div className="w-6 h-6 rounded-full flex items-center justify-center" 
                            style={{ backgroundColor: selectedInterviewType?.color || '#3B82F6' }}>
-                        <div className="flex items-center justify-center h-full text-white">
-                          {selectedInterviewType?.id === 'phone' ? <Phone className="h-3 w-3" /> :
-                           selectedInterviewType?.id === 'video' ? <Video className="h-3 w-3" /> :
+                        <div className="flex items-center justify-center h-full">
+                          {selectedInterviewType?.id === 'phone' ? <Phone className="h-3 w-3 text-white" /> :
+                           selectedInterviewType?.id === 'video' ? <Video className="h-3 w-3 text-white" /> :
                            selectedInterviewType?.id === 'technical' ? <Code className="h-3 w-3 text-white" /> :
-                           selectedInterviewType?.id === 'panel' ? <Users className="h-3 w-3" /> :
-                           selectedInterviewType?.id === 'in_person' ? <Building className="h-3 w-3" /> :
-                           selectedInterviewType?.id === 'final' ? <CheckCircle className="h-3 w-3" /> :
-                           <Calendar className="h-3 w-3" />}
+                           selectedInterviewType?.id === 'panel' ? <Users className="h-3 w-3 text-white" /> :
+                           selectedInterviewType?.id === 'in_person' ? <Building className="h-3 w-3 text-white" /> :
+                           selectedInterviewType?.id === 'final' ? <CheckCircle className="h-3 w-3 text-white" /> :
+                           <Calendar className="h-3 w-3 text-white" />}
                         </div>
                       </div>
                       <span className="font-medium">{selectedInterviewType?.name || 'Interview'}</span>
@@ -542,17 +538,17 @@ export default InterviewScheduleModal;
 
 // Import these components from lucide-react
 function Phone(props: any) {
-  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>;
+  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white" {...props}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>;
 }
 
 function Building(props: any) {
-  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="16" height="20" x="4" y="2" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></svg>;
+  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white" {...props}><rect width="16" height="20" x="4" y="2" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></svg>;
 }
 
 function Code(props: any) {
-  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>;
+  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white" {...props}><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>;
 }
 
 function CheckCircle(props: any) {
-  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>;
+  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white" {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>;
 }

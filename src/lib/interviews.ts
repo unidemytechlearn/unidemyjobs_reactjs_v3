@@ -451,14 +451,13 @@ export async function submitInterviewFeedback(feedbackData: InterviewFeedbackDat
 
 // Get interviews for an employer
 export async function getEmployerInterviews(employerId: string, filters: {
-    applicationId?: string;
-    jobId?: string;
-    status?: string;
-    upcoming?: boolean;
-    limit?: number;
-    offset?: number;
-  } = {}
-): Promise<any[]> {
+  applicationId?: string;
+  jobId?: string;
+  status?: string;
+  upcoming?: boolean;
+  limit?: number;
+  offset?: number;
+} = {}) {
   try {
     if (!supabase) {
       debug('Supabase client not initialized');
@@ -570,14 +569,13 @@ export async function getEmployerInterviews(employerId: string, filters: {
 
 // Get interviews for a candidate
 export async function getCandidateInterviews(userId: string, filters: {
-    applicationId?: string;
-    jobId?: string;
-    status?: string;
-    upcoming?: boolean;
-    limit?: number;
-    offset?: number;
-  } = {}
-): Promise<any[]> {
+  applicationId?: string;
+  jobId?: string;
+  status?: string;
+  upcoming?: boolean;
+  limit?: number;
+  offset?: number;
+} = {}) {
   try {
     if (!supabase) {
       debug('Supabase client not initialized');
