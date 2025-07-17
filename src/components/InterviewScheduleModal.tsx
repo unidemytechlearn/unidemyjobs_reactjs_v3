@@ -146,7 +146,7 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, applicationId, j
   };
 
   const validateForm = () => {
-    if (!selectedApplicationId && !application?.id) {
+    if (!selectedApplicationId && !application) {
       setError('Please select an application');
       return false;
     }
@@ -190,25 +190,9 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, applicationId, j
     e.preventDefault();
     
     if (!validateForm()) {
-      if (!application) {
-        setError("No application selected. Please try again.");
-      }
       return;
     }
     
-    if (!application?.id) {
-      setError("Application data is missing. Please try again.");
-      return;
-    }
-    
-    if (!user) {
-      setError("Missing user or application data. Please try again.");
-      return;
-    }
-    
-    setIsSubmitting(true);
-    setError('');
-
     // Determine which application ID to use
     const appId = application?.id || selectedApplicationId;
     
@@ -217,6 +201,15 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, applicationId, j
       setIsSubmitting(false);
       return;
     }
+    
+    if (!user) {
+      setError("User data is missing. Please try again.");
+      setIsSubmitting(false);
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setError('');
     
     try {
       // Combine date and time
@@ -329,7 +322,7 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, applicationId, j
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Application Selection - only show if no specific application is provided */}
-              {!application && (
+              {!application?.id && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Select Candidate/Application *
@@ -456,7 +449,7 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, applicationId, j
                   name="duration"
                   value={formData.duration}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                 >
                   <option value={15}>15 minutes</option>
                   <option value={30}>30 minutes</option>

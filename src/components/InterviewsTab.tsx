@@ -147,11 +147,16 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
   const handleScheduleInterview = (application: any) => {
     console.log("Setting direct application for scheduling:", application);
     setDirectApplication(application);
+    setSelectedApplication(application);
     setIsScheduleModalOpen(true);
   };
 
   const handleScheduleButtonClick = async () => {
-    // Open the modal directly - we'll handle application selection in the modal
+    console.log("Schedule button clicked");
+    // If we have a selected application, use it
+    if (selectedApplication) {
+      setDirectApplication(selectedApplication);
+    }
     setIsScheduleModalOpen(true);
   };
 
@@ -632,10 +637,11 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
       <InterviewScheduleModal
         isOpen={isScheduleModalOpen}
         onClose={() => {
+          console.log("Closing interview schedule modal");
           setIsScheduleModalOpen(false);
           setDirectApplication(null);
         }}
-        application={directApplication}
+        application={directApplication || selectedApplication}
         applicationId={applicationId}
         jobId={jobId}
         onSuccess={handleInterviewSuccess}
