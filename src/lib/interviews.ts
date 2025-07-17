@@ -424,8 +424,10 @@ export async function getEmployerInterviews(
       return [];
     }
 
-    let query = supabase
-      .from('interview_schedules')
+    console.log('Getting employer interviews for:', employerId, 'with filters:', filters);
+    
+    // First get the interviews without the feedback to avoid relationship errors
+    let query = supabase.from('interview_schedules')
       .select(`
         *,
         application:applications (
@@ -446,45 +448,82 @@ export async function getEmployerInterviews(
               logo_url
             )
           )
-        ),
-        feedback:interview_feedback!left(*)
+        )
       `)
       .order('scheduled_date', { ascending: true });
 
     // Apply filters
     if (filters?.applicationId) {
+      console.log('Filtering by application ID:', filters.applicationId);
       query = query.eq('application_id', filters.applicationId);
     } else if (filters?.jobId) {
+      console.log('Filtering by job ID:', filters.jobId);
       query = query.eq('application.job_id', filters.jobId);
     } else {
       // Only filter by employer if not filtering by specific application or job
+      console.log('Filtering by employer ID:', employerId);
       query = query.eq('application.job.created_by', employerId);
     }
 
     if (filters?.status) {
+      console.log('Filtering by status:', filters.status);
       query = query.eq('status', filters.status);
     }
 
     if (filters?.upcoming) {
       const now = new Date().toISOString();
+      console.log('Filtering for upcoming interviews after:', now);
       query = query.gt('scheduled_date', now);
     }
 
     if (filters?.limit) {
+      console.log('Limiting results to:', filters.limit);
       query = query.limit(filters.limit);
     }
 
     if (filters?.offset) {
+      console.log('Setting offset to:', filters.offset);
       query = query.range(filters.offset, filters.offset + (filters.limit || 10) - 1);
     }
 
-    const { data, error } = await query;
+    console.log('Executing interview query...');
+    const { data: interviews, error } = await query;
 
     if (error) throw error;
-    return data || [];
+    
+    console.log('Got interviews:', interviews?.length || 0);
+    
+    // Now get feedback separately for each interview
+    if (interviews && interviews.length > 0) {
+      try {
+        const interviewIds = interviews.map(interview => interview.id);
+        console.log('Getting feedback for interviews:', interviewIds);
+        
+        const { data: feedbackData, error: feedbackError } = await supabase
+          .from('interview_feedback')
+          .select('*')
+          .in('interview_id', interviewIds);
+          
+        if (feedbackError) {
+          console.error('Error fetching feedback:', feedbackError);
+        } else if (feedbackData) {
+          console.log('Got feedback data:', feedbackData.length);
+          
+          // Attach feedback to the corresponding interviews
+          return interviews.map(interview => ({
+            ...interview,
+            feedback: feedbackData.filter(f => f.interview_id === interview.id)
+          }));
+        }
+      } catch (feedbackError) {
+        console.error('Error processing feedback:', feedbackError);
+      }
+    }
+    
+    return interviews || [];
   } catch (error) {
     console.error('Error fetching employer interviews:', error);
-    throw error;
+    return []; // Return empty array instead of throwing to prevent UI crashes
   }
 }
 
