@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, MapPin, Clock, DollarSign, Building, Star, Calendar, User, Mail, Phone, FileText, Download, ExternalLink, ChevronRight, CheckCircle, AlertCircle, Eye, MessageSquare, Briefcase, Globe, Linkedin, Github, ArrowLeft, Share2 } from 'lucide-react';
+import { X, MapPin, Clock, DollarSign, Building, Star, Calendar, User, Mail, Phone, FileText, Download, ExternalLink, ChevronRight, CheckCircle, AlertCircle, Eye, MessageSquare, Briefcase, Globe, Linkedin, Github, ArrowLeft, Share2, Video } from 'lucide-react';
 import { getApplicationStatusTimeline } from '../lib/applications';
+import { getCandidateInterviews } from '../lib/interviews';
+import { useAuthContext } from './AuthProvider';
 
 interface JobApplicationDetailsModalProps {
   isOpen: boolean;
@@ -18,8 +20,11 @@ const JobApplicationDetailsModal = ({
   isWithdrawing = false 
 }: JobApplicationDetailsModalProps) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'documents' | 'notes'>('overview');
+  const { user, profile } = useAuthContext();
   const [timeline, setTimeline] = useState<any[]>([]);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
+  const [interviews, setInterviews] = useState<any[]>([]);
+  const [loadingInterviews, setLoadingInterviews] = useState(false);
 
   useEffect(() => {
     const loadTimeline = async () => {
@@ -39,7 +44,33 @@ const JobApplicationDetailsModal = ({
     if (isOpen && application) {
       loadTimeline();
     }
-  }, [isOpen, application]);
+    
+    // Load interviews if user is authenticated
+    const loadInterviews = async () => {
+      if (application?.id && user) {
+        setLoadingInterviews(true);
+        try {
+          if (profile?.role === 'job_seeker') {
+            const interviewsData = await getCandidateInterviews(user.id, { applicationId: application.id });
+            setInterviews(interviewsData);
+          } else if (profile?.role === 'employer') {
+            // Import dynamically to avoid circular dependencies
+            const { getEmployerInterviews } = await import('../lib/interviews');
+            const interviewsData = await getEmployerInterviews(user.id, { applicationId: application.id });
+            setInterviews(interviewsData);
+          }
+        } catch (error) {
+          console.error('Error loading interviews:', error);
+        } finally {
+          setLoadingInterviews(false);
+        }
+      }
+    };
+    
+    if (isOpen && application && user) {
+      loadInterviews();
+    }
+  }, [isOpen, application, user, profile]);
 
   if (!isOpen || !application) return null;
 
@@ -191,6 +222,19 @@ const JobApplicationDetailsModal = ({
               <div className="flex items-center space-x-2">
                 <Clock className="h-4 w-4" />
                 <span>Timeline</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('interviews')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'interviews'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Video className="h-4 w-4" />
+                <span>Interviews</span>
               </div>
             </button>
             <button
@@ -599,6 +643,189 @@ const JobApplicationDetailsModal = ({
             </div>
           )}
 
+          {/* Interviews Tab */}
+          {activeTab === 'interviews' && (
+            <div className="max-w-4xl mx-auto">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Scheduled Interviews</h3>
+                <p className="text-gray-600">View all scheduled and past interviews for this application</p>
+              </div>
+
+              {loadingInterviews ? (
+                <div className="text-center py-8">
+                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading interviews...</p>
+                </div>
+              ) : interviews.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-xl border border-gray-200">
+                  <Video className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">No interviews scheduled</h4>
+                  <p className="text-gray-600">No interviews have been scheduled for this application yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {interviews.map((interview) => {
+                    const isPast = new Date(interview.scheduled_date) < new Date();
+                    const isToday = (() => {
+                      const interviewDate = new Date(interview.scheduled_date);
+                      const today = new Date();
+                      return (
+                        interviewDate.getDate() === today.getDate() &&
+                        interviewDate.getMonth() === today.getMonth() &&
+                        interviewDate.getFullYear() === today.getFullYear()
+                      );
+                    })();
+                    
+                    return (
+                      <div 
+                        key={interview.id} 
+                        className={`bg-white border rounded-xl p-6 ${
+                          isToday ? 'border-blue-300 ring-2 ring-blue-100' : 'border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white ${
+                              interview.interview_type === 'phone' ? 'bg-blue-500' :
+                              interview.interview_type === 'video' ? 'bg-purple-500' :
+                              interview.interview_type === 'technical' ? 'bg-green-500' :
+                              interview.interview_type === 'panel' ? 'bg-yellow-500' :
+                              interview.interview_type === 'in_person' ? 'bg-pink-500' :
+                              interview.interview_type === 'final' ? 'bg-red-500' :
+                              'bg-gray-500'
+                            }`}>
+                              {interview.interview_type === 'phone' && <Phone className="h-5 w-5" />}
+                              {interview.interview_type === 'video' && <Video className="h-5 w-5" />}
+                              {interview.interview_type === 'technical' && <Code className="h-5 w-5" />}
+                              {interview.interview_type === 'panel' && <Users className="h-5 w-5" />}
+                              {interview.interview_type === 'in_person' && <Building className="h-5 w-5" />}
+                              {interview.interview_type === 'final' && <CheckCircle className="h-5 w-5" />}
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-900">
+                                {interview.interview_type === 'phone' ? 'Phone Interview' :
+                                 interview.interview_type === 'video' ? 'Video Interview' :
+                                 interview.interview_type === 'technical' ? 'Technical Interview' :
+                                 interview.interview_type === 'panel' ? 'Panel Interview' :
+                                 interview.interview_type === 'in_person' ? 'In-Person Interview' :
+                                 interview.interview_type === 'final' ? 'Final Interview' :
+                                 'Interview'}
+                              </h4>
+                              <div className="flex items-center space-x-2">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  interview.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                                  interview.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                  interview.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                  interview.status === 'rescheduled' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {interview.status === 'scheduled' && <Calendar className="h-3 w-3 mr-1" />}
+                                  {interview.status === 'completed' && <CheckCircle className="h-3 w-3 mr-1" />}
+                                  {interview.status === 'cancelled' && <XSquare className="h-3 w-3 mr-1" />}
+                                  {interview.status === 'rescheduled' && <AlertTriangle className="h-3 w-3 mr-1" />}
+                                  <span className="capitalize">{interview.status}</span>
+                                </span>
+                                {isToday && (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    Today
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-medium text-gray-900">
+                              {new Date(interview.scheduled_date).toLocaleDateString(undefined, {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric'
+                              })}
+                            </div>
+                            <div className="text-gray-600 text-sm">
+                              {new Date(interview.scheduled_date).toLocaleTimeString(undefined, {
+                                hour: 'numeric',
+                                minute: '2-digit'
+                              })}
+                              {' • '}
+                              {interview.duration_minutes} min
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          {interview.location && (
+                            <div className="flex items-center text-gray-600">
+                              <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
+                              <span>{interview.location}</span>
+                            </div>
+                          )}
+                          
+                          {interview.meeting_link && (
+                            <div className="flex items-center text-gray-600">
+                              <Video className="h-4 w-4 mr-2 flex-shrink-0" />
+                              <a
+                                href={interview.meeting_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline truncate max-w-xs"
+                              >
+                                {interview.meeting_link}
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {interview.notes && (
+                          <div className="mt-4 bg-gray-50 p-3 rounded-lg text-sm text-gray-600">
+                            <p className="font-medium text-gray-700 mb-1">Notes:</p>
+                            <p>{interview.notes}</p>
+                          </div>
+                        )}
+                        
+                        {interview.feedback && interview.feedback.length > 0 && profile?.role === 'employer' && (
+                          <div className="mt-4 border-t border-gray-100 pt-4">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-medium text-gray-900">Feedback</h4>
+                              <div className="flex items-center">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className="h-4 w-4"
+                                    fill={interview.feedback[0].rating >= star ? '#FBBF24' : 'none'}
+                                    stroke={interview.feedback[0].rating >= star ? '#FBBF24' : '#D1D5DB'}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            
+                            {interview.feedback[0].recommendation && (
+                              <div className="mt-2 text-sm">
+                                <span className="font-medium text-gray-700">Recommendation: </span>
+                                <span className={`
+                                  ${interview.feedback[0].recommendation === 'strong_yes' ? 'text-green-600' : ''}
+                                  ${interview.feedback[0].recommendation === 'yes' ? 'text-green-600' : ''}
+                                  ${interview.feedback[0].recommendation === 'maybe' ? 'text-yellow-600' : ''}
+                                  ${interview.feedback[0].recommendation === 'no' ? 'text-red-600' : ''}
+                                  ${interview.feedback[0].recommendation === 'strong_no' ? 'text-red-600' : ''}
+                                `}>
+                                  {interview.feedback[0].recommendation === 'strong_yes' && 'Strong Yes'}
+                                  {interview.feedback[0].recommendation === 'yes' && 'Yes'}
+                                  {interview.feedback[0].recommendation === 'maybe' && 'Maybe'}
+                                  {interview.feedback[0].recommendation === 'no' && 'No'}
+                                  {interview.feedback[0].recommendation === 'strong_no' && 'Strong No'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Documents Tab */}
           {activeTab === 'documents' && (
             <div className="max-w-4xl mx-auto">
@@ -774,5 +1001,3 @@ const JobApplicationDetailsModal = ({
     </div>
   );
 };
-
-export default JobApplicationDetailsModal;

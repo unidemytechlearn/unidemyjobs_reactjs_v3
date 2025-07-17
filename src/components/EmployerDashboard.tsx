@@ -46,6 +46,8 @@ import {
   upsertCompany
 } from '../lib/employer';
 import { getApplicationStatusTimeline } from '../lib/applications';
+import InterviewsTab from './InterviewsTab';
+import InterviewScheduleModal from './InterviewScheduleModal';
 
 interface EmployerDashboardProps {
   onNavigate?: (page: string, jobId?: string) => void;
@@ -53,7 +55,7 @@ interface EmployerDashboardProps {
 
 const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
   const { user, profile, isAuthenticated } = useAuthContext();
-  const [activeTab, setActiveTab] = useState<'overview' | 'jobs' | 'applications' | 'company' | 'analytics'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'jobs' | 'applications' | 'interviews' | 'company' | 'analytics'>('overview');
   const [stats, setStats] = useState<any>(null);
   const [company, setCompany] = useState<any>(null);
   const [jobs, setJobs] = useState<any[]>([]);
@@ -71,6 +73,7 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
   const [showCompanyRequiredAlert, setShowCompanyRequiredAlert] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [selectedJobForEdit, setSelectedJobForEdit] = useState<any>(null);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [newJobData, setNewJobData] = useState({
     title: '',
     description: '',
@@ -587,6 +590,7 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
               { id: 'overview', label: 'Overview', icon: BarChart3 },
               { id: 'jobs', label: 'Jobs', icon: Briefcase },
               { id: 'applications', label: 'Applications', icon: Users },
+              { id: 'interviews', label: 'Interviews', icon: Calendar },
               { id: 'company', label: 'Company', icon: Building },
               { id: 'analytics', label: 'Analytics', icon: TrendingUp },
             ].map((tab) => {
@@ -1016,6 +1020,17 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'interviews' && (
+          <div>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Interview Management</h2>
+              <p className="text-gray-600">Schedule and manage interviews with candidates</p>
+            </div>
+            
+            <InterviewsTab onRefresh={() => {}} />
           </div>
         )}
 
@@ -2200,6 +2215,15 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
           </div>
         )}
       </div>
+      
+      {selectedApplication && (
+        <InterviewScheduleModal
+          isOpen={isScheduleModalOpen}
+          onClose={() => setIsScheduleModalOpen(false)}
+          application={selectedApplication}
+          onSuccess={() => {}}
+        />
+      )}
     </div>
   );
 };
