@@ -697,7 +697,7 @@ const JobApplicationDetailsModal = ({
                               {interview.interview_type === 'phone' && <Phone className="h-5 w-5" />}
                               {interview.interview_type === 'video' && <Video className="h-5 w-5" />}
                               {interview.interview_type === 'technical' && <Code className="h-5 w-5" />}
-                              {interview.interview_type === 'panel' && <Users className="h-5 w-5" />}
+                              {interview.interview_type === 'panel' && <Users className="h-5 w-5" />} 
                               {interview.interview_type === 'in_person' && <Building className="h-5 w-5" />}
                               {interview.interview_type === 'final' && <CheckCircle className="h-5 w-5" />}
                             </div>
@@ -805,7 +805,7 @@ const JobApplicationDetailsModal = ({
                                   ${interview.feedback[0].recommendation === 'strong_yes' ? 'text-green-600' : ''}
                                   ${interview.feedback[0].recommendation === 'yes' ? 'text-green-600' : ''}
                                   ${interview.feedback[0].recommendation === 'maybe' ? 'text-yellow-600' : ''}
-                                  ${interview.feedback[0].recommendation === 'no' ? 'text-red-600' : ''}
+                                  ${interview.feedback[0].recommendation === 'no' ? 'text-red-600' : ''} 
                                   ${interview.feedback[0].recommendation === 'strong_no' ? 'text-red-600' : ''}
                                 `}>
                                   {interview.feedback[0].recommendation === 'strong_yes' && 'Strong Yes'}
