@@ -101,12 +101,18 @@ export const getEmployerCompany = async (employerId: string) => {
 // Create or update company
 export const upsertCompany = async (companyData: CompanyData, employerId: string) => {
   try {
-    // Validate required fields
-    if (!companyData.name.trim()) throw new Error('Company name is required');
-    if (!companyData.description.trim()) throw new Error('Company description is required');
-    if (!companyData.industry) throw new Error('Industry is required');
-    if (!companyData.size_range) throw new Error('Company size is required');
-    if (!companyData.location.trim()) throw new Error('Location is required');
+    // Validate required fields with better error messages
+    const validationErrors: Record<string, string> = {};
+    
+    if (!companyData.name?.trim()) validationErrors.name = 'Company name is required';
+    if (!companyData.description?.trim()) validationErrors.description = 'Company description is required';
+    if (!companyData.industry) validationErrors.industry = 'Industry is required';
+    if (!companyData.size_range) validationErrors.size_range = 'Company size is required';
+    if (!companyData.location?.trim()) validationErrors.location = 'Location is required';
+    
+    if (Object.keys(validationErrors).length > 0) {
+      throw { validationErrors };
+    }
 
     // Check if company already exists
     const { data: existingCompany } = await supabase
@@ -121,21 +127,35 @@ export const upsertCompany = async (companyData: CompanyData, employerId: string
       updated_at: new Date().toISOString()
     };
     
-    // Ensure founded_year is a number if provided
-    if (payload.founded_year) payload.founded_year = Number(payload.founded_year);
+    // Ensure founded_year is a number if provided or null if empty
+    if (payload.founded_year) {
+      payload.founded_year = Number(payload.founded_year);
+    } else if (payload.founded_year === '') {
+      payload.founded_year = undefined;
+    }
     
     // If company exists, include its ID
     if (existingCompany) {
       payload.id = existingCompany.id;
     }
     
-    // Ensure arrays are properly formatted
-    if (typeof payload.specialties === 'string') {
-      payload.specialties = (payload.specialties as string).split(',').map(s => s.trim()).filter(s => s.length > 0);
+    // Ensure arrays are properly formatted with better handling
+    if (typeof payload.specialties === 'string' && payload.specialties.trim()) {
+      payload.specialties = (payload.specialties as string)
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+    } else if (payload.specialties === '') {
+      payload.specialties = [];
     }
     
-    if (typeof payload.benefits === 'string') {
-      payload.benefits = (payload.benefits as string).split(',').map(b => b.trim()).filter(b => b.length > 0);
+    if (typeof payload.benefits === 'string' && payload.benefits.trim()) {
+      payload.benefits = (payload.benefits as string)
+        .split(',')
+        .map(b => b.trim())
+        .filter(b => b.length > 0);
+    } else if (payload.benefits === '') {
+      payload.benefits = [];
     }
     
     const { data, error } = await supabase
@@ -148,7 +168,12 @@ export const upsertCompany = async (companyData: CompanyData, employerId: string
     return data;
   } catch (error) {
     console.error('Error upserting company:', error);
-    throw error;
+    // Return validation errors in a structured way
+    if (error && (error as any).validationErrors) {
+      throw { validationErrors: (error as any).validationErrors };
+    } else {
+      throw error;
+    }
   }
 };
 
