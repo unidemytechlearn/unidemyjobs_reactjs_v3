@@ -3,6 +3,7 @@ import { User, Briefcase, Heart, FileText, TrendingUp, Bell, Search, Filter, Map
 import ApplyModal from './ApplyModal';
 import ProfilePage from './ProfilePage';
 import JobApplicationDetailsModal from './JobApplicationDetailsModal';
+import InterviewsTab from './InterviewsTab';
 import { getUserApplications, getApplicationAnalytics, withdrawApplication } from '../lib/applications';
 import { useAuthContext } from './AuthProvider';
 import { getJobs, getUserSavedJobs, saveJob, unsaveJob, isJobSaved } from '../lib/supabase';
@@ -15,7 +16,7 @@ interface DashboardProps {
 
 const Dashboard = ({ onNavigate }: DashboardProps) => {
   const { isAuthenticated, loading, user, profile } = useAuthContext();
-  const [activeTab, setActiveTab] = useState<'overview' | 'browse-jobs' | 'saved-jobs' | 'applications' | 'notifications' | 'profile'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'browse-jobs' | 'saved-jobs' | 'applications' | 'notifications' | 'interviews' | 'profile'>('overview');
   const [applications, setApplications] = useState<any[]>([]);
   const [applicationStats, setApplicationStats] = useState<any>(null);
   const [loadingApplications, setLoadingApplications] = useState(false);
@@ -583,6 +584,19 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                     {applications.length}
                   </span>
                 )}
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('interviews')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'interviews'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Calendar className="h-4 w-4" />
+                <span>Interviews</span>
               </div>
             </button>
             <button
@@ -1163,6 +1177,9 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
             </div>
           </div>
         )}
+
+        {/* Interviews Tab */}
+        {activeTab === 'interviews' && <InterviewsTab />}
 
         {/* Notifications Tab */}
         {activeTab === 'notifications' && <NotificationCenter />}
