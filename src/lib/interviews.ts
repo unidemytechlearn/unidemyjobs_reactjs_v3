@@ -1,7 +1,43 @@
 import { supabase } from './supabase';
 import { createNotification, NotificationTemplates } from './notifications';
 
-// Interface definitions
+// Get application by ID
+export async function getApplicationById(applicationId: string) {
+  try {
+    if (!supabase) {
+      console.error('Supabase client not initialized');
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('applications')
+      .select(`
+        *,
+        job:jobs(
+          id,
+          title,
+          company:companies(
+            id,
+            name,
+            logo_url
+          )
+        )
+      `)
+      .eq('id', applicationId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching application:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error fetching application by ID:', error);
+    throw error;
+  }
+}
+
 // Interface definitions
 export interface InterviewScheduleData {
   application_id: string;
@@ -67,6 +103,7 @@ function getDefaultInterviewTypes() {
 // Schedule an interview
 export async function scheduleInterview(interviewData: InterviewScheduleData) {
   try {
+    console.log("Scheduling interview with data:", interviewData);
     if (!supabase) {
       console.error('Supabase client not initialized');
       throw new Error('Database connection not available');
@@ -90,13 +127,25 @@ export async function scheduleInterview(interviewData: InterviewScheduleData) {
       .select(`
         *,
         application:applications (
-          *,
-          job:jobs (*)
+          id,
+          user_id,
+          first_name,
+          last_name,
+          email,
+          job:jobs (
+            id,
+            title,
+            company:companies (
+              id,
+              name
+            )
+          )
         )
       `)
       .single();
 
     if (error) throw error;
+    console.log("Interview scheduled successfully:", data);
 
     // Send notification if requested
     if (interviewData.send_notification && data.application) {
@@ -522,21 +571,47 @@ export async function getInterviewDetails(interviewId: string) {
       return null;
     }
 
-    const { data, error } = await supabase
+    // First get the interview schedule
+    const { data: interviewData, error: interviewError } = await supabase
       .from('interview_schedules')
       .select(`
         *,
-        application:applications!left (
-          *,
-          job:jobs!left (*)
-        ),
-        feedback:interview_feedback!left (*)
+        application:applications (
+          id,
+          user_id,
+          first_name,
+          last_name,
+          email,
+          job:jobs (
+            id,
+            title,
+            company:companies (
+              id,
+              name
+            )
+          )
+        )
       `)
       .eq('id', interviewId)
       .single();
 
-    if (error) throw error;
-    return data;
+    if (interviewError) throw interviewError;
+    
+    // Then get feedback separately
+    const { data: feedbackData, error: feedbackError } = await supabase
+      .from('interview_feedback')
+      .select('*')
+      .eq('interview_id', interviewId);
+      
+    if (feedbackError && feedbackError.code !== 'PGRST116') {
+      console.error('Error fetching feedback:', feedbackError);
+    }
+    
+    // Combine the data
+    return {
+      ...interviewData,
+      feedback: feedbackData || []
+    };
   } catch (error) {
     console.error('Error fetching interview details:', error);
     throw error;

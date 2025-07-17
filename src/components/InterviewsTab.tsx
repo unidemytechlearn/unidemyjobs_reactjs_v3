@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, Video, Users, Building, Phone, CheckCircle, AlertTriangle, MoreHorizontal, Plus, Search, Filter, ChevronDown, ChevronUp, Star, MessageSquare, CheckSquare, XSquare } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
-import { getEmployerInterviews, getInterviewTypes, getCandidateInterviews, updateInterviewStatus, cancelInterview, rescheduleInterview } from '../lib/interviews';
+import { getEmployerInterviews, getInterviewTypes, getCandidateInterviews, updateInterviewStatus, cancelInterview, rescheduleInterview, getApplicationById } from '../lib/interviews';
 import InterviewScheduleModal from './InterviewScheduleModal';
 import InterviewFeedbackModal from './InterviewFeedbackModal';
 
@@ -27,6 +27,7 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
   const [sortBy, setSortBy] = useState('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [loadingApplication, setLoadingApplication] = useState(false);
 
   // Load interviews
   useEffect(() => {
@@ -127,6 +128,31 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
   const handleScheduleInterview = (application: any) => {
     setSelectedApplication(application);
     setIsScheduleModalOpen(true);
+    console.log("Opening schedule modal with application:", application);
+  };
+
+  const handleScheduleButtonClick = async () => {
+    if (!applicationId) {
+      setError('Please select an application first to schedule an interview');
+      return;
+    }
+    
+    setLoadingApplication(true);
+    try {
+      // Fetch the application details first
+      const application = await getApplicationById(applicationId);
+      if (application) {
+        console.log("Fetched application for interview:", application);
+        handleScheduleInterview(application);
+      } else {
+        setError('Could not find application details');
+      }
+    } catch (err) {
+      console.error('Error fetching application:', err);
+      setError('Failed to load application details');
+    } finally {
+      setLoadingApplication(false);
+    }
   };
 
   const handleAddFeedback = (interview: any) => {
@@ -311,20 +337,27 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
             <button
               onClick={() => {
                 if (applicationId) {
-                  // Find the application object
-                  const application = interviews.find(i => i.application_id === applicationId)?.application;
-                  if (application) {
-                    handleScheduleInterview(application);
-                  }
+                  handleScheduleButtonClick();
                 } else {
                   setError('Please select an application first to schedule an interview');
                 }
               }}
-              className="flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              disabled={!applicationId}
+              className={`flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors ${
+                loadingApplication ? 'opacity-75 cursor-wait' : ''
+              }`}
+              disabled={!applicationId || loadingApplication}
             >
-              <Plus className="h-4 w-4" />
-              <span>Schedule Interview</span>
+              {loadingApplication ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Loading...</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4" />
+                  <span>Schedule Interview</span>
+                </>
+              )}
             </button>
           )}
           
@@ -416,10 +449,7 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
             <button
               onClick={() => {
                 // Find the application object
-                const application = interviews.find(i => i.application_id === applicationId)?.application;
-                if (application) {
-                  handleScheduleInterview(application);
-                }
+                handleScheduleButtonClick();
               }}
               className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center"
             >

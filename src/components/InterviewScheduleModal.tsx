@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, MapPin, Video, Users, MessageSquare, Check, AlertCircle, Mail } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
-import { scheduleInterview, getInterviewTypes, InterviewScheduleData } from '../lib/interviews';
+import { scheduleInterview, getInterviewTypes, InterviewScheduleData, getInterviewDetails } from '../lib/interviews';
 
 interface InterviewScheduleModalProps {
   isOpen: boolean;
@@ -31,6 +31,7 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
 
   // Load interview types
   useEffect(() => {
+    console.log("InterviewScheduleModal opened with application:", application);
     const loadInterviewTypes = async () => {
       try {
         setLoading(true);
@@ -111,10 +112,11 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
     
     try {
       // Combine date and time
+      console.log("Submitting interview with form data:", formData);
       const scheduledDateTime = new Date(`${formData.scheduledDate}T${formData.scheduledTime}`);
       
       // Create interview schedule
-      await scheduleInterview({
+      const interviewData = {
         application_id: application.id,
         interview_type: formData.interviewType,
         scheduled_date: scheduledDateTime.toISOString(),
@@ -125,7 +127,10 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
         status: 'scheduled',
         created_by: user.id,
         send_notification: formData.sendNotification
-      });
+      };
+      
+      console.log("Scheduling interview with data:", interviewData);
+      await scheduleInterview(interviewData);
       
       setIsScheduled(true);
       setTimeout(() => {
@@ -224,15 +229,14 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Interview Type *
                 </label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {interviewTypes.map((type) => (
                     <label
                       key={type.id}
-                      className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${
-                        formData.interviewType === type.id
-                          ? `border-2 ${type.color.replace('#', 'border-')} bg-${type.color.replace('#', '')}/10`
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                      className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all 
+                        ${formData.interviewType === type.id 
+                          ? 'border-2 border-blue-500 bg-blue-50' 
+                          : 'border-gray-200 hover:border-gray-300'}`}
                     >
                       <input
                         type="radio"
@@ -244,8 +248,8 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                       />
                       <div className="flex items-center space-x-3">
                         <div
-                          className={`w-10 h-10 rounded-lg flex items-center justify-center ${type.color.replace('#', 'bg-')}`}
-                          style={{ backgroundColor: type.color || '#6B7280' }}
+                          className="w-10 h-10 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: type.color || '#3B82F6' }}
                         >
                           {type.id === 'phone' && <Phone className="h-5 w-5 text-white" />}
                           {type.id === 'video' && <Video className="h-5 w-5 text-white" />}
@@ -400,7 +404,8 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                   <h4 className="font-medium text-gray-900 mb-2">Interview Summary</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 rounded-full" style={{ backgroundColor: selectedInterviewType.color }}>
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center" 
+                           style={{ backgroundColor: selectedInterviewType?.color || '#3B82F6' }}>
                         <div className="flex items-center justify-center h-full text-white">
                           {selectedInterviewType?.id === 'phone' ? <Phone className="h-3 w-3" /> :
                            selectedInterviewType?.id === 'video' ? <Video className="h-3 w-3" /> :
@@ -411,7 +416,7 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                            <Calendar className="h-3 w-3" />}
                         </div>
                       </div>
-                      <span className="font-medium">{selectedInterviewType.name}</span>
+                      <span className="font-medium">{selectedInterviewType?.name || 'Interview'}</span>
                     </div>
                     {formData.scheduledDate && formData.scheduledTime && (
                       <p>
