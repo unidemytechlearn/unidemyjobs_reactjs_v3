@@ -312,20 +312,19 @@ export const getProfile = async (userId: string): Promise<Profile | null> => {
     .from('profiles')
     .select()
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      // No profile found, return null
-      console.warn(`No profile found for user ${userId}`);
-      return null;
-    }
     console.error('Error fetching profile:', error);
-    return null;
+    throw error;
   }
   
-  // Log successful profile retrieval but not the sensitive data
-  console.log('Profile retrieved successfully for user:', userId);
+  if (data) {
+    // Log successful profile retrieval but not the sensitive data
+    console.log('Profile retrieved successfully for user:', userId);
+  } else {
+    console.warn(`No profile found for user ${userId}`);
+  }
   
   return data;
 };
