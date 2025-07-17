@@ -30,7 +30,10 @@ import {
   AlertTriangle,
   Phone,
   Mail,
-  Award
+  Award,
+  Image,
+  Save,
+  Heart
 } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
 import { 
@@ -71,6 +74,16 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
   const [showCompanyRequiredAlert, setShowCompanyRequiredAlert] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [selectedJobForEdit, setSelectedJobForEdit] = useState<any>(null);
+  const [isEditingCompany, setIsEditingCompany] = useState(false);
+  const [isCreatingJob, setIsCreatingJob] = useState(false);
+  const [isEditingJob, setIsEditingJob] = useState(false);
+  const [isCompanyFormSubmitting, setIsCompanyFormSubmitting] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [selectedApplication, setSelectedApplication] = useState<any>(null);
+  const [isViewingApplication, setIsViewingApplication] = useState(false);
+  const [isUpdatingApplication, setIsUpdatingApplication] = useState(false);
+  const [companyFormErrors, setCompanyFormErrors] = useState<Record<string, string>>({});
+  const [alertMessage, setAlertMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [newJobData, setNewJobData] = useState({
     title: '',
     description: '',
@@ -96,6 +109,35 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
     specialties: [] as string[],
     benefits: [] as string[],
     culture_description: ''
+  });
+  const [companyFormData, setCompanyFormData] = useState({
+    name: '',
+    description: '',
+    industry: '',
+    size_range: '',
+    location: '',
+    website_url: '',
+    logo_url: '',
+    founded_year: undefined,
+    specialties: [],
+    benefits: [],
+    culture_description: '',
+  });
+
+  const [jobFormData, setJobFormData] = useState({
+    title: '',
+    description: '',
+    location: '',
+    job_type: '',
+    experience_level: '',
+    salary_min: '',
+    salary_max: '',
+    is_remote: false,
+    requirements: '',
+    benefits: '',
+    skills_required: '',
+    application_deadline: '',
+    is_featured: false,
   });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -210,6 +252,72 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
       return () => clearTimeout(timer);
     }
   }, [error, success]);
+
+  const handleCompanyFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setCompanyFormData({ ...companyFormData, [name]: value });
+    
+    // Clear specific field error when user starts typing
+    if (companyFormErrors[name]) {
+      setCompanyFormErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const handleArrayInputChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'specialties' | 'benefits') => {
+    const { value } = e.target;
+    setCompanyFormData({ 
+      ...companyFormData, 
+      [field]: value.split(',').map(item => item.trim()).filter(Boolean)
+    });
+  };
+
+  const handleJobFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    setJobFormData({
+      ...jobFormData,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+    });
+  };
+
+  const handleSaveCompany = async () => {
+    // Validate form
+    const errors: Record<string, string> = {};
+    if (!companyFormData.name.trim()) errors.name = 'Company name is required';
+    if (!companyFormData.description.trim()) errors.description = 'Company description is required';
+    if (!companyFormData.industry) errors.industry = 'Industry is required';
+    if (!companyFormData.size_range) errors.size_range = 'Company size is required';
+    if (!companyFormData.location.trim()) errors.location = 'Location is required';
+
+    if (Object.keys(errors).length > 0) {
+      setCompanyFormErrors(errors);
+      return;
+    }
+
+    setIsCompanyFormSubmitting(true);
+    try {
+      if (!user) throw new Error('User not authenticated');
+
+      await upsertCompany(companyFormData, user.id);
+      
+      // Refresh company data
+      const updatedCompany = await getEmployerCompany(user.id);
+      setCompany(updatedCompany);
+      
+      setIsEditingCompany(false);
+      setAlertMessage({
+        type: 'success',
+        message: company ? 'Company profile updated successfully!' : 'Company profile created successfully!'
+      });
+    } catch (error) {
+      console.error('Error saving company:', error);
+      setAlertMessage({
+        type: 'error',
+        message: `Failed to save company profile: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+    } finally {
+      setIsCompanyFormSubmitting(false);
+    }
+  };
 
   const handleStatusUpdate = async (applicationId: string, newStatus: string) => {
     if (!user) return;
@@ -387,6 +495,18 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
     setIsEditJobModalOpen(true);
   };
 
+  const handleUpdateApplicationStatus = async (applicationId: string, newStatus: string) => {
+    setIsUpdatingApplication(true);
+    try {
+      await updateApplicationStatus(applicationId, newStatus, user?.id || '');
+      // Refresh applications or update local state
+    } catch (error) {
+      console.error('Error updating application status:', error);
+    } finally {
+      setIsUpdatingApplication(false);
+    }
+  };
+
   // Helper functions for form arrays
   const addFormArrayItem = (formState: any, setFormState: React.Dispatch<React.SetStateAction<any>>, field: string) => {
     setFormState({
@@ -431,6 +551,543 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
     ).join(' ');
   };
 
+  // Company Profile Modal
+  const CompanyProfileModal = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-xl">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <div>
+            <div className="flex items-center space-x-3">
+              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 rounded-lg">
+                <Building className="h-6 w-6 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {company ? 'Edit Company Profile' : 'Create Company Profile'}
+              </h2>
+            </div>
+            <p className="text-gray-600 mt-2">
+              {company ? 'Update your company information to attract the best candidates' : 'Complete your company profile to start posting jobs'}
+            </p>
+          </div>
+          <button
+            onClick={() => setIsEditingCompany(false)}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <div className="p-6 overflow-y-auto max-h-[60vh] bg-gray-50">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
+            <form className="space-y-6">
+              {/* Basic Information Section */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <Building className="h-5 w-5 mr-2 text-blue-600" />
+                  Basic Information
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Company Name <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                      <input
+                        type="text"
+                        name="name"
+                        value={companyFormData.name}
+                        onChange={handleCompanyFormChange}
+                        className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          companyFormErrors.name ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                        }`}
+                        placeholder="e.g., Acme Corporation"
+                      />
+                    </div>
+                    {companyFormErrors.name && <p className="text-red-600 text-sm mt-1">{companyFormErrors.name}</p>}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Industry <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="industry"
+                      value={companyFormData.industry}
+                      onChange={handleCompanyFormChange}
+                      className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        companyFormErrors.industry ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <option value="">Select industry</option>
+                      {[
+                        'Technology', 'Healthcare', 'Finance', 'Education', 'Manufacturing',
+                        'Retail', 'Consulting', 'Real Estate', 'Media & Entertainment', 
+                        'Marketing', 'Design', 'Hospitality', 'Transportation', 'Construction',
+                        'Legal Services', 'Non-Profit', 'Agriculture', 'Energy', 'Other'
+                      ].map(industry => (
+                        <option key={industry} value={industry}>{industry}</option>
+                      ))}
+                    </select>
+                    {companyFormErrors.industry && <p className="text-red-600 text-sm mt-1">{companyFormErrors.industry}</p>}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Company Size <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="size_range"
+                    value={companyFormData.size_range}
+                    onChange={handleCompanyFormChange}
+                    className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      companyFormErrors.size_range ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                    }`}
+                  >
+                    <option value="">Select company size</option>
+                    {['1-50', '50-200', '200-500', '500-1000', '1000-5000', '5000+'].map(size => (
+                      <option key={size} value={size}>{size} employees</option>
+                    ))}
+                  </select>
+                  {companyFormErrors.size_range && <p className="text-red-600 text-sm mt-1">{companyFormErrors.size_range}</p>}
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Location <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                    <input
+                      type="text"
+                      name="location"
+                      value={companyFormData.location}
+                      onChange={handleCompanyFormChange}
+                      className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        companyFormErrors.location ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                      }`}
+                      placeholder="e.g., San Francisco, CA"
+                    />
+                  </div>
+                  {companyFormErrors.location && <p className="text-red-600 text-sm mt-1">{companyFormErrors.location}</p>}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Website URL
+                  </label>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                    <input
+                      type="url"
+                      name="website_url"
+                      value={companyFormData.website_url}
+                      onChange={handleCompanyFormChange}
+                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="https://yourcompany.com"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Logo URL
+                  </label>
+                  <div className="relative">
+                    <Image className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                    <input
+                      type="url"
+                      name="logo_url"
+                      value={companyFormData.logo_url}
+                      onChange={handleCompanyFormChange}
+                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="https://example.com/logo.png"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Recommended size: 200x200px, square format</p>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Founded Year
+                </label>
+                <input
+                  type="number"
+                  name="founded_year"
+                  value={companyFormData.founded_year || ''}
+                  onChange={handleCompanyFormChange}
+                  min="1900"
+                  max={new Date().getFullYear()}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder={`e.g., ${new Date().getFullYear() - 5}`}
+                />
+              </div>
+
+              {/* Company Description Section */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <FileText className="h-5 w-5 mr-2 text-blue-600" />
+                  Company Description
+                </h3>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    name="description"
+                    value={companyFormData.description}
+                    onChange={handleCompanyFormChange}
+                    rows={4}
+                    className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
+                      companyFormErrors.description ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                    }`}
+                    placeholder="Describe your company, mission, and what makes it special..."
+                  />
+                  {companyFormErrors.description && <p className="text-red-600 text-sm mt-1">{companyFormErrors.description}</p>}
+                  <p className="text-xs text-gray-500 mt-1">
+                    {companyFormData.description.length}/500 characters
+                  </p>
+                </div>
+                
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Company Culture
+                  </label>
+                  <textarea
+                    name="culture_description"
+                    value={companyFormData.culture_description}
+                    onChange={handleCompanyFormChange}
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    placeholder="Describe your company culture, values, and work environment..."
+                  />
+                </div>
+              </div>
+              
+              {/* Specialties and Benefits Section */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <Award className="h-5 w-5 mr-2 text-blue-600" />
+                  Specialties & Benefits
+                </h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Specialties (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      name="specialties"
+                      value={Array.isArray(companyFormData.specialties) ? companyFormData.specialties.join(', ') : ''}
+                      onChange={(e) => handleArrayInputChange(e, 'specialties')}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g., Cloud Computing, Machine Learning, Mobile Development"
+                    />
+                    {Array.isArray(companyFormData.specialties) && companyFormData.specialties.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {companyFormData.specialties.map((specialty, index) => (
+                          <span key={index} className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                            {specialty}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Benefits (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      name="benefits"
+                      value={Array.isArray(companyFormData.benefits) ? companyFormData.benefits.join(', ') : ''}
+                      onChange={(e) => handleArrayInputChange(e, 'benefits')}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g., Health Insurance, Remote Work, Flexible Hours"
+                    />
+                    {Array.isArray(companyFormData.benefits) && companyFormData.benefits.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {companyFormData.benefits.map((benefit, index) => (
+                          <span key={index} className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                            {benefit}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Preview Section */}
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                  <Eye className="h-4 w-4 mr-2 text-gray-600" />
+                  Preview
+                </h4>
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
+                    {companyFormData.logo_url ? (
+                      <img 
+                        src={companyFormData.logo_url} 
+                        alt="Company Logo" 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=64&h=64&fit=crop';
+                        }}
+                      />
+                    ) : (
+                      <Building className="h-8 w-8 text-gray-400" />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900">{companyFormData.name || 'Company Name'}</h3>
+                    <div className="flex items-center text-sm text-gray-600 space-x-3 mt-1">
+                      {companyFormData.industry && (
+                        <span className="flex items-center">
+                          <Briefcase className="h-3 w-3 mr-1" />
+                          {companyFormData.industry}
+                        </span>
+                      )}
+                      {companyFormData.location && (
+                        <span className="flex items-center">
+                          <MapPin className="h-3 w-3 mr-1" />
+                          {companyFormData.location}
+                        </span>
+                      )}
+                      {companyFormData.size_range && (
+                        <span className="flex items-center">
+                          <Users className="h-3 w-3 mr-1" />
+                          {companyFormData.size_range}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
+          <div className="text-sm text-gray-500">
+            <span className="text-red-500">*</span> Required fields
+          </div>
+          <div className="flex space-x-3">
+            <button
+              onClick={() => setIsEditingCompany(false)}
+              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium flex items-center"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveCompany}
+              disabled={isCompanyFormSubmitting}
+              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+            >
+              {isCompanyFormSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  <span>Save Company</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Company Profile Section
+  const CompanyProfileSection = () => {
+    if (!company) {
+      return null;
+    }
+
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Company Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
+          <div className="flex items-center space-x-4">
+            <div className="w-20 h-20 bg-white rounded-xl overflow-hidden flex items-center justify-center shadow-lg">
+              {company.logo_url ? (
+                <img 
+                  src={company.logo_url} 
+                  alt={`${company.name} logo`} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://images.pexels.com/photos/450035/pexels-photo-450035.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop';
+                  }}
+                />
+              ) : (
+                <Building className="h-10 w-10 text-gray-400" />
+              )}
+            </div>
+            
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">{company.name}</h2>
+                <button
+                  onClick={() => {
+                    setCompanyFormData({
+                      ...company,
+                    });
+                    setIsEditingCompany(true);
+                  }}
+                  className="bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-colors font-medium flex items-center space-x-2"
+                >
+                  <Edit className="h-4 w-4" />
+                  <span>Edit Profile</span>
+                </button>
+              </div>
+              
+              <div className="flex items-center space-x-4 mt-2 text-blue-100">
+                {company.industry && (
+                  <div className="flex items-center">
+                    <Briefcase className="h-4 w-4 mr-1" />
+                    <span>{company.industry}</span>
+                  </div>
+                )}
+                {company.location && (
+                  <div className="flex items-center">
+                    <MapPin className="h-4 w-4 mr-1" />
+                    <span>{company.location}</span>
+                  </div>
+                )}
+                {company.size_range && (
+                  <div className="flex items-center">
+                    <Users className="h-4 w-4 mr-1" />
+                    <span>{company.size_range} employees</span>
+                  </div>
+                )}
+                {company.founded_year && (
+                  <div className="flex items-center">
+                    <Calendar className="h-4 w-4 mr-1" />
+                    <span>Founded {company.founded_year}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Company Details */}
+        <div className="p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <FileText className="h-5 w-5 mr-2 text-blue-600" />
+                About {company.name}
+              </h3>
+              
+              <div className="prose prose-sm max-w-none text-gray-600">
+                <p className="whitespace-pre-wrap">{company.description}</p>
+              </div>
+              
+              {company.culture_description && (
+                <div className="mt-6">
+                  <h4 className="font-medium text-gray-900 mb-2">Company Culture</h4>
+                  <p className="text-gray-600 whitespace-pre-wrap">{company.culture_description}</p>
+                </div>
+              )}
+              
+              {company.website_url && (
+                <div className="mt-6">
+                  <a 
+                    href={company.website_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    <Globe className="h-4 w-4" />
+                    <span>Visit Website</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              )}
+            </div>
+            
+            <div>
+              <div className="space-y-6">
+                {Array.isArray(company.specialties) && company.specialties.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                      <Award className="h-4 w-4 mr-2 text-blue-600" />
+                      Specialties
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {company.specialties.map((specialty, index) => (
+                        <span key={index} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                          {specialty}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {Array.isArray(company.benefits) && company.benefits.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                      <Heart className="h-4 w-4 mr-2 text-red-600" />
+                      Benefits
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {company.benefits.map((benefit, index) => (
+                        <span key={index} className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                          {benefit}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                  <h4 className="font-medium text-gray-900 mb-3">Company Stats</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Total Jobs</p>
+                      <p className="font-semibold text-gray-900">{stats?.total_jobs || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Active Jobs</p>
+                      <p className="font-semibold text-gray-900">{stats?.active_jobs || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Total Applications</p>
+                      <p className="font-semibold text-gray-900">{stats?.total_applications || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Pending Applications</p>
+                      <p className="font-semibold text-gray-900">{stats?.pending_applications || 0}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (!isAuthenticated || profile?.role !== 'employer') {
     return (
       <div className="min-h-screen bg-gray-50 pt-16">
@@ -463,6 +1120,120 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Alert Message */}
+        {alertMessage && (
+          <div className={`mb-6 p-4 rounded-xl ${
+            alertMessage.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+          }`}>
+            <div className="flex items-center space-x-2">
+              {alertMessage.type === 'success' ? (
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-red-600" />
+              )}
+              <p className={`text-sm ${alertMessage.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
+                {alertMessage.message}
+              </p>
+              <button 
+                onClick={() => setAlertMessage(null)}
+                className={`ml-auto ${alertMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Dashboard Header */}
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Employer Dashboard</h1>
+              <p className="text-gray-600">Manage your jobs and applications</p>
+            </div>
+            
+            <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-3">
+              {!company && (
+                <button
+                  onClick={() => {
+                    setCompanyFormData({
+                      name: '',
+                      description: '',
+                      industry: '',
+                      size_range: '',
+                      location: '',
+                      website_url: '',
+                      logo_url: '',
+                      founded_year: undefined,
+                      specialties: [],
+                      benefits: [],
+                      culture_description: '',
+                    });
+                    setIsEditingCompany(true);
+                  }}
+                  className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-6 py-3 rounded-xl hover:from-yellow-600 hover:to-orange-600 transition-all font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 animate-pulse"
+                >
+                  <div className="flex items-center space-x-2">
+                    <Building className="h-5 w-5" />
+                    <span>Create Company Profile</span>
+                  </div>
+                </button>
+              )}
+              
+              <button
+                onClick={() => {
+                  if (!company) {
+                    setAlertMessage({
+                      type: 'error',
+                      message: 'Please create a company profile first before posting jobs.'
+                    });
+                    return;
+                  }
+                  setJobFormData({
+                    title: '',
+                    description: '',
+                    location: '',
+                    job_type: '',
+                    experience_level: '',
+                    salary_min: '',
+                    salary_max: '',
+                    is_remote: false,
+                    requirements: '',
+                    benefits: '',
+                    skills_required: '',
+                    application_deadline: '',
+                    is_featured: false,
+                  });
+                  setIsCreatingJob(true);
+                }}
+                disabled={!company}
+                className={`${
+                  company 
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white' 
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                } px-6 py-3 rounded-xl transition-all font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center space-x-2`}
+              >
+                <Plus className="h-5 w-5" />
+                <span>Post New Job</span>
+              </button>
+            </div>
+          </div>
+          
+          {!company && (
+            <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+              <div className="flex items-start space-x-3">
+                <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                <div>
+                  <h3 className="font-medium text-yellow-800">Company Profile Required</h3>
+                  <p className="text-yellow-700 text-sm mt-1">
+                    You need to create a company profile before you can post jobs. This helps candidates learn about your company.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Error and Success Messages */}
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 flex items-start">
@@ -1154,6 +1925,52 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Company Profile */}
+        {company ? (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Company Profile</h2>
+            <CompanyProfileSection />
+          </div>
+        ) : (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Company Profile</h2>
+            <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-200">
+              <div className="text-center py-8">
+                <Building className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-xl font-medium text-gray-900 mb-2">No Company Profile</h3>
+                <p className="text-gray-600 mb-6 max-w-lg mx-auto">
+                  Create your company profile to start posting jobs and receiving applications. 
+                  A complete profile helps attract the best candidates.
+                </p>
+                <button
+                  onClick={() => {
+                    setCompanyFormData({
+                      name: '',
+                      description: '',
+                      industry: '',
+                      size_range: '',
+                      location: '',
+                      website_url: '',
+                      logo_url: '',
+                      founded_year: undefined,
+                      specialties: [],
+                      benefits: [],
+                      culture_description: '',
+                    });
+                    setIsEditingCompany(true);
+                  }}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                >
+                  <div className="flex items-center space-x-2">
+                    <Building className="h-5 w-5" />
+                    <span>Create Company Profile</span>
+                  </div>
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -2199,6 +3016,20 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
             </div>
           </div>
         )}
+
+        {/* Modals */}
+        {isEditingCompany && <CompanyProfileModal />}
+        {isCreatingJob && <CreateJobModal />}
+        {isEditingJob && selectedJob && <EditJobModal />}
+        {isViewingApplication && selectedApplication && 
+          <JobApplicationDetailsModal
+            isOpen={isViewingApplication}
+            onClose={() => setIsViewingApplication(false)}
+            application={selectedApplication}
+            onWithdraw={handleUpdateApplicationStatus}
+            isWithdrawing={isUpdatingApplication}
+          />
+        }
       </div>
     </div>
   );
