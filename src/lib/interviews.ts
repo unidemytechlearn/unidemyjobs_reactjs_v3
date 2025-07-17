@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { createNotification, NotificationTemplates } from './notifications';
 
+// Interface definitions
 export interface InterviewScheduleData {
   application_id: string;
   interview_type: string;
@@ -25,7 +26,7 @@ export interface InterviewFeedbackData {
   created_by: string;
 }
 
-// Get interview types
+// Get interview types from the database
 export async function getInterviewTypes() {
   try {
     const { data, error } = await supabase
@@ -37,7 +38,15 @@ export async function getInterviewTypes() {
     return data || [];
   } catch (error) {
     console.error('Error fetching interview types:', error);
-    throw error;
+    // Return default interview types if database query fails
+    return [
+      { id: 'phone', name: 'Phone Interview', description: 'Initial screening call', color: '#3B82F6', order_index: 1 },
+      { id: 'video', name: 'Video Interview', description: 'Remote video interview', color: '#8B5CF6', order_index: 2 },
+      { id: 'technical', name: 'Technical Interview', description: 'Technical assessment', color: '#10B981', order_index: 3 },
+      { id: 'panel', name: 'Panel Interview', description: 'Interview with multiple team members', color: '#F59E0B', order_index: 4 },
+      { id: 'in_person', name: 'In-Person Interview', description: 'On-site interview', color: '#EC4899', order_index: 5 },
+      { id: 'final', name: 'Final Interview', description: 'Final decision round', color: '#EF4444', order_index: 6 }
+    ];
   }
 }
 
@@ -62,16 +71,8 @@ export async function scheduleInterview(interviewData: InterviewScheduleData) {
       .select(`
         *,
         application:applications (
-          id,
-          user_id,
-          job:jobs (
-            id,
-            title,
-            company:companies (
-              id,
-              name
-            )
-          )
+          *,
+          job:jobs (*)
         )
       `)
       .single();
@@ -162,16 +163,8 @@ export async function rescheduleInterview(
       .select(`
         *,
         application:applications (
-          id,
-          user_id,
-          job:jobs (
-            id,
-            title,
-            company:companies (
-              id,
-              name
-            )
-          )
+          *,
+          job:jobs (*)
         )
       `)
       .single();
@@ -495,21 +488,8 @@ export async function getInterviewDetails(interviewId: string) {
       .select(`
         *,
         application:applications (
-          id,
-          user_id,
-          first_name,
-          last_name,
-          email,
-          phone,
-          job:jobs (
-            id,
-            title,
-            company:companies (
-              id,
-              name,
-              logo_url
-            )
-          )
+          *,
+          job:jobs (*)
         ),
         feedback:interview_feedback (*)
       `)
@@ -535,18 +515,8 @@ export async function getUpcomingInterviews(userId: string, role: 'employer' | '
         .select(`
           *,
           application:applications (
-            id,
-            first_name,
-            last_name,
-            job:jobs!inner (
-              id,
-              title,
-              created_by,
-              company:companies (
-                name,
-                logo_url
-              )
-            )
+            *,
+            job:jobs!inner (*)
           )
         `)
         .eq('application.job.created_by', userId)
@@ -563,16 +533,8 @@ export async function getUpcomingInterviews(userId: string, role: 'employer' | '
         .select(`
           *,
           application:applications!inner (
-            id,
-            user_id,
-            job:jobs (
-              id,
-              title,
-              company:companies (
-                name,
-                logo_url
-              )
-            )
+            *,
+            job:jobs (*)
           )
         `)
         .eq('application.user_id', userId)
@@ -598,14 +560,8 @@ export async function getInterviewStatistics(employerId: string) {
     const { data, error } = await supabase
       .from('interview_schedules')
       .select(`
-        id,
-        status,
-        scheduled_date,
-        application:applications (
-          job:jobs!inner (
-            created_by
-          )
-        )
+        *,
+        application:applications (job:jobs!inner(*))
       `)
       .eq('application.job.created_by', employerId);
 
@@ -614,8 +570,8 @@ export async function getInterviewStatistics(employerId: string) {
     const stats = {
       total: data.length,
       upcoming: data.filter(i => i.status === 'scheduled' && new Date(i.scheduled_date) > new Date()).length,
-      completed: data.filter(i => i.status === 'completed').length,
-      cancelled: data.filter(i => i.status === 'cancelled').length,
+      completed: data.filter(i => i.status === 'completed').length || 0,
+      cancelled: data.filter(i => i.status === 'cancelled').length || 0,
       today: data.filter(i => {
         const interviewDate = new Date(i.scheduled_date);
         const today = new Date();
@@ -624,7 +580,7 @@ export async function getInterviewStatistics(employerId: string) {
           interviewDate.getMonth() === today.getMonth() &&
           interviewDate.getFullYear() === today.getFullYear()
         );
-      }).length
+      }).length || 0
     };
 
     return stats;
