@@ -78,7 +78,6 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
   const [isCreatingJob, setIsCreatingJob] = useState(false);
   const [isEditingJob, setIsEditingJob] = useState(false);
   const [isCompanyFormSubmitting, setIsCompanyFormSubmitting] = useState(false);
-  const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [isViewingApplication, setIsViewingApplication] = useState(false);
   const [isUpdatingApplication, setIsUpdatingApplication] = useState(false);
   const [companyFormErrors, setCompanyFormErrors] = useState<Record<string, string>>({});
