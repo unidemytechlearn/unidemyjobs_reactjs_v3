@@ -5,7 +5,7 @@ import { createNotification, NotificationTemplates } from './notifications';
 const DEBUG = true; 
 
 // Debug logger
-const debug = (...args: any[]) => {
+export const debug = (...args: any[]) => {
   if (DEBUG) {
     console.log('[Interviews]', ...args);
   }
