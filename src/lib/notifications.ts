@@ -234,36 +234,6 @@ export const NotificationTemplates = {
     type: 'job_alert' as const
   }),
 
-  INTERVIEW_SCHEDULED: (jobTitle: string, companyName: string, interviewDate: string, interviewType: string) => ({
-    title: 'Interview Scheduled',
-    message: `You have a ${interviewType} interview scheduled for ${jobTitle} at ${companyName} on ${interviewDate}.`,
-    type: 'interview_scheduled' as const
-  }),
-
-  INTERVIEW_RESCHEDULED: (jobTitle: string, companyName: string, interviewDate: string) => ({
-    title: 'Interview Rescheduled',
-    message: `Your interview for ${jobTitle} at ${companyName} has been rescheduled to ${interviewDate}.`,
-    type: 'interview_updated' as const
-  }),
-
-  INTERVIEW_CANCELLED: (jobTitle: string, companyName: string) => ({
-    title: 'Interview Cancelled',
-    message: `Your interview for ${jobTitle} at ${companyName} has been cancelled.`,
-    type: 'interview_updated' as const
-  }),
-
-  INTERVIEW_REMINDER: (jobTitle: string, companyName: string, interviewDate: string) => ({
-    title: 'Interview Reminder',
-    message: `Reminder: You have an interview for ${jobTitle} at ${companyName} scheduled for ${interviewDate}.`,
-    type: 'interview_reminder' as const
-  }),
-
-  INTERVIEW_FEEDBACK_AVAILABLE: (jobTitle: string, companyName: string) => ({
-    title: 'Interview Feedback Available',
-    message: `Feedback for your interview for ${jobTitle} at ${companyName} is now available.`,
-    type: 'interview_feedback' as const
-  }),
-
   INTERVIEW_SCHEDULED: (jobTitle: string, companyName: string, interviewDate: string) => ({
     title: 'Interview Scheduled',
     message: `Interview scheduled for ${jobTitle} at ${companyName} on ${interviewDate}.`,
@@ -296,11 +266,7 @@ export function getNotificationIcon(type: Notification['type']): string {
     application_update: '📋',
     profile_view: '👁️',
     system: '🔔',
-    marketing: '📢',
-    interview_scheduled: '📅',
-    interview_updated: '🔄',
-    interview_reminder: '⏰',
-    interview_feedback: '📝'
+    marketing: '📢'
   };
   return icons[type] || '🔔';
 }
@@ -312,11 +278,7 @@ export function getNotificationColor(type: Notification['type']): string {
     application_update: 'text-green-600 bg-green-50 border-green-200',
     profile_view: 'text-purple-600 bg-purple-50 border-purple-200',
     system: 'text-gray-600 bg-gray-50 border-gray-200',
-    marketing: 'text-orange-600 bg-orange-50 border-orange-200',
-    interview_scheduled: 'text-indigo-600 bg-indigo-50 border-indigo-200',
-    interview_updated: 'text-amber-600 bg-amber-50 border-amber-200',
-    interview_reminder: 'text-red-600 bg-red-50 border-red-200',
-    interview_feedback: 'text-emerald-600 bg-emerald-50 border-emerald-200'
+    marketing: 'text-orange-600 bg-orange-50 border-orange-200'
   };
   return colors[type] || 'text-gray-600 bg-gray-50 border-gray-200';
 }
