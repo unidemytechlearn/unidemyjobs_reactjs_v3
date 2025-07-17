@@ -971,29 +971,9 @@ const JobApplicationDetailsModal = ({
         {activeTab === 'overview' && (
           <div className="px-6 pb-4">
             <div className={`p-4 rounded-xl border ${
+export default JobApplicationDetailsModal;
               canWithdraw(application.status) 
-                ? 'bg-yellow-50 border-yellow-200' 
-                : 'bg-gray-50 border-gray-200'
-            }`}>
-              <div className="flex items-start space-x-3">
-                {canWithdraw(application.status) ? (
-                  <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
-                ) : (
-                  <CheckCircle className="h-5 w-5 text-gray-500 mt-0.5" />
-                )}
-                <div>
-                  <h4 className={`font-medium ${
-                    canWithdraw(application.status) ? 'text-yellow-900' : 'text-gray-700'
-                  }`}>
-                    {canWithdraw(application.status) ? 'Withdrawal Available' : 'Withdrawal Not Available'}
-                  </h4>
-                  <p className={`text-sm mt-1 ${
-                    canWithdraw(application.status) ? 'text-yellow-700' : 'text-gray-600'
-                  }`}>
-                    {getWithdrawMessage(application.status)}
-                  </p>
-                </div>
-              </div>
+export { JobApplicationDetailsModal };
             </div>
           </div>
         )}
