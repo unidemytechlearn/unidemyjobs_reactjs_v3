@@ -1,8 +1,8 @@
 import { supabase } from './supabase';
 import { createNotification, NotificationTemplates } from './notifications';
 
-// Debug flag for logging
-const DEBUG = true;
+// Debug flag for logging - set to true to enable detailed logging
+const DEBUG = true; 
 
 // Debug logger
 const debug = (...args: any[]) => {
@@ -14,10 +14,10 @@ const debug = (...args: any[]) => {
 // Get application by ID
 export async function getApplicationById(applicationId: string) {
   try {
-    console.log('getApplicationById called with ID:', applicationId);
+    debug('getApplicationById called with ID:', applicationId);
     
     if (!supabase || !applicationId) {
-      console.error('Supabase client not initialized or invalid applicationId:', { supabase: !!supabase, applicationId });
+      debug('Supabase client not initialized or invalid applicationId:', { supabase: !!supabase, applicationId });
       return null;
     }
 
@@ -31,16 +31,16 @@ export async function getApplicationById(applicationId: string) {
       .single();
       
     if (checkError) {
-      console.error('Error checking if application exists:', checkError);
+      debug('Error checking if application exists:', checkError);
       return null;
     }
     
     if (!checkData) {
-      console.error('Application not found with ID:', applicationId);
+      debug('Application not found with ID:', applicationId);
       return null;
     }
     
-    console.log('Application exists, fetching details...');
+    debug('Application exists, fetching details...');
     
     // Then fetch the full application data
     const { data, error } = await supabase
@@ -61,14 +61,14 @@ export async function getApplicationById(applicationId: string) {
       .single();
 
     if (error) {
-      console.error('Error fetching application:', error);
+      debug('Error fetching application:', error);
       throw error;
     }
 
-    console.log('Successfully fetched application:', data?.id);
+    debug('Successfully fetched application:', data?.id);
     return data;
   } catch (error) {
-    console.error('Error fetching application by ID:', error);
+    debug('Error fetching application by ID:', error);
     throw error;
   }
 }
@@ -142,15 +142,15 @@ function getDefaultInterviewTypes() {
 // Schedule an interview
 export async function scheduleInterview(interviewData: InterviewScheduleData) {
   try {
-    console.log("Scheduling interview with data:", interviewData);
+    debug("Scheduling interview with data:", interviewData);
     
     if (!supabase || !interviewData.application_id) {
-      console.error('Supabase client not initialized or missing application_id:', 
+      debug('Supabase client not initialized or missing application_id:', 
         { supabase: !!supabase, applicationId: interviewData.application_id });
       throw new Error('Database connection not available');
     }
 
-    console.log("Inserting interview schedule into database for application:", interviewData.application_id);
+    debug("Inserting interview schedule into database for application:", interviewData.application_id);
     
     // Insert interview schedule
     const { data, error } = await supabase
@@ -188,7 +188,7 @@ export async function scheduleInterview(interviewData: InterviewScheduleData) {
       .single();
 
     if (error) throw error;
-    console.log("Interview scheduled successfully:", data);
+    debug("Interview scheduled successfully:", data);
 
     // Send notification if requested
     if (interviewData.send_notification && data.application) {
@@ -452,7 +452,7 @@ export async function submitInterviewFeedback(feedbackData: InterviewFeedbackDat
 // Get interviews for an employer
 export async function getEmployerInterviews(
   employerId: string,
-  filters?: {
+  filters: {
     applicationId?: string;
     jobId?: string;
     status?: string;
@@ -498,7 +498,7 @@ export async function getEmployerInterviews(
     // Apply filters
     if (filters?.applicationId) {
       debug('Filtering by application ID:', filters.applicationId);
-      query = query.eq('application_id', filters.applicationId);
+      query = query.eq('application_id', filters.applicationId); 
     } else if (filters?.jobId) {
       debug('Filtering by job ID:', filters.jobId);
       query = query.eq('application.job_id', filters.jobId);
@@ -573,7 +573,7 @@ export async function getEmployerInterviews(
 // Get interviews for a candidate
 export async function getCandidateInterviews(
   userId: string,
-  filters?: {
+  filters: {
     applicationId?: string;
     jobId?: string;
     status?: string;

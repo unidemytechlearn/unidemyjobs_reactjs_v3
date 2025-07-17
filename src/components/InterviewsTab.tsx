@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, Video, Users, Building, Phone, CheckCircle, AlertTriangle, MoreHorizontal, Plus, Search, Filter, ChevronDown, ChevronUp, Star, MessageSquare, CheckSquare, XSquare } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
-import { getEmployerInterviews, getInterviewTypes, getCandidateInterviews, getApplicationById, debug } from '../lib/interviews';
+import { getEmployerInterviews, getInterviewTypes, getCandidateInterviews, getApplicationById, debug as interviewsDebug } from '../lib/interviews';
 import InterviewScheduleModal from './InterviewScheduleModal';
 import InterviewFeedbackModal from './InterviewFeedbackModal';
 
@@ -150,25 +150,25 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
   const handleScheduleButtonClick = async () => {
     if (!applicationId) {
       setError('Please select an application first to schedule an interview');
-      console.error('No application ID provided for interview scheduling:', applicationId);
+      interviewsDebug('No application ID provided for interview scheduling:', applicationId);
       return;
     }
     
     setLoadingApplication(true);
     try {
       // Fetch the application details first
-      console.log('Fetching application details for interview scheduling, ID:', applicationId);
+      interviewsDebug('Fetching application details for interview scheduling, ID:', applicationId);
       const application = await getApplicationById(applicationId);
-      console.log("Application data received:", application);
+      interviewsDebug("Application data received:", application);
       if (application) {
-        console.log("Fetched application for interview:", application);
+        interviewsDebug("Fetched application for interview:", application);
         handleScheduleInterview(application);
       } else {
-        console.error('Application not found for ID:', applicationId);
+        interviewsDebug('Application not found for ID:', applicationId);
         setError('Could not find application details');
       }
     } catch (err) {
-      console.error('Error fetching application for interview:', err);
+      interviewsDebug('Error fetching application for interview:', err);
       setError('Failed to load application details');
     } finally {
       setLoadingApplication(false);
@@ -357,11 +357,11 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
             <button
               onClick={() => {
                 if (applicationId) {
+                  interviewsDebug("Schedule button clicked with applicationId:", applicationId);
                   handleScheduleButtonClick();
-                  console.log("Schedule button clicked with applicationId:", applicationId);
                 } else {
                   setError('Please select an application first to schedule an interview');
-                  console.log("Schedule button clicked without applicationId");
+                  interviewsDebug("Schedule button clicked without applicationId");
                 }
               }}
               className={`flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors ${

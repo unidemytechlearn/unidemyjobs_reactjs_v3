@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, MapPin, Video, Users, MessageSquare, Check, AlertCircle, Mail } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
-import { scheduleInterview, getInterviewTypes } from '../lib/interviews';
+import { scheduleInterview, getInterviewTypes, debug as interviewsDebug } from '../lib/interviews';
 
 interface InterviewScheduleModalProps {
   isOpen: boolean;
@@ -31,9 +31,9 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
 
   // Load interview types
   useEffect(() => {
-    console.log("InterviewScheduleModal opened with application:", application);
+    interviewsDebug("InterviewScheduleModal opened with application:", application);
     if (!isOpen || !application) {
-      console.log("Modal not open or no application data, skipping load");
+      interviewsDebug("Modal not open or no application data, skipping load");
       return;
     }
     
@@ -45,9 +45,9 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
     const loadInterviewTypes = async () => {
       try {
         setLoading(true);
-        console.log("Loading interview types for modal...");
+        interviewsDebug("Loading interview types for modal...");
         const types = await getInterviewTypes();
-        console.log("Loaded interview types:", types);
+        interviewsDebug("Loaded interview types:", types);
         setInterviewTypes(types);
         // Set default interview type
         if (types.length > 0) {
@@ -122,18 +122,18 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
     e.preventDefault();
     
     if (!validateForm()) {
-      console.log("Form validation failed or missing application data");
+      interviewsDebug("Form validation failed or missing application data");
       return;
     }
     
     if (!application || !application.id) {
-      console.error("Missing application data or ID:", application);
+      interviewsDebug("Missing application data or ID:", application);
       setError("Application data is missing. Please try again.");
       return;
     }
     
     if (!user || !application) {
-      console.error("Missing user or application data", { user, application });
+      interviewsDebug("Missing user or application data", { user, application });
       setError("Missing user or application data. Please try again.");
       return;
     }
@@ -143,9 +143,9 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
     
     try {
       // Combine date and time
-      console.log("Submitting interview with form data:", formData, "for application:", application.id);
+      interviewsDebug("Submitting interview with form data:", formData, "for application:", application.id);
       const scheduledDateTime = new Date(`${formData.scheduledDate}T${formData.scheduledTime}`);
-      console.log("Scheduled date time:", scheduledDateTime.toISOString());
+      interviewsDebug("Scheduled date time:", scheduledDateTime.toISOString());
       
       // Create interview schedule
       const interviewData = {
@@ -161,10 +161,10 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
         send_notification: formData.sendNotification
       };
       
-      console.log("Scheduling interview with data:", interviewData);
+      interviewsDebug("Scheduling interview with data:", interviewData);
       await scheduleInterview(interviewData);
 
-      console.log("Interview scheduled successfully");
+      interviewsDebug("Interview scheduled successfully");
       setIsScheduled(true);
       setTimeout(() => {
         onSuccess?.();
@@ -284,11 +284,11 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                           className="w-10 h-10 rounded-lg flex items-center justify-center text-white"
                           style={{ backgroundColor: type.color || '#3B82F6' }}
                         > 
-                          {type.id === 'phone' && <Phone className="h-5 w-5 text-white" />}
-                          {type.id === 'video' && <Video className="h-5 w-5 text-white" />}
-                          {type.id === 'technical' && <Code className="h-5 w-5 text-white" />}
-                          {type.id === 'panel' && <Users className="h-5 w-5 text-white" />}
-                          {type.id === 'in_person' && <Building className="h-5 w-5 text-white" />}
+                          {type.id === 'phone' && <Phone className="h-5 w-5" />}
+                          {type.id === 'video' && <Video className="h-5 w-5" />}
+                          {type.id === 'technical' && <Code className="h-5 w-5" />}
+                          {type.id === 'panel' && <Users className="h-5 w-5" />}
+                          {type.id === 'in_person' && <Building className="h-5 w-5" />}
                           {type.id === 'final' && <CheckCircle className="h-5 w-5" />}
                           {!['phone', 'video', 'technical', 'panel', 'in_person', 'final'].includes(type.id) && 
                             <Calendar className="h-5 w-5" />
@@ -531,17 +531,17 @@ export default InterviewScheduleModal;
 
 // Import these components from lucide-react
 function Phone(props: any) {
-  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white" {...props}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>;
+  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>;
 }
 
 function Building(props: any) {
-  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white" {...props}><rect width="16" height="20" x="4" y="2" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></svg>;
+  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="16" height="20" x="4" y="2" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></svg>;
 }
 
 function Code(props: any) {
-  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white" {...props}><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>;
+  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>;
 }
 
 function CheckCircle(props: any) {
-  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white" {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>;
+  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>;
 }
