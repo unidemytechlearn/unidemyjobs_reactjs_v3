@@ -272,61 +272,7 @@ const SignUpModal = ({ isOpen, onClose, onSwitchToSignIn, onSuccess }: SignUpMod
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Details</h3>
                 
-                {/* Account Type Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    I am signing up as: *
-                  </label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <label className={`relative flex cursor-pointer rounded-xl border p-4 focus:outline-none ${
-                      formData.role === 'job_seeker' 
-                        ? 'border-blue-600 bg-blue-50' 
-                        : 'border-gray-300 bg-white hover:bg-gray-50'
-                    }`}>
-                      <input
-                        type="radio"
-                        name="role"
-                        value="job_seeker"
-                        checked={formData.role === 'job_seeker'}
-                        onChange={handleInputChange}
-                        className="sr-only"
-                      />
-                      <div className="flex items-center">
-                        <div className="text-sm">
-                          <div className="font-medium text-gray-900">Job Seeker</div>
-                          <div className="text-gray-500">Looking for job opportunities</div>
-                        </div>
-                      </div>
-                      <div className={`absolute -inset-px rounded-xl border-2 pointer-events-none ${
-                        formData.role === 'job_seeker' ? 'border-blue-600' : 'border-transparent'
-                      }`} />
-                    </label>
-                    
-                    <label className={`relative flex cursor-pointer rounded-xl border p-4 focus:outline-none ${
-                      formData.role === 'employer' 
-                        ? 'border-blue-600 bg-blue-50' 
-                        : 'border-gray-300 bg-white hover:bg-gray-50'
-                    }`}>
-                      <input
-                        type="radio"
-                        name="role"
-                        value="employer"
-                        checked={formData.role === 'employer'}
-                        onChange={handleInputChange}
-                        className="sr-only"
-                      />
-                      <div className="flex items-center">
-                        <div className="text-sm">
-                          <div className="font-medium text-gray-900">Employer</div>
-                          <div className="text-gray-500">Hiring talented professionals</div>
-                        </div>
-                      </div>
-                      <div className={`absolute -inset-px rounded-xl border-2 pointer-events-none ${
-                        formData.role === 'employer' ? 'border-blue-600' : 'border-transparent'
-                      }`} />
-                    </label>
-                  </div>
-                </div>
+                            
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
