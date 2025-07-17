@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, Video, Users, Building, Phone, CheckCircle, AlertTriangle, MoreHorizontal, Plus, Search, Filter, ChevronDown, ChevronUp, Star, MessageSquare, CheckSquare, XSquare } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
-import { getEmployerInterviews, getInterviewTypes } from '../lib/interviews';
+import { getEmployerInterviews, getInterviewTypes, getCandidateInterviews } from '../lib/interviews';
 import InterviewScheduleModal from './InterviewScheduleModal';
 import InterviewFeedbackModal from './InterviewFeedbackModal';
 
@@ -36,18 +36,33 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
       try {
         setLoading(true);
         setError('');
-        
-        // Load interview types
-        const types = await getInterviewTypes();
-        setInterviewTypes(types);
-        
-        // Load interviews
-        const filters: any = {};
-        if (applicationId) filters.applicationId = applicationId;
-        if (jobId) filters.jobId = jobId;
-        
-        const interviewsData = await getEmployerInterviews(user.id, filters);
-        setInterviews(interviewsData);
+
+        // Load interview types first
+        try {
+          const types = await getInterviewTypes();
+          setInterviewTypes(types);
+        } catch (typeError) {
+          console.error('Error loading interview types:', typeError);
+          // Continue with default types from the function
+        }
+
+        // Then load interviews based on user role
+        if (profile?.role === 'employer') {
+          const filters: any = {};
+          if (applicationId) filters.applicationId = applicationId;
+          if (jobId) filters.jobId = jobId;
+          
+          const interviewsData = await getEmployerInterviews(user.id, filters);
+          setInterviews(interviewsData);
+        } else {
+          // For job seekers
+          const filters: any = {};
+          if (applicationId) filters.applicationId = applicationId;
+          if (jobId) filters.jobId = jobId;
+          
+          const interviewsData = await getCandidateInterviews(user.id, filters);
+          setInterviews(interviewsData);
+        }
       } catch (err: any) {
         console.error('Error loading interviews:', err);
         setError(err.message || 'Failed to load interviews. Please try again.');
@@ -153,7 +168,7 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
   const getInterviewTypeDetails = (typeId: string) => {
     return interviewTypes.find(type => type.id === typeId) || {
       name: 'Interview',
-      color: '#6B7280',
+      color: '#6B7280', // Default gray color
       icon: 'calendar'
     };
   };
@@ -200,7 +215,7 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
   const getInterviewTypeIcon = (typeId: string) => {
     switch (typeId) {
       case 'phone':
-        return <Phone className="h-5 w-5" />;
+        return <Phone className="h-5 w-5" />; 
       case 'video':
         return <Video className="h-5 w-5" />;
       case 'technical':
@@ -433,7 +448,7 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
                     <div className="flex items-start space-x-4">
                       <div
                         className="w-12 h-12 rounded-lg flex items-center justify-center text-white"
-                        style={{ backgroundColor: typeDetails.color }}
+                        style={{ backgroundColor: typeDetails.color || '#6B7280' }}
                       >
                         {getInterviewTypeIcon(interview.interview_type)}
                       </div>
@@ -442,7 +457,7 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
                         <div className="flex items-center space-x-2">
                           <h3 className="font-semibold text-gray-900">{typeDetails.name}</h3>
                           {getStatusBadge(interview.status)}
-                          {isToday(interview.scheduled_date) && (
+                          {interview.scheduled_date && isToday(interview.scheduled_date) && (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                               Today
                             </span>
@@ -462,10 +477,10 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
                     <div className="flex items-center space-x-4">
                       <div className="text-right">
                         <div className="font-medium text-gray-900">
-                          {formatDate(interview.scheduled_date)}
+                          {interview.scheduled_date ? formatDate(interview.scheduled_date) : 'Date not set'}
                         </div>
                         <div className="text-gray-600 text-sm">
-                          {formatTime(interview.scheduled_date)} • {interview.duration_minutes} min
+                          {interview.scheduled_date ? formatTime(interview.scheduled_date) : 'Time not set'} • {interview.duration_minutes || 60} min
                         </div>
                       </div>
                       
@@ -589,7 +604,7 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
                             {interview.feedback[0].recommendation === 'strong_yes' && 'Strong Yes'}
                             {interview.feedback[0].recommendation === 'yes' && 'Yes'}
                             {interview.feedback[0].recommendation === 'maybe' && 'Maybe'}
-                            {interview.feedback[0].recommendation === 'no' && 'No'}
+                            {interview.feedback[0].recommendation === 'no' && 'No'} 
                             {interview.feedback[0].recommendation === 'strong_no' && 'Strong No'}
                           </span>
                         </div>

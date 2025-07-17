@@ -245,7 +245,7 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                       <div className="flex items-center space-x-3">
                         <div
                           className={`w-10 h-10 rounded-lg flex items-center justify-center ${type.color.replace('#', 'bg-')}`}
-                          style={{ backgroundColor: type.color }}
+                          style={{ backgroundColor: type.color || '#6B7280' }}
                         >
                           {type.id === 'phone' && <Phone className="h-5 w-5 text-white" />}
                           {type.id === 'video' && <Video className="h-5 w-5 text-white" />}
@@ -404,12 +404,12 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                         <div className="flex items-center justify-center h-full text-white">
                           {selectedInterviewType.id === 'phone' && <Phone className="h-3 w-3" />}
                           {selectedInterviewType.id === 'video' && <Video className="h-3 w-3" />}
-                          {selectedInterviewType.id === 'technical' && <Code className="h-3 w-3" />}
-                          {selectedInterviewType.id === 'panel' && <Users className="h-3 w-3" />}
-                          {selectedInterviewType.id === 'in_person' && <Building className="h-3 w-3" />}
-                          {selectedInterviewType.id === 'final' && <CheckCircle className="h-3 w-3" />}
-                        </div>
-                      </div>
+                        {selectedInterviewType?.id === 'phone' && <Phone className="h-3 w-3" />}
+                        {selectedInterviewType?.id === 'video' && <Video className="h-3 w-3" />}
+                        {selectedInterviewType?.id === 'technical' && <Code className="h-3 w-3" />}
+                        {selectedInterviewType?.id === 'panel' && <Users className="h-3 w-3" />}
+                        {selectedInterviewType?.id === 'in_person' && <Building className="h-3 w-3" />}
+                        {selectedInterviewType?.id === 'final' && <CheckCircle className="h-3 w-3" />}
                       <span className="font-medium">{selectedInterviewType.name}</span>
                     </div>
                     {formData.scheduledDate && formData.scheduledTime && (
@@ -448,7 +448,7 @@ const InterviewScheduleModal = ({ isOpen, onClose, application, onSuccess }: Int
                         <Mail className="h-4 w-4 inline mr-2" />
                         Candidate will be notified
                       </p>
-                    )}
+                    <span className="font-medium">{selectedInterviewType?.name || 'Interview'}</span>
                   </div>
                 </div>
               )}
