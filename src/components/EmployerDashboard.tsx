@@ -33,6 +33,8 @@ import {
   Award
 } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
+import InterviewCalendar from './InterviewCalendar';
+import InterviewScheduleModal from './InterviewScheduleModal';
 import { 
   getEmployerStats, 
   getEmployerCompany, 
@@ -53,7 +55,7 @@ interface EmployerDashboardProps {
 
 const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
   const { user, profile, isAuthenticated } = useAuthContext();
-  const [activeTab, setActiveTab] = useState<'overview' | 'jobs' | 'applications' | 'company' | 'analytics'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'jobs' | 'applications' | 'interviews' | 'company' | 'analytics'>('overview');
   const [stats, setStats] = useState<any>(null);
   const [company, setCompany] = useState<any>(null);
   const [jobs, setJobs] = useState<any[]>([]);
@@ -71,6 +73,7 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
   const [showCompanyRequiredAlert, setShowCompanyRequiredAlert] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [selectedJobForEdit, setSelectedJobForEdit] = useState<any>(null);
+  const [isInterviewScheduleModalOpen, setIsInterviewScheduleModalOpen] = useState(false);
   const [newJobData, setNewJobData] = useState({
     title: '',
     description: '',
@@ -387,6 +390,16 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
     setIsEditJobModalOpen(true);
   };
 
+  const handleScheduleInterview = (application: any) => {
+    setSelectedApplication(application);
+    setIsInterviewScheduleModalOpen(true);
+  };
+
+  const handleInterviewScheduled = () => {
+    // Refresh applications to show updated status
+    loadApplications();
+  };
+
   // Helper functions for form arrays
   const addFormArrayItem = (formState: any, setFormState: React.Dispatch<React.SetStateAction<any>>, field: string) => {
     setFormState({
@@ -587,6 +600,7 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
               { id: 'overview', label: 'Overview', icon: BarChart3 },
               { id: 'jobs', label: 'Jobs', icon: Briefcase },
               { id: 'applications', label: 'Applications', icon: Users },
+              { id: 'interviews', label: 'Interviews', icon: Calendar },
               { id: 'company', label: 'Company', icon: Building },
               { id: 'analytics', label: 'Analytics', icon: TrendingUp },
             ].map((tab) => {
@@ -1001,6 +1015,17 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
                             <Eye className="h-4 w-4" />
                           </button>
                           
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleScheduleInterview(application);
+                            }}
+                            className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                            title="Schedule Interview"
+                          >
+                            <Calendar className="h-4 w-4" />
+                          </button>
+                          
                           {application.resume_url && (
                             <button
                               onClick={() => window.open(application.resume_url, '_blank')}
@@ -1016,6 +1041,20 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Interviews Tab */}
+        {activeTab === 'interviews' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900">Interview Management</h2>
+            </div>
+            
+            <InterviewCalendar 
+              userRole="employer" 
+              onScheduleInterview={() => setIsInterviewScheduleModalOpen(true)} 
+            />
           </div>
         )}
 
@@ -1166,6 +1205,18 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
               <p className="text-gray-600">Detailed analytics and insights will be available here.</p>
             </div>
           </div>
+        )}
+
+        {/* Interview Schedule Modal */}
+        {selectedApplication && (
+          <InterviewScheduleModal
+            isOpen={isInterviewScheduleModalOpen}
+            onClose={() => setIsInterviewScheduleModalOpen(false)}
+            applicationId={selectedApplication.id}
+            jobTitle={selectedApplication.job?.title || 'Job Position'}
+            candidateName={`${selectedApplication.first_name || ''} ${selectedApplication.last_name || ''}`}
+            onSuccess={handleInterviewScheduled}
+          />
         )}
         
         {/* New Job Modal */}
