@@ -243,13 +243,13 @@ export const signInAsJobSeeker = async (email: string, password: string) => {
     if (!profileData) {
       // If no profile exists, sign out and throw an error
       await supabase.auth.signOut();
-      throw new Error('User profile not found. Please contact support.');
+      throw new Error('User profile not found. You may need to sign up first or contact support if you believe this is an error.');
     }
     
     if (profileData.role === 'employer') {
       // If they're an employer, sign out and throw an error
       await supabase.auth.signOut();
-      throw new Error('This account is registered as an employer. Please use the employer login instead.');
+      throw new Error('This account is registered as an employer. Please use the employer login instead by clicking "For Employers" in the navigation.');
     }
     
     // Return the auth data if everything is fine
@@ -286,13 +286,13 @@ export const signInAsEmployer = async (email: string, password: string) => {
     if (!profileData) {
       // If no profile exists, sign out and throw an error
       await supabase.auth.signOut();
-      throw new Error('User profile not found. Please contact support.');
+      throw new Error('User profile not found. You may need to sign up first or contact support if you believe this is an error.');
     }
     
     if (profileData.role !== 'employer') {
       // If they're not an employer, sign out and throw an error
       await supabase.auth.signOut();
-      throw new Error('This account is registered as a job seeker. Please use the regular login instead.');
+      throw new Error('This account is registered as a job seeker. Please use the regular login instead by clicking "Sign In" in the navigation.');
     }
     
     // Return the auth data if everything is fine

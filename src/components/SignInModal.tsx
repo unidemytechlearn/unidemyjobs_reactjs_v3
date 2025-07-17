@@ -67,15 +67,17 @@ const SignInModal = ({ isOpen, onClose, onSwitchToSignUp, onSuccess }: SignInMod
         resetModal();
       }, 2000);
     } catch (err: any) {
-      // Handle specific Supabase auth errors
+      // Handle specific Supabase auth errors with more helpful messages
       if (err.message?.includes('Invalid login credentials') || err.message?.includes('invalid_credentials') || err.code === 'invalid_credentials') {
-        setError('Invalid email or password. Please double-check your credentials and try again. If you forgot your password, use the "Forgot password?" link below.');
+        setError('Invalid email or password. Please double-check your credentials and try again. Make sure you\'re using the correct sign-in form (job seeker vs employer). If you forgot your password, use the "Forgot password?" link below.');
       } else if (err.message?.includes('User already registered')) {
         setError('This email is already registered. Please sign in instead.');
       } else if (err.message?.includes('Email not confirmed')) {
         setError('Please check your email and click the confirmation link before signing in.');
       } else if (err.message?.includes('Too many requests')) {
         setError('Too many sign-in attempts. Please wait a moment before trying again.');
+      } else if (err.message?.includes('registered as an employer')) {
+        setError('This account is registered as an employer. Please use the employer login instead.');
       } else {
         setError(err.message || 'An error occurred during sign in. Please try again.');
       }

@@ -68,9 +68,11 @@ const EmployerSignInModal = ({ isOpen, onClose, onSwitchToSignUp, onSuccess }: E
       }, 2000);
     } catch (err: any) {
       if (err.message?.includes('Invalid login credentials') || err.message?.includes('invalid_credentials') || err.code === 'invalid_credentials') {
-        setError('Invalid email or password. Please double-check your credentials and try again. If you forgot your password, use the "Forgot password?" link below.');
+        setError('Invalid email or password. Please double-check your credentials and try again. Make sure you\'re using the employer sign-in form if you registered as an employer. If you forgot your password, use the "Forgot password?" link below.');
       } else if (err.message?.includes('User already registered')) {
         setError('This email is already registered. Please sign in instead.');
+      } else if (err.message?.includes('registered as a job seeker')) {
+        setError('This account is registered as a job seeker. Please use the regular login instead.');
       } else {
         setError(err.message || 'Sign in failed. Please try again.');
       }
