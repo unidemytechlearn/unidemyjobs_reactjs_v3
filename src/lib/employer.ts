@@ -8,6 +8,23 @@ export interface EmployerStats {
   company_id: string;
 }
 
+export interface CompanyData {
+  id?: string;
+  name: string;
+  description?: string;
+  industry?: string;
+  size_range?: string;
+  location?: string;
+  website_url?: string;
+  logo_url?: string;
+  founded_year?: number;
+  specialties?: string[];
+  benefits?: string[];
+  culture_description?: string;
+  is_featured?: boolean;
+  created_by?: string;
+}
+
 export interface JobWithApplications {
   id: string;
   title: string;
@@ -82,7 +99,7 @@ export const getEmployerCompany = async (employerId: string) => {
 };
 
 // Create or update company
-export const upsertCompany = async (companyData: any, employerId: string) => {
+export const upsertCompany = async (companyData: CompanyData, employerId: string) => {
   try {
     // Check if company already exists
     const { data: existingCompany } = await supabase
@@ -91,7 +108,7 @@ export const upsertCompany = async (companyData: any, employerId: string) => {
       .eq('created_by', employerId)
       .maybeSingle();
     
-    let payload = {
+    let payload: CompanyData = {
       ...companyData,
       created_by: employerId,
       updated_at: new Date().toISOString()
@@ -100,6 +117,15 @@ export const upsertCompany = async (companyData: any, employerId: string) => {
     // If company exists, include its ID
     if (existingCompany) {
       payload.id = existingCompany.id;
+    }
+    
+    // Ensure arrays are properly formatted
+    if (typeof payload.specialties === 'string') {
+      payload.specialties = (payload.specialties as string).split(',').map(s => s.trim()).filter(Boolean);
+    }
+    
+    if (typeof payload.benefits === 'string') {
+      payload.benefits = (payload.benefits as string).split(',').map(b => b.trim()).filter(Boolean);
     }
     
     const { data, error } = await supabase

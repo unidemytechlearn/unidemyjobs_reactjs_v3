@@ -176,11 +176,13 @@ const EmployerSignUpModal = ({ isOpen, onClose, onSwitchToSignIn, onSuccess }: E
 
   const industries = [
     'Technology', 'Healthcare', 'Finance', 'Education', 'Manufacturing',
-    'Retail', 'Consulting', 'Real Estate', 'Media & Entertainment', 'Other'
+    'Retail', 'Consulting', 'Real Estate', 'Media & Entertainment', 
+    'Marketing', 'Design', 'Hospitality', 'Transportation', 'Construction',
+    'Legal Services', 'Non-Profit', 'Agriculture', 'Energy', 'Other'
   ];
 
   const companySizes = [
-    '1-10', '11-50', '51-200', '201-500', '501-1000', '1001-5000', '5000+'
+    '1-50', '50-200', '200-500', '500-1000', '1000-5000', '5000+'
   ];
 
   return (
@@ -482,7 +484,7 @@ const EmployerSignUpModal = ({ isOpen, onClose, onSwitchToSignIn, onSuccess }: E
                       <option value="">Select company size</option>
                       {companySizes.map((size) => (
                         <option key={size} value={size}>
-                          {size} employees
+                          {size}
                         </option>
                       ))}
                     </select>

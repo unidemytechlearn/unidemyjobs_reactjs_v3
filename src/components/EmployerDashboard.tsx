@@ -27,7 +27,10 @@ import {
   Linkedin,
   Github,
   Globe,
-  AlertTriangle
+  AlertTriangle,
+  Phone,
+  Mail,
+  Award
 } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
 import { 
@@ -85,13 +88,13 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
   const [companyData, setCompanyData] = useState({
     name: '',
     description: '',
-    industry: '',
-    size_range: '',
+    industry: 'Technology',
+    size_range: '1-50',
     location: '',
     website_url: '',
-    founded_year: '',
-    specialties: [''],
-    benefits: [''],
+    founded_year: new Date().getFullYear(),
+    specialties: [] as string[],
+    benefits: [] as string[],
     culture_description: ''
   });
   const [error, setError] = useState<string | null>(null);
@@ -120,13 +123,13 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
           setCompanyData({
             name: companyData.name || '',
             description: companyData.description || '',
-            industry: companyData.industry || '',
-            size_range: companyData.size_range || '',
+            industry: companyData.industry || 'Technology',
+            size_range: companyData.size_range || '1-50',
             location: companyData.location || '',
             website_url: companyData.website_url || '',
-            founded_year: companyData.founded_year?.toString() || '',
-            specialties: companyData.specialties || [''],
-            benefits: companyData.benefits || [''],
+            founded_year: companyData.founded_year || new Date().getFullYear(),
+            specialties: companyData.specialties || [],
+            benefits: companyData.benefits || [],
             culture_description: companyData.culture_description || ''
           });
         }
@@ -347,7 +350,7 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
       // Format the data
       const formattedData = {
         ...companyData,
-        founded_year: companyData.founded_year ? parseInt(companyData.founded_year) : null,
+        founded_year: companyData.founded_year ? parseInt(companyData.founded_year.toString()) : null,
         specialties: companyData.specialties.filter(spec => spec.trim() !== ''),
         benefits: companyData.benefits.filter(benefit => benefit.trim() !== '')
       };
@@ -1044,91 +1047,94 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
               
               {company ? (
                 <div className="space-y-6">
-                  <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                    <h4 className="font-semibold text-gray-900 mb-4">Company Information</h4>
-                    <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                      <div>
-                        <dt className="text-sm text-gray-500">Company Name</dt>
-                        <dd className="text-gray-900 font-medium">{company.name}</dd>
+                  <div className="flex items-start space-x-6">
+                    <div className="flex-shrink-0">
+                      <img
+                        src={company.logo_url || 'https://images.pexels.com/photos/267371/pexels-photo-267371.jpeg?auto=compress&cs=tinysrgb&w=120&h=120&fit=crop'}
+                        alt={`${company.name} logo`}
+                        className="w-24 h-24 rounded-xl object-cover border border-gray-200 shadow-sm"
+                      />
+                    </div>
+                    <div>
+                      <h4 className="text-2xl font-bold text-gray-900 mb-2">{company.name}</h4>
+                      <div className="flex items-center space-x-4 mb-2">
+                        <span className="text-gray-600">{company.industry}</span>
+                        <span className="text-gray-400">•</span>
+                        <span className="text-gray-600">{company.size_range} employees</span>
+                        {company.founded_year && (
+                          <>
+                            <span className="text-gray-400">•</span>
+                            <span className="text-gray-600">Founded {company.founded_year}</span>
+                          </>
+                        )}
                       </div>
-                      <div>
-                        <dt className="text-sm text-gray-500">Industry</dt>
-                        <dd className="text-gray-900 font-medium">{company.industry || 'Not specified'}</dd>
+                      <div className="flex items-center space-x-2 text-gray-600">
+                        <MapPin className="h-4 w-4 text-gray-400" />
+                        <span>{company.location}</span>
                       </div>
-                      <div>
-                        <dt className="text-sm text-gray-500">Size</dt>
-                        <dd className="text-gray-900 font-medium">{company.size_range || 'Not specified'}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm text-gray-500">Location</dt>
-                        <dd className="text-gray-900 font-medium">{company.location || 'Not specified'}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm text-gray-500">Founded</dt>
-                        <dd className="text-gray-900 font-medium">{company.founded_year || 'Not specified'}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm text-gray-500">Website</dt>
-                        <dd className="text-gray-900 font-medium">
-                          {company.website_url ? (
-                            <a href={company.website_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center">
-                              {company.website_url} <ExternalLink className="h-3 w-3 ml-1" />
-                            </a>
-                          ) : (
-                            'Not specified'
-                          )}
-                        </dd>
-                      </div>
-                    </dl>
+                    </div>
                   </div>
-                  
-                  <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                    <h4 className="font-semibold text-gray-900 mb-4">Company Description</h4>
-                    <p className="text-gray-700 whitespace-pre-wrap">{company.description || 'No description available.'}</p>
-                  </div>
-                  
-                  {company.specialties && company.specialties.length > 0 && (
-                    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                      <h4 className="font-semibold text-gray-900 mb-4">Specialties</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {company.specialties.map((specialty, index) => (
-                          <span key={index} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
-                            {specialty}
-                          </span>
-                        ))}
-                      </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h5 className="font-semibold text-gray-900 mb-3">About</h5>
+                      <p className="text-gray-600 leading-relaxed">{company.description}</p>
+                      
+                      {company.culture_description && (
+                        <div className="mt-4">
+                          <h5 className="font-semibold text-gray-900 mb-3">Company Culture</h5>
+                          <p className="text-gray-600 leading-relaxed">{company.culture_description}</p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  
-                  {company.benefits && company.benefits.length > 0 && (
-                    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                      <h4 className="font-semibold text-gray-900 mb-4">Benefits</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {company.benefits.map((benefit, index) => (
-                          <span key={index} className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
-                            {benefit}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {company.culture_description && (
-                    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                      <h4 className="font-semibold text-gray-900 mb-4">Company Culture</h4>
-                      <p className="text-gray-700 whitespace-pre-wrap">{company.culture_description}</p>
-                    </div>
-                  )}
-                  
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-                    <div className="flex items-start space-x-3">
-                      <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
-                      <div>
-                        <h4 className="font-medium text-blue-900 mb-1">Company Profile Visibility</h4>
-                        <p className="text-blue-700 text-sm">
-                          Your company profile is visible to job seekers. A complete profile helps attract better candidates.
-                        </p>
-                      </div>
+                    
+                    <div className="space-y-6">
+                      {company.website_url && (
+                        <div>
+                          <h5 className="font-semibold text-gray-900 mb-3">Website</h5>
+                          <a 
+                            href={company.website_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-700 flex items-center space-x-2"
+                          >
+                            <Globe className="h-4 w-4" />
+                            <span>{company.website_url.replace(/^https?:\/\//, '')}</span>
+                          </a>
+                        </div>
+                      )}
+                      
+                      {company.specialties && company.specialties.length > 0 && (
+                        <div>
+                          <h5 className="font-semibold text-gray-900 mb-3">Specialties</h5>
+                          <div className="flex flex-wrap gap-2">
+                            {company.specialties.map((specialty, index) => (
+                              <span 
+                                key={index}
+                                className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
+                              >
+                                {specialty}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {company.benefits && company.benefits.length > 0 && (
+                        <div>
+                          <h5 className="font-semibold text-gray-900 mb-3">Benefits</h5>
+                          <div className="flex flex-wrap gap-2">
+                            {company.benefits.map((benefit, index) => (
+                              <span 
+                                key={index}
+                                className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium"
+                              >
+                                {benefit}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1715,9 +1721,14 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
               <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {company ? 'Edit Company Profile' : 'Create Company Profile'}
-                </h2>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {company ? 'Edit Company Profile' : 'Create Company Profile'}
+                  </h2>
+                  <p className="text-sm font-normal text-gray-500 mt-1">
+                    Complete your company profile to start posting jobs
+                  </p>
+                </div>
                 <button
                   onClick={() => setIsEditCompanyModalOpen(false)}
                   className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -1742,16 +1753,30 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
                     />
                   </div>
                   
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                      Description
+                    </label>
+                    <textarea
+                      name="description"
+                      value={companyData.description}
+                      onChange={(e) => setCompanyData({...companyData, description: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      rows={4}
+                      placeholder="Tell us about your company..."
+                    />
+                  </div>
+                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Industry *
                       </label>
                       <select
+                        name="industry"
                         value={companyData.industry}
                         onChange={(e) => setCompanyData({...companyData, industry: e.target.value})}
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
                       >
                         <option value="">Select industry</option>
                         <option value="Technology">Technology</option>
@@ -1766,16 +1791,16 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
                         <option value="Other">Other</option>
                       </select>
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Company Size *
                       </label>
                       <select
+                        name="size_range"
                         value={companyData.size_range}
                         onChange={(e) => setCompanyData({...companyData, size_range: e.target.value})}
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
                       >
                         <option value="">Select company size</option>
                         <option value="1-50">1-50 employees</option>
@@ -1787,145 +1812,116 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
                       </select>
                     </div>
                   </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Location *
-                      </label>
-                      <input
-                        type="text"
-                        value={companyData.location}
-                        onChange={(e) => setCompanyData({...companyData, location: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="e.g., San Francisco, CA"
-                        required
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Founded Year
-                      </label>
-                      <input
-                        type="number"
-                        value={companyData.founded_year}
-                        onChange={(e) => setCompanyData({...companyData, founded_year: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="e.g., 2010"
-                        min="1900"
-                        max={new Date().getFullYear()}
-                      />
-                    </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Location *
+                    </label>
+                    <input
+                      type="text"
+                      name="location"
+                      value={companyData.location}
+                      onChange={(e) => setCompanyData({...companyData, location: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g., San Francisco, CA"
+                      required
+                    />
                   </div>
-                  
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Founded Year
+                    </label>
+                    <input
+                      type="number"
+                      name="founded_year"
+                      value={companyData.founded_year}
+                      onChange={(e) => setCompanyData({...companyData, founded_year: parseInt(e.target.value)})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Website URL
                     </label>
                     <input
                       type="url"
+                      name="website_url"
                       value={companyData.website_url}
                       onChange={(e) => setCompanyData({...companyData, website_url: e.target.value})}
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="e.g., https://example.com"
+                      placeholder="https://example.com"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Company Description *
+                      Logo URL
                     </label>
-                    <textarea
-                      value={companyData.description}
-                      onChange={(e) => setCompanyData({...companyData, description: e.target.value})}
-                      rows={6}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                      placeholder="Describe your company, mission, and values..."
-                      required
+                    <input
+                      type="url"
+                      name="logo_url"
+                      value={companyData.logo_url || ''}
+                      onChange={(e) => setCompanyData({...companyData, logo_url: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="https://example.com/logo.png"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Company Culture
                     </label>
                     <textarea
+                      name="culture_description"
                       value={companyData.culture_description}
                       onChange={(e) => setCompanyData({...companyData, culture_description: e.target.value})}
-                      rows={4}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                      placeholder="Describe your company culture and work environment..."
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      rows={3}
+                      placeholder="Describe your company culture and values..."
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Specialties
+                      Specialties (comma-separated)
                     </label>
-                    <div className="space-y-2">
-                      {companyData.specialties.map((specialty, index) => (
-                        <div key={index} className="flex items-center space-x-2">
-                          <input
-                            type="text"
-                            value={specialty}
-                            onChange={(e) => updateFormArrayItem(companyData, setCompanyData, 'specialties', index, e.target.value)}
-                            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="e.g., Machine Learning"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeFormArrayItem(companyData, setCompanyData, 'specialties', index)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => addFormArrayItem(companyData, setCompanyData, 'specialties')}
-                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                      >
-                        + Add Specialty
-                      </button>
-                    </div>
+                    <input
+                      type="text"
+                      value={companyData.specialties.join(', ')}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const items = value.split(',').map(item => item.trim()).filter(item => item);
+                        setCompanyData({
+                          ...companyData,
+                          specialties: items
+                        });
+                      }}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g., Cloud Computing, Machine Learning, Mobile Development"
+                    />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Benefits
+                      Benefits (comma-separated)
                     </label>
-                    <div className="space-y-2">
-                      {companyData.benefits.map((benefit, index) => (
-                        <div key={index} className="flex items-center space-x-2">
-                          <input
-                            type="text"
-                            value={benefit}
-                            onChange={(e) => updateFormArrayItem(companyData, setCompanyData, 'benefits', index, e.target.value)}
-                            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="e.g., Health insurance"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeFormArrayItem(companyData, setCompanyData, 'benefits', index)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => addFormArrayItem(companyData, setCompanyData, 'benefits')}
-                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                      >
-                        + Add Benefit
-                      </button>
-                    </div>
+                    <input
+                      type="text"
+                      value={companyData.benefits.join(', ')}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const items = value.split(',').map(item => item.trim()).filter(item => item);
+                        setCompanyData({
+                          ...companyData,
+                          benefits: items
+                        });
+                      }}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g., Health Insurance, Remote Work, Flexible Hours"
+                    />
                   </div>
-                  
-                  <div className="flex justify-end space-x-4 pt-4 border-t border-gray-200">
+                  <div className="flex justify-end space-x-4">
                     <button
                       type="button"
                       onClick={() => setIsEditCompanyModalOpen(false)}
