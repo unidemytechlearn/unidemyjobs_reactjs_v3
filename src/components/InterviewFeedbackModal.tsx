@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Star, ThumbsUp, ThumbsDown, MessageSquare, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
-import { submitInterviewFeedback } from '../lib/interviews';
+import { submitInterviewFeedback, InterviewFeedbackData } from '../lib/interviews';
 
 interface InterviewFeedbackModalProps {
   isOpen: boolean;

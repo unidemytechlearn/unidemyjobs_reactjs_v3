@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { createNotification, NotificationTemplates } from './notifications';
 
 // Interface definitions
+// Interface definitions
 export interface InterviewScheduleData {
   application_id: string;
   interview_type: string;

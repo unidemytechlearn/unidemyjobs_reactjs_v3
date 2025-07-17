@@ -239,16 +239,22 @@ export const NotificationTemplates = {
     message: `Interview scheduled for ${jobTitle} at ${companyName} on ${interviewDate}.`,
     type: 'application_update' as const
   }),
+  
+  INTERVIEW_RESCHEDULED: (jobTitle: string, companyName: string, interviewDate: string) => ({
+    title: 'Interview Rescheduled',
+    message: `Your interview for ${jobTitle} at ${companyName} has been rescheduled to ${interviewDate}.`,
+    type: 'application_update' as const
+  }),
+  
+  INTERVIEW_CANCELLED: (jobTitle: string, companyName: string, reason?: string) => ({
+    title: 'Interview Cancelled',
+    message: `Your interview for ${jobTitle} at ${companyName} has been cancelled.${reason ? ` Reason: ${reason}` : ''}`,
+    type: 'application_update' as const
+  }),
 
   OFFER_RECEIVED: (jobTitle: string, companyName: string) => ({
     title: 'Job Offer Received',
     message: `Congratulations! You've received an offer for ${jobTitle} at ${companyName}.`,
-    type: 'application_update' as const
-  }),
-  
-  INTERVIEW_SCHEDULED: (jobTitle: string, companyName: string, interviewDate: string) => ({
-    title: 'Interview Scheduled',
-    message: `Interview scheduled for ${jobTitle} at ${companyName} on ${interviewDate}.`,
     type: 'application_update' as const
   }),
 

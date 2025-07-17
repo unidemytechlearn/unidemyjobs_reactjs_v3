@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, MapPin, Clock, DollarSign, Building, Star, Calendar, User, Mail, Phone, FileText, Download, ExternalLink, ChevronRight, CheckCircle, AlertCircle, Eye, MessageSquare, Briefcase, Globe, Linkedin, Github, ArrowLeft, Share2, Video } from 'lucide-react';
-import { getApplicationStatusTimeline } from '../lib/applications';
-import { getCandidateInterviews } from '../lib/interviews';
 import { useAuthContext } from './AuthProvider';
+import { getApplicationStatusTimeline } from '../lib/applications';
+import { getCandidateInterviews, getEmployerInterviews } from '../lib/interviews';
 
 interface JobApplicationDetailsModalProps {
   isOpen: boolean;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, MapPin, Video, Users, MessageSquare, Check, AlertCircle, Mail } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
-import { scheduleInterview, getInterviewTypes } from '../lib/interviews';
+import { scheduleInterview, getInterviewTypes, InterviewScheduleData } from '../lib/interviews';
 
 interface InterviewScheduleModalProps {
   isOpen: boolean;
