@@ -172,16 +172,8 @@ export const signUp = async (email: string, password: string, userData: Partial<
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-  });
-
-  if (error) throw error;
-
-  if (data.user) {
-    // Create profile
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert({
-        id: data.user.id,
+    options: {
+      data: {
         first_name: userData.first_name || '',
         last_name: userData.last_name || '',
         phone: userData.phone,
@@ -195,10 +187,13 @@ export const signUp = async (email: string, password: string, userData: Partial<
         company_name: userData.company_name,
         company_position: userData.company_position,
         company_size: userData.company_size,
-      });
+      }
+    }
+  });
 
-    if (profileError) throw profileError;
-  }
+  if (error) throw error;
+
+  // Profile will be created automatically by the database trigger
 
   return data;
 };
