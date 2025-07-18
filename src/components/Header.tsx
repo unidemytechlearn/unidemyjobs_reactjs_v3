@@ -4,6 +4,7 @@ import SignUpModal from './SignUpModal';
 import SignInModal from './SignInModal';
 import ProfileModal from './ProfileModal';
 import NotificationDropdown from './NotificationDropdown';
+import EmployerNotificationDropdown from './EmployerNotificationDropdown';
 import { useAuthContext } from './AuthProvider';
 import { signOut } from '../lib/supabase';
 
@@ -148,7 +149,11 @@ const Header = ({ onNavigate, currentPage = 'home', onLogin, onLogout }: HeaderP
               {isAuthenticated ? (
                 <div className="relative">
                   <div className="flex items-center space-x-3">
-                    <NotificationDropdown onNavigate={onNavigate} />
+                    {profile?.role === 'employer' ? (
+                      <EmployerNotificationDropdown onNavigate={onNavigate} />
+                    ) : (
+                      <NotificationDropdown onNavigate={onNavigate} />
+                    )}
                     <button 
                       onClick={() => setShowUserMenu(!showUserMenu)}
                       className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors"

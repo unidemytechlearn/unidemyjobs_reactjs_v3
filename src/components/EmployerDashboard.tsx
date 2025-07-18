@@ -30,7 +30,9 @@ import {
   AlertTriangle,
   Phone,
   Mail,
-  Award
+  Award,
+  MoreHorizontal,
+  XCircle
 } from 'lucide-react';
 import { useAuthContext } from './AuthProvider';
 import { 
@@ -49,6 +51,9 @@ import { getApplicationStatusTimeline } from '../lib/applications';
 import InterviewsTab from './InterviewsTab';
 import InterviewScheduleModal from './InterviewScheduleModal';
 import { getApplicationById } from '../lib/interviews';
+import EmployerNotificationDropdown from './EmployerNotificationDropdown';
+import JobApplicationsPage from './JobApplicationsPage';
+import InterviewRescheduleModal from './InterviewRescheduleModal';
 
 interface EmployerDashboardProps {
   onNavigate?: (page: string, jobId?: string) => void;
@@ -56,7 +61,7 @@ interface EmployerDashboardProps {
 
 const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
   const { user, profile, isAuthenticated } = useAuthContext();
-  const [activeTab, setActiveTab] = useState<'overview' | 'jobs' | 'applications' | 'interviews' | 'company' | 'analytics'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'jobs' | 'applications' | 'interviews' | 'company' | 'analytics' | 'job-applications'>('overview');
   const [stats, setStats] = useState<any>(null);
   const [company, setCompany] = useState<any>(null);
   const [jobs, setJobs] = useState<any[]>([]);
@@ -75,7 +80,11 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [selectedJobForEdit, setSelectedJobForEdit] = useState<any>(null);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [loadingApplication, setLoadingApplication] = useState(false);
+  const [selectedInterview, setSelectedInterview] = useState<any>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string>('');
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [newJobData, setNewJobData] = useState({
     title: '',
     description: '',
@@ -422,6 +431,16 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
     setIsScheduleModalOpen(false);
   };
 
+  const handleJobClick = (jobId: string) => {
+    setSelectedJobId(jobId);
+    setActiveTab('job-applications');
+  };
+
+  const handleRescheduleInterview = (interview: any) => {
+    setSelectedInterview(interview);
+    setIsRescheduleModalOpen(true);
+  };
+
   // Helper functions for form arrays
   const addFormArrayItem = (formState: any, setFormState: React.Dispatch<React.SetStateAction<any>>, field: string) => {
     setFormState({
@@ -495,6 +514,23 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
     );
   }
 
+  // Show job-specific applications page
+  if (activeTab === 'job-applications' && selectedJobId) {
+    return (
+      <JobApplicationsPage
+        jobId={selectedJobId}
+        onNavigate={(page, data) => {
+          if (page === 'employer-dashboard') {
+            setActiveTab('overview');
+            setSelectedJobId('');
+          } else {
+            onNavigate?.(page, data?.jobId);
+          }
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -528,6 +564,7 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
               </p>
             </div>
             <div className="flex items-center space-x-4">
+              <EmployerNotificationDropdown onNavigate={onNavigate} />
               <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                 <Bell className="h-6 w-6" />
               </button>
@@ -673,7 +710,12 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
                           </span>
                           <span className="flex items-center">
                             <Users className="h-4 w-4 mr-1" />
-                            {job.application_count} applications
+                            <button
+                              onClick={() => handleJobClick(job.id)}
+                              className="font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                            >
+                              {job.application_count || 0}
+                            </button> applications
                           </span>
                         </div>
                       </div>
@@ -814,7 +856,7 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
 
               <div className="divide-y divide-gray-200">
                 {jobs.map((job) => (
-                  <div key={job.id} className="p-6 hover:bg-gray-50 transition-colors">
+                  <div key={job.id} className="p-6 hover:bg-gray-50 transition-colors relative">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
@@ -842,7 +884,12 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
                           </span>
                           <span className="flex items-center">
                             <Users className="h-4 w-4 mr-1" />
-                            {job.application_count} applications
+                            <button
+                              onClick={() => handleJobClick(job.id)}
+                              className="font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                            >
+                              {job.application_count || 0}
+                            </button> applications
                           </span>
                           <span className="flex items-center">
                             <Eye className="h-4 w-4 mr-1" />
@@ -862,34 +909,72 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
                       
                       <div className="flex items-center space-x-2 ml-4">
                         <button
-                          onClick={() => handleToggleJobStatus(job.id)}
-                          className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                            job.is_active 
-                              ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' 
-                              : 'bg-green-100 text-green-700 hover:bg-green-200'
-                          }`}
+                          onClick={() => setActiveDropdown(activeDropdown === job.id ? null : job.id)}
+                          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                         >
-                          {job.is_active ? 'Deactivate' : 'Activate'}
-                        </button>
-                        <button 
-                          onClick={() => window.open(`/jobs/${job.id}`, '_blank')}
-                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleEditJob(job)}
-                          className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteJob(job.id)}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" />
+                          <MoreHorizontal className="h-4 w-4" />
                         </button>
                       </div>
+
+                      {/* Dropdown Menu */}
+                      {activeDropdown === job.id && (
+                        <div className="absolute right-0 top-8 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
+                          <button
+                            onClick={() => {
+                              handleEditJob(job);
+                              setActiveDropdown(null);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center"
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit Job
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              handleJobClick(job.id);
+                              setActiveDropdown(null);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center"
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Applications
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              handleToggleJobStatus(job.id);
+                              setActiveDropdown(null);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center"
+                          >
+                            {job.is_active ? (
+                              <>
+                                <XCircle className="h-4 w-4 mr-2" />
+                                Deactivate
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Activate
+                              </>
+                            )}
+                          </button>
+                          
+                          <div className="border-t border-gray-100 my-1"></div>
+                          
+                          <button
+                            onClick={() => {
+                              handleDeleteJob(job.id);
+                              setActiveDropdown(null);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Job
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1062,7 +1147,10 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
               <p className="text-gray-600">Schedule and manage interviews with candidates</p>
             </div>
             
-            <InterviewsTab onRefresh={() => {}} />
+            <InterviewsTab 
+              onRefresh={() => {}}
+              onReschedule={handleRescheduleInterview}
+            />
           </div>
         )}
 
@@ -2253,6 +2341,13 @@ const EmployerDashboard = ({ onNavigate }: EmployerDashboardProps) => {
         isOpen={isScheduleModalOpen}
         onClose={() => setIsScheduleModalOpen(false)}
         application={selectedApplication}
+        onSuccess={handleInterviewScheduled}
+      />
+      
+      <InterviewRescheduleModal
+        isOpen={isRescheduleModalOpen}
+        onClose={() => setIsRescheduleModalOpen(false)}
+        interview={selectedInterview}
         onSuccess={handleInterviewScheduled}
       />
     </div>

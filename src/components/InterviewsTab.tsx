@@ -9,9 +9,10 @@ interface InterviewsTabProps {
   applicationId?: string;
   jobId?: string;
   onRefresh?: () => void;
+  onReschedule?: (interview: any) => void;
 }
 
-const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) => {
+const InterviewsTab = ({ applicationId, jobId, onRefresh, onReschedule }: InterviewsTabProps) => {
   const { user, profile } = useAuthContext();
   const [interviews, setInterviews] = useState<any[]>([]);
   const [interviewTypes, setInterviewTypes] = useState<any[]>([]);
@@ -522,7 +523,10 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh }: InterviewsTabProps) 
                             {profile?.role === 'employer' && interview.status === 'scheduled' && isUpcoming(interview.scheduled_date) && (
                               <>
                                 <button
-                                  onClick={() => {/* TODO: Implement reschedule */}}
+                                  onClick={() => {
+                                    onReschedule?.(interview);
+                                    setActiveDropdown(null);
+                                  }}
                                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center"
                                 >
                                   <Calendar className="h-4 w-4 mr-2" />
