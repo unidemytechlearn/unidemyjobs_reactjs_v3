@@ -252,6 +252,8 @@ export async function rescheduleInterview(
   sendNotification: boolean = true
 ) {
   try {
+    console.log('[Interviews] Rescheduling interview:', interviewId, 'to:', newDate);
+    
     const { data, error } = await supabase
       .from('interview_schedules')
       .update({ 
@@ -263,13 +265,26 @@ export async function rescheduleInterview(
       .select(`
         *,
         application:applications (
-          *,
-          job:jobs (*)
+          id,
+          user_id,
+          first_name,
+          last_name,
+          email,
+          job:jobs (
+            id,
+            title,
+            company:companies (
+              id,
+              name
+            )
+          )
         )
       `)
       .single();
 
     if (error) throw error;
+    
+    console.log('[Interviews] Interview rescheduled successfully:', data?.id);
 
     // Send notification if requested
     if (sendNotification && data.application) {
@@ -285,13 +300,21 @@ export async function rescheduleInterview(
           minute: '2-digit'
         });
 
+        const template = NotificationTemplates.INTERVIEW_RESCHEDULED(
+          jobTitle,
+          companyName,
+          interviewDate
+        );
+        
         await createNotification(
           data.application.user_id,
-          'Interview Rescheduled',
-          `Your interview for ${jobTitle} at ${companyName} has been rescheduled to ${interviewDate}.`,
-          'application_update',
+          template.title,
+          template.message,
+          template.type,
           `/dashboard/applications/${data.application_id}`
         );
+        
+        console.log('[Interviews] Reschedule notification sent successfully');
       } catch (notificationError) {
         console.error('Error creating rescheduling notification:', notificationError);
       }
