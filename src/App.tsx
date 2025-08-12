@@ -18,10 +18,35 @@ import EmployerLandingPage from './components/EmployerLandingPage';
 import EmployerDashboard from './components/EmployerDashboard';
 import { useAuthContext } from './components/AuthProvider';
 
+// Handle auth state changes and redirects
+const handleAuthRedirect = () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const role = urlParams.get('role');
+  
+  if (role) {
+    // Clear the URL parameters
+    window.history.replaceState({}, document.title, window.location.pathname);
+    return role;
+  }
+  
+  return null;
+};
 function AppContent() {
   const [currentPage, setCurrentPage] = useState<'home' | 'jobs' | 'companies' | 'about' | 'resume-builder' | 'dashboard' | 'job-details' | 'employer' | 'employer-dashboard'>('home');
   const [selectedJobId, setSelectedJobId] = useState<string>('');
   const { isAuthenticated, user, profile, authError } = useAuthContext();
+
+  // Handle auth redirects
+  useEffect(() => {
+    const redirectRole = handleAuthRedirect();
+    if (redirectRole && isAuthenticated) {
+      if (redirectRole === 'employer' && profile?.role === 'employer') {
+        setCurrentPage('employer-dashboard');
+      } else if (redirectRole === 'job_seeker' && profile?.role !== 'employer') {
+        setCurrentPage('dashboard');
+      }
+    }
+  }, [isAuthenticated, profile]);
 
   const handleLogin = () => {
     // Navigate based on user role

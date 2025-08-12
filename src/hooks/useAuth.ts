@@ -3,6 +3,53 @@ import { User } from '@supabase/supabase-js';
 import { supabase, getCurrentUser, Profile, getProfile, signOut as supabaseSignOut } from '../lib/supabase';
 import { createNotification, NotificationTemplates } from '../lib/notifications';
 
+// Helper function to handle Google OAuth callback
+const handleGoogleAuthCallback = async () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const role = urlParams.get('role');
+  
+  if (role) {
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
+      // Check if profile exists
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id, role')
+        .eq('id', user.id)
+        .maybeSingle();
+      
+      if (!existingProfile) {
+        // Create profile with the specified role
+        const profileData = {
+          id: user.id,
+          first_name: user.user_metadata?.full_name?.split(' ')[0] || '',
+          last_name: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
+          role: role,
+          email_notifications: true,
+          job_alerts: role === 'job_seeker',
+          application_updates: true,
+          marketing_emails: false,
+          profile_visibility: 'public',
+          show_salary: false,
+          show_contact: true,
+          two_factor_enabled: false,
+          profile_views: 0
+        };
+        
+        await supabase.from('profiles').insert(profileData);
+      } else if (existingProfile.role !== role) {
+        // Role mismatch - sign out and show error
+        await supabase.auth.signOut();
+        throw new Error(`This Google account is registered as a ${existingProfile.role}. Please use the correct sign-in form.`);
+      }
+    }
+    
+    // Clear the role parameter from URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+};
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -12,6 +59,14 @@ export const useAuth = () => {
 
   useEffect(() => {
   const init = async () => {
+    // Handle Google OAuth callback
+    try {
+      await handleGoogleAuthCallback();
+    } catch (error) {
+      console.error('Google auth callback error:', error);
+      setAuthError(error instanceof Error ? error.message : 'Authentication error');
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     const user = session?.user ?? null;
     setUser(user);
