@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider } from './components/AuthProvider';
 import Header from './components/Header';
 import Hero from './components/Hero';
