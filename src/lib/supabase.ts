@@ -311,7 +311,7 @@ export const signInWithGoogle = async () => {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
+      redirectTo: `${window.location.origin}`,
       queryParams: {
         access_type: 'offline',
         prompt: 'consent',
@@ -328,7 +328,7 @@ export const signInWithGoogleAsJobSeeker = async () => {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/auth/callback?role=job_seeker`,
+      redirectTo: `${window.location.origin}?role=job_seeker`,
       queryParams: {
         access_type: 'offline',
         prompt: 'consent',
@@ -345,7 +345,7 @@ export const signInWithGoogleAsEmployer = async () => {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/auth/callback?role=employer`,
+      redirectTo: `${window.location.origin}?role=employer`,
       queryParams: {
         access_type: 'offline',
         prompt: 'consent',
