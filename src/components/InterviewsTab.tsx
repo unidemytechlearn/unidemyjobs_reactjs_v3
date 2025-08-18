@@ -197,6 +197,36 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh, onReschedule }: Interv
     }
   };
 
+  const handleMarkAsCompleted = async (interviewId: string) => {
+    if (!user) return;
+    
+    try {
+      // Import the function dynamically to avoid circular imports
+      const { updateInterviewStatus } = await import('../lib/interviews');
+      
+      await updateInterviewStatus(interviewId, 'completed', user.id);
+      
+      // Update local state
+      setInterviews(prev => 
+        prev.map(interview => 
+          interview.id === interviewId 
+            ? { ...interview, status: 'completed' }
+            : interview
+        )
+      );
+      
+      setActiveDropdown(null);
+      
+      // Call refresh callback if provided
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Error marking interview as completed:', error);
+      alert('Failed to mark interview as completed. Please try again.');
+    }
+  };
+
   const getInterviewTypeDetails = (typeId: string) => {
     return interviewTypes.find(type => type.id === typeId) || {
       name: 'Interview',
@@ -544,7 +574,7 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh, onReschedule }: Interv
                             
                             {interview.status === 'scheduled' && isPast(interview.scheduled_date) && (
                               <button
-                                onClick={() => {/* TODO: Implement mark as completed */}}
+                                onClick={() => handleMarkAsCompleted(interview.id)}
                                 className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 transition-colors flex items-center"
                               >
                                 <CheckSquare className="h-4 w-4 mr-2" />
