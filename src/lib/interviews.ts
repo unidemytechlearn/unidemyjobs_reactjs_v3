@@ -226,6 +226,11 @@ export async function updateInterviewStatus(
   userId: string
 ) {
   try {
+    if (!supabase) {
+      console.error('Supabase client not initialized');
+      return null;
+    }
+
     const { data, error } = await supabase
       .from('interview_schedules')
       .update({ 
@@ -233,21 +238,22 @@ export async function updateInterviewStatus(
         updated_at: new Date().toISOString()
       })
       .eq('id', interviewId)
+      .eq('created_by', userId)
       .select()
       .single();
 
     if (error) {
       if (error.code === 'PGRST116') {
-        // No rows returned - interview not found or no permission
-        console.error('Interview not found or no permission to update:', interviewId);
+        console.log('Interview not found or no permission to update:', interviewId);
         return null;
       }
-      throw error;
+      console.error('Error updating interview status:', error);
+      return null;
     }
     return data;
   } catch (error) {
     console.error('Error updating interview status:', error);
-    throw error;
+    return null;
   }
 }
 

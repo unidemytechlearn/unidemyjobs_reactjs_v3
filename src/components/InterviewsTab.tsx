@@ -204,23 +204,28 @@ const InterviewsTab = ({ applicationId, jobId, onRefresh, onReschedule }: Interv
       // Import the function dynamically to avoid circular imports
       const { updateInterviewStatus } = await import('../lib/interviews');
       
-      await updateInterviewStatus(interviewId, 'completed', user.id);
+      const result = await updateInterviewStatus(interviewId, 'completed', user.id);
       
-      // Update local state
-      setInterviews(prev => 
-        prev.map(interview => 
-          interview.id === interviewId 
-            ? { ...interview, status: 'completed' }
-            : interview
-        )
-      );
-      
-      setActiveDropdown(null);
-      
-      // Call refresh callback if provided
-      if (onRefresh) {
-        onRefresh();
+      if (result) {
+        // Update local state only if the update was successful
+        setInterviews(prev => 
+          prev.map(interview => 
+            interview.id === interviewId 
+              ? { ...interview, status: 'completed' }
+              : interview
+          )
+        );
+        
+        setActiveDropdown(null);
+        
+        // Call refresh callback if provided
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        alert('Failed to mark interview as completed. You may not have permission to update this interview.');
       }
+      
     } catch (error) {
       console.error('Error marking interview as completed:', error);
       alert('Failed to mark interview as completed. Please try again.');
