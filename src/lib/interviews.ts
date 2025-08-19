@@ -240,16 +240,18 @@ export async function updateInterviewStatus(
       .eq('id', interviewId)
       .eq('created_by', userId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        console.log('Interview not found or no permission to update:', interviewId);
-        return null;
-      }
       console.error('Error updating interview status:', error);
       return null;
     }
+    
+    if (!data) {
+      console.log('Interview not found or no permission to update:', interviewId);
+      return null;
+    }
+    
     return data;
   } catch (error) {
     console.error('Error updating interview status:', error);
