@@ -236,7 +236,14 @@ export async function updateInterviewStatus(
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // No rows returned - interview not found or no permission
+        console.error('Interview not found or no permission to update:', interviewId);
+        return null;
+      }
+      throw error;
+    }
     return data;
   } catch (error) {
     console.error('Error updating interview status:', error);
